@@ -1,0 +1,270 @@
+<?php
+session_start();
+include '../config/db.php';
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') { 
+    header("Location: ../login.php"); 
+    exit(); 
+}
+
+$id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+$product = null;
+$msg_type = ''; 
+$msg_content = '';
+
+if ($id > 0) {
+    $stmt = $conn->prepare("SELECT * FROM products WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $product = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $name = $_POST['name'];
+    $price = floatval($_POST['price']);
+    
+    // Xử lý giá khuyến mãi
+    $sale_input = $_POST['sale_price'] ?? 0;
+    $sale_price = 0;
+    if (!empty($sale_input)) {
+        if (strpos($sale_input, '%') !== false) {
+            $percent = floatval(str_replace('%', '', $sale_input));
+            $sale_price = $price - ($price * $percent / 100);
+        } else {
+            $sale_price = floatval(str_replace([',', '.'], '', $sale_input));
+        }
+    }
+
+    $brand_id = intval($_POST['brand_id']);
+    $category_id = intval($_POST['category_id']);
+    $colors = $_POST['colors'];
+    $desc = $_POST['description'];
+    
+    // Xử lý ảnh
+    $image = $_POST['image_link'] ?? '';
+    if (isset($_FILES['image_file']) && $_FILES['image_file']['error'] == 0) {
+        $target = "../assets/img/" . basename($_FILES['image_file']['name']);
+        if (move_uploaded_file($_FILES['image_file']['tmp_name'], $target)) {
+            $image = basename($_FILES['image_file']['name']);
+        }
+    }
+    if (empty($image) && $product) {
+        $image = $product['image'];
+    }
+
+    $specs = json_encode([
+        'screen' => $_POST['spec_screen'] ?? '',
+        'cpu' => $_POST['spec_cpu'] ?? '',
+        'ram' => $_POST['spec_ram'] ?? '',
+        'storage' => $_POST['spec_storage'] ?? ''
+    ], JSON_UNESCAPED_UNICODE);
+
+    // INSERT / UPDATE
+    if ($id > 0) {
+        $sql = "UPDATE products SET name=?, price=?, sale_price=?, image=?, brand_id=?, category_id=?, colors=?, specs=?, description=? WHERE id=?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("sddsiisssi", $name, $price, $sale_price, $image, $brand_id, $category_id, $colors, $specs, $desc, $id);
+    } else {
+        $sql = "INSERT INTO products (name, price, sale_price, image, brand_id, category_id, colors, specs, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("sddsiisss", $name, $price, $sale_price, $image, $brand_id, $category_id, $colors, $specs, $desc);
+    }
+
+    if ($stmt->execute()) {
+        $current_pid = ($id > 0) ? $id : $stmt->insert_id;
+        $stmt->close(); 
+
+        // Xử lý Gallery
+        $conn->query("DELETE FROM product_gallery WHERE product_id = $current_pid");
+        if (!empty($_POST['gallery'])) {
+            $stmt_gal = $conn->prepare("INSERT INTO product_gallery (product_id, image_url) VALUES (?, ?)");
+            foreach ($_POST['gallery'] as $img_url) {
+                $clean_url = trim($img_url);
+                if (!empty($clean_url)) {
+                    $stmt_gal->bind_param("is", $current_pid, $clean_url);
+                    $stmt_gal->execute();
+                }
+            }
+            $stmt_gal->close();
+        }
+
+        $msg_type = 'success';
+        $msg_content = 'Lưu sản phẩm thành công! Đang chuyển hướng...';
+    } else {
+        $msg_type = 'error';
+        $msg_content = 'Lỗi DB: ' . $stmt->error;
+    }
+}
+
+$brands_res = $conn->query("SELECT * FROM brands");
+$cats_res = $conn->query("SELECT * FROM categories");
+$spec_data = ($product && !empty($product['specs'])) ? json_decode($product['specs'], true) : [];
+?>
+
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <title><?= $id > 0 ? 'Sửa sản phẩm' : 'Thêm sản phẩm' ?></title>
+    <link rel="stylesheet" href="../assets/css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+    <div id="toast-container"></div>
+
+    <div class="admin-container">
+        <?php include '../includes/admin_sidebar.php'; ?>
+
+        <div class="admin-content">
+            <div class="header-action">
+                <h2><?= $id > 0 ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới' ?></h2>
+                <a href="products.php" class="btn-back"><i class="fa fa-arrow-left"></i> Quay lại</a>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data" id="product-form">
+                <div class="form-section">
+                    <h4 class="form-sec-title">1. Thông tin & Giá bán</h4>
+                    <div class="grid-2">
+                        <div>
+                            <label class="form-label">Tên sản phẩm (*)</label>
+                            <input type="text" name="name" class="form-control" required
+                                value="<?= htmlspecialchars($product['name'] ?? '') ?>">
+                        </div>
+                        <div>
+                            <label class="form-label">Hãng sản xuất</label>
+                            <select name="brand_id" class="form-control">
+                                <option value="">-- Chọn Hãng --</option>
+                                <?php if($brands_res) while($b = $brands_res->fetch_assoc()): ?>
+                                <option value="<?= $b['id'] ?>"
+                                    <?= ($product['brand_id']??0) == $b['id'] ? 'selected' : '' ?>>
+                                    <?= $b['name'] ?>
+                                </option>
+                                <?php endwhile; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div>
+                            <label class="form-label">Giá niêm yết (VNĐ) (*)</label>
+                            <input type="number" name="price" class="form-control" required
+                                value="<?= $product['price'] ?? '' ?>">
+                        </div>
+                        <div>
+                            <label class="form-label">Giá Khuyến Mãi</label>
+                            <input type="text" name="sale_price" class="form-control" placeholder="VD: 10%"
+                                value="<?= ($product['sale_price'] ?? 0) > 0 ? (float)$product['sale_price'] : '' ?>">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div>
+                            <label class="form-label">Danh mục</label>
+                            <select name="category_id" class="form-control">
+                                <option value="">-- Chọn Danh Mục --</option>
+                                <?php if($cats_res) while($c = $cats_res->fetch_assoc()): ?>
+                                <option value="<?= $c['id'] ?>"
+                                    <?= ($product['category_id']??0) == $c['id'] ? 'selected' : '' ?>>
+                                    <?= $c['name'] ?>
+                                </option>
+                                <?php endwhile; ?>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Màu sắc</label>
+                            <input type="text" name="colors" class="form-control"
+                                value="<?= htmlspecialchars($product['colors'] ?? '') ?>">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h4 class="form-sec-title">2. Hình ảnh</h4>
+                    <label class="form-label">Ảnh đại diện chính</label>
+                    <div style="display:flex; gap:10px; margin-bottom:15px;">
+                        <input type="text" name="image_link" class="form-control" placeholder="Link ảnh online..."
+                            value="<?= htmlspecialchars($product['image'] ?? '') ?>">
+                        <input type="file" name="image_file" class="form-control" style="width:150px;">
+                    </div>
+                    <label class="form-label">Bộ sưu tập ảnh (Gallery)</label>
+                    <div id="gallery-wrapper">
+                        <?php 
+                        if ($id > 0) {
+                            $res_gal = $conn->query("SELECT image_url FROM product_gallery WHERE product_id = $id");
+                            if($res_gal && $res_gal->num_rows > 0) {
+                                while($g = $res_gal->fetch_assoc()): 
+                        ?>
+                        <div class="gallery-row">
+                            <input type="text" name="gallery[]" class="form-control"
+                                value="<?= htmlspecialchars($g['image_url']) ?>">
+                            <button type="button" class="btn-del-gal" onclick="this.parentElement.remove()"><i
+                                    class="fa fa-trash"></i></button>
+                        </div>
+                        <?php endwhile; }} ?>
+                        <?php if(empty($res_gal) || $res_gal->num_rows == 0): ?>
+                        <div class="gallery-row">
+                            <input type="text" name="gallery[]" class="form-control" placeholder="Link ảnh phụ...">
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    <button type="button" id="btn-add-gallery" class="btn-add-new"
+                        style="background:#17a2b8; font-size:12px;">
+                        <i class="fa fa-plus"></i> Thêm dòng ảnh
+                    </button>
+                </div>
+
+                <div class="form-section">
+                    <h4 class="form-sec-title">3. Cấu hình & Mô tả</h4>
+                    <div class="grid-2">
+                        <div><label class="form-label">Màn hình</label><input type="text" name="spec_screen"
+                                class="form-control" value="<?= $spec_data['screen'] ?? '' ?>"></div>
+                        <div><label class="form-label">CPU</label><input type="text" name="spec_cpu"
+                                class="form-control" value="<?= $spec_data['cpu'] ?? '' ?>"></div>
+                    </div>
+                    <div class="grid-2">
+                        <div><label class="form-label">RAM</label><input type="text" name="spec_ram"
+                                class="form-control" value="<?= $spec_data['ram'] ?? '' ?>"></div>
+                        <div><label class="form-label">Bộ nhớ</label><input type="text" name="spec_storage"
+                                class="form-control" value="<?= $spec_data['storage'] ?? '' ?>"></div>
+                    </div>
+                    <label class="form-label" style="margin-top:15px;">Mô tả chi tiết</label>
+                    <textarea name="description" class="form-control"
+                        rows="5"><?= htmlspecialchars($product['description'] ?? '') ?></textarea>
+                </div>
+
+                <button type="submit" class="btn-submit"><i class="fa fa-save"></i> LƯU SẢN PHẨM</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="../assets/js/main.js"></script>
+
+    <script>
+    document.getElementById('btn-add-gallery').addEventListener('click', function() {
+        var wrapper = document.getElementById('gallery-wrapper');
+        var div = document.createElement('div');
+        div.className = 'gallery-row';
+        div.innerHTML = `
+                <input type="text" name="gallery[]" class="form-control" placeholder="Link ảnh mới...">
+                <button type="button" class="btn-del-gal" onclick="this.parentElement.remove()"><i class="fa fa-trash"></i></button>
+            `;
+        wrapper.appendChild(div);
+    });
+
+    <?php if (!empty($msg_type)): ?>
+    showToast({
+        title: "<?= $msg_type == 'success' ? 'Thành công' : 'Lỗi' ?>",
+        message: "<?= $msg_content ?>",
+        type: "<?= $msg_type ?>"
+    });
+
+    <?php if ($msg_type == 'success'): ?>
+    setTimeout(function() {
+        window.location.href = 'products.php';
+    }, 1500);
+    <?php endif; ?>
+    <?php endif; ?>
+    </script>
+</body>
+
+</html>

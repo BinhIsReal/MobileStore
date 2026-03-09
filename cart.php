@@ -1,0 +1,242 @@
+<?php
+session_start();
+include 'config/db.php';
+include 'includes/header.php';
+$user_id = $_SESSION['user_id'] ?? 0;
+$cart_data = [];
+
+if ($user_id > 0) {
+    // Đã đăng nhập
+$sql = "SELECT p.id, p.name, p.image, p.price, p.sale_price, c.quantity 
+            FROM cart c
+            JOIN products p ON c.product_id = p.id
+            WHERE c.user_id = $user_id";
+    $result = $conn->query($sql);
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $cart_data[] = $row;
+        }
+    }
+} else {
+    // Khách vãng lai
+    if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
+        $ids = implode(',', array_keys($_SESSION['cart']));
+        if (!empty($ids)) {
+            // Lấy thêm sale_price
+            $sql = "SELECT id, name, image, price, sale_price FROM products WHERE id IN ($ids)";
+            $result = $conn->query($sql);
+            if ($result) {
+                while ($row = $result->fetch_assoc()) {
+                    $row['quantity'] = $_SESSION['cart'][$row['id']];
+                    $cart_data[] = $row;
+                }
+            }
+        }
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Giỏ hàng của bạn</title>
+    <link rel="stylesheet" href="assets/css/style.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body data-user-id="<?= isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0 ?>">
+
+    <div class="container" style="margin-top: 30px;">
+        <?php if (empty($cart_data)): ?>
+        <div class="empty-cart-state">
+            <i class="fa-solid fa-cart-shopping" style="font-size: 80px; color: #787878ff; margin-bottom: 20px;"></i>
+            <h3 style="color: #555;">Giỏ hàng của bạn đang trống</h3>
+            <p style="color: #888; margin-bottom: 20px;">Hãy chọn thêm sản phẩm để mua sắm nhé</p>
+            <a href="index.php" style="color: #d70018; font-weight: bold;">
+                ← Quay lại trang chủ</a>
+        </div>
+        <?php else: ?>
+        <div class="cart-wrapper">
+            <div class="cart-list">
+                <div class="cart-header">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="check-all" style="width: 18px; height: 18px; cursor: pointer;">
+                        <h3 style="margin: 0; font-size: 18px;">Chọn tất cả (<?= count($cart_data) ?> sản phẩm)</h3>
+                    </div>
+
+                    <div class="cart-actions"
+                        style="margin-bottom: 10px; display: flex; gap: 10px; justify-content: flex-end;">
+                        <button id="btn-delete-selected" class="btn-delete-selected" style="display:none;">
+                            <i class="fa fa-trash-can"></i> Xóa đã chọn
+                        </button>
+                        <button id="btn-delete-all" class="btn-delete-all"
+                            style="background: #d70018; color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer;">
+                            <i class="fa fa-trash"></i> Xóa tất cả
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Product Item -->
+                <?php foreach ($cart_data as $item): 
+                    $is_sale = isset($item['sale_price']) && $item['sale_price'] > 0;
+                    $final_price = $is_sale ? $item['sale_price'] : $item['price'];
+                ?>
+                <div class="cart-item" id="item-<?= $item['id'] ?>">
+                    <input type="checkbox" class="pay-check" value="<?= $item['id'] ?>" data-price="<?= $final_price ?>"
+                        data-qty="<?= $item['quantity'] ?>" onchange="calcTotal()"
+                        style="width: 18px; height: 18px; margin-right: 15px; cursor: pointer;">
+
+                    <?php 
+                        $imgCart = (strpos($item['image'], 'http') === 0) ? $item['image'] : "assets/img/" . $item['image'];
+                    ?>
+                    <img src="<?= $imgCart ?>" alt="sp">
+
+                    <div class="cart-info" style="flex: 1;">
+
+                        <h4><?= htmlspecialchars($item['name']) ?></h4>
+                        <div class="cart-price">
+                            <?php if ($is_sale): ?>
+                            <span
+                                style="color: #d70018; font-weight: bold;"><?= number_format($final_price, 0, ',', '.') ?>
+                                ₫</span>
+                            <br>
+                            <del style="color: #999; font-size: 13px;"><?= number_format($item['price'], 0, ',', '.') ?>
+                                ₫</del>
+                            <?php else: ?>
+                            <?= number_format($item['price'], 0, ',', '.') ?> ₫
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <div class="qty-control">
+                        <button class="qty-btn" data-id="<?= $item['id'] ?>" data-delta="-1">-</button>
+                        <span id="qty-<?= $item['id'] ?>"><?= $item['quantity'] ?></span>
+                        <button class="qty-btn" data-id="<?= $item['id'] ?>" data-delta="1">+</button>
+                    </div>
+
+                    <button class="btn-remove-item" data-id="<?= $item['id'] ?>"
+                        style="border:none; background:none; cursor:pointer;">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="checkout-bar">
+                <div class="checkout-info">
+                    <span>Tổng thanh toán (<b id="selected-count">0</b> sản phẩm):</span>
+                    <span class="total-price" id="total-money">0 ₫</span>
+                </div>
+                <button id="btn-checkout-init" class="btn-checkout-trigger">
+                    MUA HÀNG
+                </button>
+            </div>
+
+            <div id="checkout-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fa-solid fa-file-invoice-dollar"></i> Xác Nhận Đặt Hàng</h2>
+                        <span class="close-modal" onclick="$('#checkout-modal').fadeOut()">&times;</span>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Họ và tên <span style="color:red">*</span></label>
+                            <input type="text" id="c-name" class="modal-input" placeholder="Nguyễn Văn A">
+                        </div>
+                        <div class="form-group">
+                            <label>Số điện thoại <span style="color:red">*</span></label>
+                            <input type="text" id="c-phone" class="modal-input" placeholder="0912345678">
+                        </div>
+                        <div class="form-group">
+                            <label>Địa chỉ <span style="color:red">*</span></label>
+                            <textarea id="c-address" class="modal-input" rows="2"
+                                placeholder="Số nhà, đường..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Mã giảm giá</label>
+                            <input type="text" id="c-coupon" class="modal-input" placeholder="Nhập mã voucher">
+                        </div>
+
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label style="font-weight:600; display:block; margin-bottom:8px;">Hình thức thanh
+                                toán:</label>
+                            <div style="display:flex; gap:15px;">
+                                <label
+                                    style="cursor:pointer; display:flex; align-items:center; gap:8px; border:1px solid #ddd; padding:10px; border-radius:6px; flex:1;">
+                                    <input type="radio" name="payment_method" value="cod" checked>
+                                    <div><b>Thanh toán khi nhận hàng</b><br><span
+                                            style="font-size:12px; color:#666;">COD</span></div>
+                                </label>
+                                <label
+                                    style="cursor:pointer; display:flex; align-items:center; gap:8px; border:1px solid #ddd; padding:10px; border-radius:6px; flex:1;">
+                                    <input type="radio" name="payment_method" value="banking">
+                                    <div><b>Chuyển khoản ngân hàng</b><br><span style="font-size:12px; color:#666;">Quét
+                                            mã QR</span></div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="modal-summary">
+                            <p>Tổng tiền thanh toán:</p>
+                            <h3 id="modal-total-money" style="color:#d70018">0 ₫</h3>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="btn-cancel" onclick="$('#checkout-modal').fadeOut()">Hủy</button>
+                        <button id="btn-confirm-order" class="btn-confirm">XÁC NHẬN THANH TOÁN</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="banking-modal" class="modal" style="display:none; z-index: 99999;">
+                <div class="modal-content"
+                    style="width: 400px; text-align: center; border-radius: 12px; overflow: hidden;">
+                    <div class="modal-header"
+                        style="justify-content: center; background: #00487a; color: white; padding: 15px;">
+                        <h3 style="margin:0; font-size: 18px;">THANH TOÁN QR</h3>
+                    </div>
+                    <div class="modal-body" style="padding: 20px;">
+                        <p style="margin-bottom: 10px; color: #555;">Quét mã VietQR để thanh toán nhanh:</p>
+
+                        <div
+                            style="position: relative; min-height: 350px; display: flex; align-items: center; justify-content: center; background: #f8f9fa; border-radius: 8px; border: 1px solid #eee;">
+                            <div id="qr-loader" style="position: absolute;">
+                                <div class="spinner-border text-primary" role="status"
+                                    style="width: 3rem; height: 3rem; border: 4px solid #ddd; border-top: 4px solid #00487a; border-radius: 50%; animation: spin 1s linear infinite;">
+                                </div>
+                                <p style="margin-top: 10px; font-size: 12px;">Đang tạo mã QR...</p>
+                            </div>
+                            <img id="qr-img" src=""
+                                style="width: 100%; max-width: 350px; display: none; border-radius: 8px;" alt="QR Code">
+                        </div>
+
+                        <div
+                            style="margin-top: 15px; font-size: 13px; background: #eef5ff; padding: 12px; border-radius: 6px; text-align: left;">
+                            <p style="margin: 5px 0;">💰 Số tiền: <b id="qr-amount"
+                                    style="color: #d70018; font-size: 16px;">...</b></p>
+                            <p style="margin: 5px 0;">📝 Nội dung: <b id="qr-content" style="color: #00487a;">...</b>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="padding: 15px; justify-content: center; background: #fff;">
+                        <button id="btn-finish-banking" class="btn-confirm"
+                            style="width: 100%; background: #28a745; color: white; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+                            <i class="fa fa-check-circle"></i> TÔI ĐÃ CHUYỂN KHOẢN
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <?php require_once "includes/footer.php"; ?>
+</body>
+
+</html>

@@ -1,0 +1,970 @@
+var currentUserId = 0;
+var currentChatTab = "bot";
+var chatInterval = null;
+var isSending = false;
+var reviewState = {
+  page: 1,
+  filter: "all",
+  isLoading: false,
+};
+
+/* =================================================================
+   1. UTILITY FUNCTIONS (TOAST, CONFIRM)
+================================================================= */
+
+function showToast({
+  title = "Thông báo",
+  message = "",
+  type = "success",
+  duration = 3000,
+}) {
+  const main = document.getElementById("toast-container");
+  if (main) {
+    const toast = document.createElement("div");
+    const icons = {
+      success: "fa-circle-check",
+      error: "fa-circle-xmark",
+      warning: "fa-triangle-exclamation",
+    };
+    const icon = icons[type];
+    const delay = (duration / 1000).toFixed(2);
+
+    toast.classList.add("toast", `toast--${type}`);
+    toast.style.animation = `slideInLeft 0.3s ease, fadeOut linear 1s ${delay}s forwards`;
+
+    toast.innerHTML = `
+            <div class="toast__icon"><i class="fa-solid ${icon}"></i></div>
+            <div class="toast__body">
+                <h3 class="toast__title">${title}</h3>
+                <p class="toast__msg">${message}</p>
+            </div>
+            <div class="toast__close"><i class="fa-solid fa-xmark"></i></div>
+        `;
+    main.appendChild(toast);
+    const autoRemoveId = setTimeout(
+      () => main.removeChild(toast),
+      duration + 1000,
+    );
+    toast.onclick = function (e) {
+      if (e.target.closest(".toast__close")) {
+        main.removeChild(toast);
+        clearTimeout(autoRemoveId);
+      }
+    };
+  }
+}
+
+function customConfirm(message, callback) {
+  $("#confirm-msg").text(message);
+  $("#custom-confirm").css("display", "flex");
+  $("#btn-confirm-yes")
+    .off("click")
+    .on("click", function () {
+      $("#custom-confirm").hide();
+      if (callback) callback();
+    });
+}
+
+function closeConfirm() {
+  $("#custom-confirm").hide();
+}
+
+/* =================================================================
+   2. MAIN DOCUMENT READY (EVENT LISTENERS)
+================================================================= */
+$(document).ready(function () {
+  currentUserId = parseInt($("body").attr("data-user-id")) || 0;
+  console.log("Current User ID:", currentUserId);
+  if ($("#product-list").length || $("#hot-product-list").length) {
+    loadProducts();
+  }
+  if ($("#review-list-container").length) {
+    loadReviews(true);
+  }
+
+  // Load Giỏ hàng
+  if ($(".cart-wrapper").length) {
+    calcTotal();
+    toggleDeleteSelectedBtn();
+    const urlParams = new URLSearchParams(window.location.search);
+    const buyNowId = urlParams.get("buy_now");
+    if (buyNowId) {
+      let target = $(`.pay-check[value="${buyNowId}"]`);
+      if (target.length) {
+        target.prop("checked", true).trigger("change");
+        const newUrl =
+          window.location.protocol +
+          "//" +
+          window.location.host +
+          window.location.pathname;
+        if (window.history.replaceState)
+          window.history.replaceState({ path: newUrl }, "", newUrl);
+      }
+    }
+  }
+
+  updateCartCount();
+  checkUserNotifications();
+  setInterval(checkUserNotifications, 5000);
+
+  /* --- SỰ KIỆN GIỎ HÀNG (CART) --- */
+  $(document).on("change", ".pay-check", function () {
+    calcTotal();
+    toggleDeleteSelectedBtn();
+    if (!$(this).prop("checked")) $("#check-all").prop("checked", false);
+    else if ($(".pay-check:checked").length === $(".pay-check").length)
+      $("#check-all").prop("checked", true);
+  });
+
+  $(document).on("change", "#check-all", function () {
+    $(".pay-check").prop("checked", $(this).prop("checked"));
+    calcTotal();
+    toggleDeleteSelectedBtn();
+  });
+
+  $(document).on("click", ".qty-btn", function () {
+    let btn = $(this);
+    let pid = btn.data("id");
+    let delta = parseInt(btn.data("delta"));
+    let qtySpan = btn.siblings("span");
+    let checkbox = btn.closest(".cart-item").find(".pay-check");
+
+    btn.prop("disabled", true);
+    $.post(
+      "api/cart_api.php",
+      { action: "update_qty", product_id: pid, delta: delta },
+      function (data) {
+        btn.prop("disabled", false);
+        try {
+          let res = typeof data === "object" ? data : JSON.parse(data);
+          if (res.status === "success") {
+            let newQty = parseInt(res.new_qty);
+            qtySpan.text(newQty);
+            checkbox.attr("data-qty", newQty).data("qty", newQty);
+            if (checkbox.prop("checked")) calcTotal();
+            updateCartCount();
+          }
+        } catch (e) {}
+      },
+    );
+  });
+
+  $(document).on("click", "#btn-delete-all", function () {
+    if ($(".cart-item").length === 0)
+      return showToast({
+        title: "Cảnh báo",
+        message: "Giỏ hàng trống!",
+        type: "warning",
+      });
+    customConfirm("Xóa sạch giỏ hàng?", function () {
+      $.post("api/cart_api.php", { action: "delete_all" }, function () {
+        location.reload();
+      });
+    });
+  });
+
+  $(document).on("click", "#btn-delete-selected", function () {
+    let ids = [];
+    $(".pay-check:checked").each(function () {
+      ids.push($(this).val());
+    });
+    if (ids.length === 0) return;
+    customConfirm(`Xóa ${ids.length} sản phẩm đã chọn?`, function () {
+      $.post(
+        "api/cart_api.php",
+        { action: "delete_list", ids: JSON.stringify(ids) },
+        function () {
+          location.reload();
+        },
+      );
+    });
+  });
+
+  $(document).on("click", ".btn-remove-item", function () {
+    let pid = $(this).data("id");
+    customConfirm("Xóa sản phẩm này?", function () {
+      $.post("api/cart_api.php", { action: "delete", id: pid }, function () {
+        location.reload();
+      });
+    });
+  });
+
+  /* --- SỰ KIỆN THANH TOÁN (CHECKOUT) --- */
+  $(document).on("click", "#btn-checkout-init", function () {
+    if ($(".pay-check:checked").length === 0)
+      return showToast({
+        title: "Nhắc nhở",
+        message: "Vui lòng chọn sản phẩm!",
+        type: "warning",
+      });
+    if (currentUserId === 0)
+      return customConfirm("Bạn cần ĐĂNG NHẬP để mua hàng.", function () {
+        window.location.href = "login.php";
+      });
+    $("#modal-total-money").text($("#total-money").text());
+    $("#checkout-modal").fadeIn(200);
+  });
+
+  $(document).on("click", "#btn-confirm-order", function () {
+    handleCheckout($(this));
+  });
+
+  $(document).on("click", "#btn-finish-banking", function () {
+    let btn = $(this);
+    btn
+      .prop("disabled", true)
+      .html('<i class="fa fa-spinner fa-spin"></i> Đang xác nhận...');
+    showToast({
+      title: "Đã ghi nhận",
+      message: "Hệ thống sẽ kiểm tra giao dịch.",
+      type: "success",
+    });
+    setTimeout(() => {
+      window.location.href = "order_history.php";
+    }, 1500);
+  });
+
+  /* --- SỰ KIỆN MUA HÀNG (ADD TO CART / BUY NOW) --- */
+  $(document).on("click", ".js-add-to-cart", function (e) {
+    handleAddToCart(e, $(this), false);
+  });
+
+  $(document).on("click", ".js-buy-now", function (e) {
+    handleAddToCart(e, $(this), true);
+  });
+
+  /* --- SỰ KIỆN CHAT --- */
+  $(".chat-header .chat-tab").click(function () {
+    let tab = $(this).index() === 0 ? "bot" : "shop";
+    switchChatTab(tab);
+  });
+  $("#chat-toggle, #chat-now, .close-chat").click(function () {
+    toggleChat();
+  });
+  $("#chat-input").keypress(function (e) {
+    if (e.which == 13) sendMessage();
+  });
+  $(".chat-footer button").click(function () {
+    sendMessage();
+  });
+
+  $(document).on("click", ".user-dropdown-container", function (e) {
+    e.stopPropagation();
+    $("#userDropdown").toggleClass("show");
+  });
+  $(window).click(function () {
+    $("#userDropdown").removeClass("show");
+  });
+
+  $("#sortPrice").change(function () {
+    loadProducts();
+  });
+  $(".filter-btn").click(function () {
+    let brand = $(this).data("brand");
+    loadProducts(brand);
+  });
+
+  // Product Detail Image & Color
+  $(document).on("click", ".thumb-img, .pd-thumb-item", function () {
+    let src = $(this).attr("src");
+    $("#pd-main-img")
+      .attr("src", src)
+      .css("opacity", 0)
+      .animate({ opacity: 1 }, 300);
+    $(".thumb-img, .pd-thumb-item").removeClass("active");
+    $(this).addClass("active");
+  });
+  $(document).on("click", ".btn-color", function () {
+    $(".btn-color").removeClass("active");
+    $(this).addClass("active");
+  });
+
+  // Search Suggestion
+  let searchTimeout = null;
+  $("#search-input").on("input", function () {
+    let keyword = $(this).val().trim();
+    let box = $("#search-suggestions");
+    clearTimeout(searchTimeout);
+    if (keyword.length < 2) {
+      box.hide();
+      return;
+    }
+    searchTimeout = setTimeout(function () {
+      $.get("api/search_suggest.php", { q: keyword }, function (data) {
+        try {
+          let products = typeof data === "string" ? JSON.parse(data) : data;
+          if (products && products.length > 0) {
+            let html = "";
+            let fmt = new Intl.NumberFormat("vi-VN", {
+              style: "currency",
+              currency: "VND",
+            });
+            products.forEach((p) => {
+              let img = p.image.startsWith("http")
+                ? p.image
+                : `assets/img/${p.image}`;
+              html += `<a href="product_detail.php?id=${p.id}" class="suggest-item"><img src="${img}"><div><b>${p.name}</b><br><span style="color:red">${fmt.format(p.price)}</span></div></a>`;
+            });
+            box.html(html).fadeIn(200);
+          } else box.hide();
+        } catch (e) {}
+      });
+    }, 300);
+  });
+  $(document).click(function (e) {
+    if (!$(e.target).closest(".search-form-wrap").length)
+      $("#search-suggestions").hide();
+  });
+
+  /* =================================================================
+       REVIEW SYSTEM EVENTS (ĐÁNH GIÁ SẢN PHẨM)
+    ================================================================= */
+
+  // Mở Modal Viết Đánh Giá
+  $(document).on(
+    "click",
+    ".js-btn-write-review, .btn-write-review",
+    function (e) {
+      e.preventDefault();
+      currentUserId = parseInt($("body").attr("data-user-id")) || 0;
+
+      if (currentUserId === 0) {
+        showToast({
+          title: "Yêu cầu",
+          message: "Vui lòng đăng nhập để viết đánh giá!",
+          type: "warning",
+        });
+        return;
+      }
+      $("#review-modal").fadeIn().css("display", "flex");
+    },
+  );
+
+  // Đóng Modal
+  $(document).on("click", ".close-modal", function () {
+    $("#review-modal").fadeOut();
+  });
+  $(window).on("click", function (e) {
+    if ($(e.target).is("#review-modal")) $("#review-modal").fadeOut();
+  });
+
+  // Preview Ảnh Upload
+  $(document).on("change", "#review-images-input", function () {
+    let preview = $("#preview-images");
+    preview.html("");
+    if (this.files) {
+      Array.from(this.files).forEach((file) => {
+        let reader = new FileReader();
+        reader.onload = function (e) {
+          preview.append(
+            `<div class="preview-item" style="position:relative; display:inline-block; margin:5px;"><img src="${e.target.result}" style="width:60px; height:60px; object-fit:cover; border-radius:4px;"><span onclick="$(this).parent().remove()" style="position:absolute; top:-5px; right:-5px; background:red; color:white; border-radius:50%; width:15px; height:15px; display:flex; align-items:center; justify-content:center; font-size:10px; cursor:pointer;">×</span></div>`,
+          );
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  });
+
+  $(document).on("submit", "#form-product-review", function (e) {
+    e.preventDefault();
+    let btn = $(this).find(".btn-submit-review");
+    btn.prop("disabled", true).text("Đang gửi...");
+
+    let formData = new FormData(this);
+    formData.append("action", "submit_review");
+
+    $.ajax({
+      url: "api/product_api.php",
+      type: "POST",
+      data: formData,
+      contentType: false,
+      processData: false,
+      success: function (res) {
+        btn.prop("disabled", false).text("GỬI ĐÁNH GIÁ");
+        try {
+          let data = typeof res === "object" ? res : JSON.parse(res);
+          if (data.status === "success") {
+            showToast({
+              title: "Thành công",
+              message: "Đánh giá đã được đăng!",
+              type: "success",
+            });
+            $("#review-modal").fadeOut();
+            $("#form-product-review")[0].reset();
+            $("#preview-images").html("");
+            reviewState.page = 1;
+            loadReviews(true);
+          } else {
+            showToast({ title: "Lỗi", message: data.message, type: "error" });
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      },
+      error: function () {
+        btn.prop("disabled", false).text("GỬI ĐÁNH GIÁ");
+        showToast({
+          title: "Lỗi mạng",
+          message: "Không thể kết nối server",
+          type: "error",
+        });
+      },
+    });
+  });
+
+  $(document).on("click", ".review-filter .filter-btn", function () {
+    if ($(this).hasClass("active")) return;
+    $(".review-filter .filter-btn").removeClass("active");
+    $(this).addClass("active");
+
+    reviewState.filter = $(this).data("star");
+    reviewState.page = 1;
+
+    loadReviews(true);
+  });
+
+  $(document).on("click", "#btn-load-more-reviews", function () {
+    reviewState.page++;
+    loadReviews(false);
+  });
+
+  // Xử lý nút Like Đánh giá (Toggle)
+  $(document).on("click", ".btn-like-review", function () {
+    let btn = $(this);
+    let reviewId = btn.data("id");
+
+    // Ràng buộc: Phải Login mới được Like
+    if (currentUserId === 0) {
+      showToast({
+        title: "Yêu cầu đăng nhập",
+        message: "Bạn cần đăng nhập để thả Like cho đánh giá này!",
+        type: "warning",
+      });
+      return;
+    }
+
+    // Chống spam click
+    if (btn.data("loading")) return;
+    btn.data("loading", true);
+
+    $.post(
+      "api/product_api.php",
+      { action: "like_review", review_id: reviewId },
+      function (res) {
+        btn.data("loading", false);
+        try {
+          let data = typeof res === "object" ? res : JSON.parse(res);
+
+          if (data.status === "error" && data.message === "require_login") {
+            showToast({
+              title: "Yêu cầu",
+              message: "Phiên đăng nhập hết hạn, vui lòng tải lại trang!",
+              type: "error",
+            });
+            return;
+          }
+
+          if (data.status === "success") {
+            if (data.liked) {
+              btn.addClass("liked");
+              btn.html(
+                `<i class="fa-solid fa-thumbs-up"></i> Đã Like (${data.new_likes})`,
+              );
+            } else {
+              btn.removeClass("liked");
+              btn.html(
+                `<i class="fa-regular fa-thumbs-up"></i> Like (${data.new_likes})`,
+              );
+            }
+          }
+        } catch (e) {}
+      },
+    ).fail(function () {
+      btn.data("loading", false);
+    });
+  });
+
+  // --- RELATED PRODUCT SLIDER ---
+  if ($("#related-track").length) {
+    let relIndex = 0;
+    const track = $("#related-track");
+    const items = $(".related-card");
+    const totalItems = items.length;
+    function moveRelatedSlide(direction) {
+      const itemsVisible = window.innerWidth > 768 ? 4 : 2;
+      const maxIndex = Math.max(0, totalItems - itemsVisible);
+      const itemWidth = items.first().outerWidth() + 15;
+      relIndex += direction;
+      if (relIndex > maxIndex) relIndex = 0;
+      else if (relIndex < 0) relIndex = maxIndex;
+      track.css("transform", `translateX(-${relIndex * itemWidth}px)`);
+    }
+    $(document).on("click", "#btn-prev-rel", function () {
+      moveRelatedSlide(-1);
+    });
+    $(document).on("click", "#btn-next-rel", function () {
+      moveRelatedSlide(1);
+    });
+  }
+});
+
+/* =================================================================
+   3. CORE FUNCTIONS DEFINITIONS
+================================================================= */
+
+function loadReviews(isReset) {
+  const params = new URLSearchParams(window.location.search);
+  const pid = params.get("id");
+  if (!pid || reviewState.isLoading) return;
+
+  reviewState.isLoading = true;
+
+  if (isReset)
+    $("#review-list-container").html(
+      '<div style="text-align:center; padding:30px; color:#666;"><i class="fa fa-spinner fa-spin"></i> Đang tải đánh giá...</div>',
+    );
+  else
+    $("#btn-load-more-reviews").html(
+      '<i class="fa fa-spinner fa-spin"></i> Đang tải thêm...',
+    );
+
+  $.post(
+    "api/product_api.php",
+    {
+      action: "get_reviews",
+      product_id: pid,
+      star: reviewState.filter,
+      page: reviewState.page,
+    },
+    function (res) {
+      try {
+        let data = typeof res === "object" ? res : JSON.parse(res);
+        let html = "";
+
+        if (data.reviews && data.reviews.length > 0) {
+          data.reviews.forEach((rev) => {
+            let stars = "";
+            for (let i = 1; i <= 5; i++)
+              stars +=
+                i <= rev.rating
+                  ? '<i class="fa-solid fa-star" style="color:#f39c12"></i>'
+                  : '<i class="fa-regular fa-star" style="color:#ccc"></i>';
+
+            let imgs = "";
+            if (rev.images && rev.images.length > 0) {
+              imgs = '<div class="review-gallery">';
+              rev.images.forEach((src) => {
+                imgs += `<img src="assets/img/reviews/${src}" onclick="window.open(this.src)">`;
+              });
+              imgs += "</div>";
+            }
+            let likeClass = rev.is_liked ? "liked" : "";
+            let likeIcon = rev.is_liked ? "fa-solid" : "fa-regular";
+            let likeText = rev.is_liked ? "Đã Like" : "Like";
+            let avatarChar = rev.username
+              ? rev.username.charAt(0).toUpperCase()
+              : "U";
+
+            html += `
+                    <div class="review-card fade-in">
+                        <div class="review-avatar">${avatarChar}</div>
+                        <div class="review-body">
+                            <div>
+                                <span class="review-author">${rev.username}</span>
+                                <span class="review-date"><i class="fa-regular fa-clock"></i> ${rev.date}</span>
+                            </div>
+                            <div class="review-stars">${stars}</div>
+                            <div class="review-content">${rev.comment}</div>
+                            ${imgs}
+                           <button class="btn-like-review ${likeClass}" data-id="${rev.id}">
+                              <i class="${likeIcon} fa-thumbs-up"></i> ${likeText} (${rev.likes})
+                          </button>
+                        </div>
+                    </div>`;
+          });
+        } else if (isReset) {
+          html = `<div style="text-align:center; padding:40px; color:#999; background:#f9f9f9; border-radius:8px;"><i class="fa-regular fa-comments" style="font-size:40px; margin-bottom:10px;"></i><p>Chưa có đánh giá nào phù hợp.</p></div>`;
+        }
+
+        if (isReset) $("#review-list-container").html(html);
+        else $("#review-list-container").append(html);
+        $("#review-load-more-wrap").remove();
+        if (data.has_more) {
+          $("#review-list-container").after(`
+                    <div id="review-load-more-wrap" style="text-align:center; margin-top:20px;">
+                        <button id="btn-load-more-reviews" class="btn-view-all-reviews">Xem thêm đánh giá cũ hơn</button>
+                    </div>
+                `);
+        }
+      } catch (e) {
+        console.error("Lỗi JSON:", e);
+      } finally {
+        reviewState.isLoading = false;
+      }
+    },
+  );
+}
+
+// --- CART & CHECKOUT FUNCTIONS ---
+function calcTotal() {
+  let total = 0;
+  $(".pay-check:checked").each(function () {
+    let price = parseInt($(this).data("price")) || 0;
+    let qty = parseInt($(this).data("qty")) || 0;
+    total += price * qty;
+  });
+  let fmt = new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(total);
+  $("#total-money").text(fmt);
+  $("#selected-count").text($(".pay-check:checked").length);
+}
+
+function toggleDeleteSelectedBtn() {
+  if ($(".pay-check:checked").length > 0) $("#btn-delete-selected").show();
+  else $("#btn-delete-selected").hide();
+}
+
+function updateCartCount() {
+  $.post("api/cart_api.php", { action: "count" }, function (data) {
+    try {
+      let res = typeof data === "object" ? data : JSON.parse(data);
+      if (res.count > 0)
+        $(".menu-cart-badge").text(res.count).removeClass("hidden");
+      else $(".menu-cart-badge").addClass("hidden");
+    } catch (e) {}
+  });
+}
+
+function handleCheckout(btn) {
+  let name = $("#c-name").val().trim();
+  let phone = $("#c-phone").val().trim();
+  let address = $("#c-address").val().trim();
+  let coupon = $("#c-coupon").val().trim();
+  let paymentMethod = $('input[name="payment_method"]:checked').val() || "cod";
+
+  if (coupon) address += ` (Voucher: ${coupon})`;
+
+  if (!name || !phone || !address)
+    return showToast({
+      title: "Lỗi",
+      message: "Vui lòng điền đủ thông tin!",
+      type: "error",
+    });
+
+  let items = [];
+  $(".pay-check:checked").each(function () {
+    items.push({ product_id: $(this).val(), quantity: $(this).data("qty") });
+  });
+
+  if (items.length === 0)
+    return showToast({
+      title: "Lỗi",
+      message: "Chưa chọn sản phẩm!",
+      type: "error",
+    });
+
+  let oldText = btn.text();
+  btn.prop("disabled", true).text("Đang xử lý...");
+
+  $.post(
+    "api/cart_api.php",
+    {
+      action: "checkout",
+      info: { name: name, phone: phone, address: address },
+      items: JSON.stringify(items),
+      payment_method: paymentMethod,
+    },
+    function (res) {
+      btn.prop("disabled", false).text(oldText);
+      try {
+        let data = typeof res === "object" ? res : JSON.parse(res);
+        if (data.status === "success") {
+          $("#checkout-modal").hide();
+          if (paymentMethod === "banking")
+            showBankingQR(data.order_id, data.total_money);
+          else {
+            showToast({
+              title: "Thành công",
+              message: "Đặt hàng thành công!",
+              type: "success",
+            });
+            setTimeout(
+              () => (window.location.href = "order_history.php"),
+              1500,
+            );
+          }
+        } else {
+          showToast({
+            title: "Thất bại",
+            message: data.message,
+            type: "error",
+          });
+        }
+      } catch (e) {
+        showToast({
+          title: "Lỗi hệ thống",
+          message: "Thử lại sau.",
+          type: "error",
+        });
+      }
+    },
+  ).fail(function () {
+    btn.prop("disabled", false).text(oldText);
+    showToast({
+      title: "Lỗi mạng",
+      message: "Không thể kết nối server.",
+      type: "error",
+    });
+  });
+}
+
+function showBankingQR(orderId, amount) {
+  if (!orderId || !amount) return alert("Lỗi dữ liệu!");
+  let bankId = "BIDV";
+  let accNo = "0334960320";
+  let accName = "DAM NGOC BINH";
+  let content = "DH" + orderId;
+  let qrUrl = `https://img.vietqr.io/image/${bankId}-${accNo}-compact.png?amount=${amount}&addInfo=${content}&accountName=${encodeURIComponent(accName)}`;
+
+  $("#qr-loader").show();
+  $("#qr-img").hide().attr("src", "");
+  $("#qr-content").text(content);
+  $("#qr-amount").text(
+    new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(amount),
+  );
+  $("#banking-modal").fadeIn();
+
+  let imgObj = new Image();
+  imgObj.onload = function () {
+    $("#qr-img").attr("src", qrUrl).fadeIn();
+    $("#qr-loader").hide();
+  };
+  imgObj.src = qrUrl;
+}
+
+// --- PRODUCT & SHOPPING FUNCTIONS ---
+function loadProducts(brandInput) {
+  let brand = brandInput || "all";
+  let sort = $("#sortPrice").val() || "asc";
+
+  $.post("api/product_api.php", { brand: brand, sort: sort }, function (data) {
+    try {
+      let products = typeof data === "object" ? data : JSON.parse(data);
+      let htmlAll = "",
+        htmlHot = "";
+      let fmt = new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: "VND",
+      });
+
+      products.forEach((p, index) => {
+        let img = p.image.startsWith("http")
+          ? p.image
+          : `assets/img/${p.image}`;
+        let priceDisplay = "",
+          badgeHtml = "";
+
+        if (parseFloat(p.sale_price) > 0) {
+          let oldPrice = fmt.format(p.price);
+          let newPrice = fmt.format(p.sale_price);
+          let percent = Math.round(((p.price - p.sale_price) / p.price) * 100);
+          priceDisplay = `<div class="price-wrap"><span class="price-new">${newPrice}</span><span class="price-old">${oldPrice}</span></div>`;
+          badgeHtml = `<span class="sale-badge">-${percent}%</span>`;
+        } else {
+          priceDisplay = `<p class="price">${fmt.format(p.price)}</p>`;
+        }
+
+        let item = `
+                    <div class="product-card">
+                        ${badgeHtml}
+                        <a href="product_detail.php?id=${p.id}"><img src="${img}"><h3>${p.name}</h3></a>
+                        ${priceDisplay}
+                        <button class="js-add-to-cart btn-add" data-id="${p.id}">THÊM VÀO GIỎ</button>
+                    </div>`;
+
+        if (index < 4) htmlHot += item;
+        else htmlAll += item;
+      });
+
+      if ($("#hot-product-list").length) $("#hot-product-list").html(htmlHot);
+      $("#product-list").html(htmlAll);
+    } catch (e) {
+      console.log(e);
+    }
+  });
+}
+
+function handleAddToCart(e, btn, isBuyNow) {
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  if (btn.data("loading")) return;
+  btn.data("loading", true);
+
+  let pid = btn.data("id");
+  let oldHtml = btn.html();
+  let oldWidth = btn.outerWidth();
+  btn
+    .css("width", oldWidth + "px")
+    .html('<i class="fa fa-spinner fa-spin"></i>');
+  btn.prop("disabled", true);
+
+  $.post(
+    "api/cart_api.php",
+    { action: "add", product_id: pid, quantity: 1 },
+    function () {
+      if (isBuyNow) {
+        window.location.href = "cart.php?buy_now=" + pid;
+      } else {
+        showToast({
+          title: "Thành công",
+          message: "Đã thêm sản phẩm vào giỏ!",
+          type: "success",
+        });
+        updateCartCount();
+        setTimeout(() => {
+          btn
+            .html(oldHtml)
+            .prop("disabled", false)
+            .css("width", "")
+            .data("loading", false);
+        }, 500);
+      }
+    },
+  ).fail(function () {
+    showToast({ title: "Lỗi", message: "Lỗi kết nối!", type: "error" });
+    btn
+      .html(oldHtml)
+      .prop("disabled", false)
+      .css("width", "")
+      .data("loading", false);
+  });
+}
+
+// --- CHAT FUNCTIONS ---
+setTimeout(() => {
+  if (!$("#chat-box").hasClass("open")) {
+    $("#chat-welcome-bubble").fadeIn();
+    setTimeout(() => {
+      $("#chat-welcome-bubble").fadeOut();
+    }, 10000);
+  }
+}, 1000);
+
+function toggleChat() {
+  var box = $("#chat-box");
+  $("#chat-welcome-bubble").fadeOut();
+  if (!box.hasClass("open")) {
+    box.addClass("open");
+    $(".chat-badge-notify").remove();
+    $("#main-chat-badge").addClass("hidden");
+    $.post("api/chat_api.php", { action: "mark_read_user" });
+    switchChatTab(currentChatTab);
+    if (!chatInterval)
+      chatInterval = setInterval(() => loadMessages(false), 3000);
+    setTimeout(scrollToBottom, 200);
+  } else {
+    box.removeClass("open");
+    if (chatInterval) {
+      clearInterval(chatInterval);
+      chatInterval = null;
+    }
+  }
+}
+
+function switchChatTab(tab) {
+  currentChatTab = tab;
+  $(".chat-tab").removeClass("active");
+  $(`.chat-tab[data-tab="${tab}"]`).addClass("active");
+  $(`#badge-${tab}`).removeClass("show").text("");
+  $("#chat-content").html("");
+  loadMessages(true);
+}
+
+function loadMessages(isScroll) {
+  if (currentChatTab === "shop" && currentUserId === 0) {
+    $("#chat-content").html(
+      `<div style="height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px;"><i class="fa-solid fa-user-lock" style="font-size:48px; color:#ccc; margin-bottom:15px;"></i><p style="color:#555; margin-bottom:15px; font-size:14px;">Bạn cần đăng nhập để chat trực tiếp với nhân viên.</p><a href="login.php" style="background:var(--primary); color:white; padding:10px 20px; border-radius:5px; text-decoration:none;">Đăng nhập ngay</a></div>`,
+    );
+    return;
+  }
+
+  $.post(
+    "api/chat_api.php",
+    { action: "get_messages", tab: currentChatTab },
+    function (data) {
+      try {
+        let msgs = typeof data === "object" ? data : JSON.parse(data);
+        let html = "";
+        if (msgs.length > 0) {
+          msgs.forEach((msg) => {
+            let cls =
+              msg.role == "user" ? "user" : msg.role == "bot" ? "bot" : "shop";
+            html += `<div class="msg ${cls}"><div class="msg-text">${msg.message}</div></div>`;
+          });
+          $("#chat-content").html(html);
+        } else {
+          if (currentChatTab === "bot")
+            $("#chat-content").html(
+              `<div class="msg bot"><div class="msg-text">🤖 Chào bạn! Mình là <b>AI MobileStore</b>. Mình có thể giúp gì cho bạn?</div></div>`,
+            );
+          else
+            $("#chat-content").html(
+              '<p style="text-align:center; color:#999; margin-top:50px;">Chưa có tin nhắn nào.</p>',
+            );
+        }
+        if (isScroll) scrollToBottom();
+      } catch (e) {}
+    },
+  );
+}
+
+function checkUserNotifications() {
+  if (!$("#chat-box").hasClass("open")) {
+    $.post(
+      "api/chat_api.php",
+      { action: "check_notification" },
+      function (data) {
+        try {
+          let res = typeof data === "object" ? data : JSON.parse(data);
+          $(".chat-badge-notify").remove();
+          if (res.unread > 0) {
+            $("#chat-toggle").append(
+              `<span class="chat-badge chat-badge-notify">${res.unread}</span>`,
+            );
+            $("#badge-shop").text(res.unread).addClass("show");
+          } else $("#badge-shop").removeClass("show");
+        } catch (e) {}
+      },
+    );
+  }
+}
+
+function sendMessage() {
+  let msg = $("#chat-input").val().trim();
+  if (!msg || isSending) return;
+  isSending = true;
+  $(".chat-footer button").css("opacity", "0.5");
+  $.post(
+    "api/chat_api.php",
+    { action: "send_message", message: msg, tab: currentChatTab },
+    function () {
+      $("#chat-input").val("");
+      loadMessages(true);
+      isSending = false;
+      $(".chat-footer button").css("opacity", "1");
+    },
+  ).fail(function () {
+    isSending = false;
+    $(".chat-footer button").css("opacity", "1");
+  });
+}
+
+function scrollToBottom() {
+  let d = document.getElementById("chat-content");
+  if (d) d.scrollTop = d.scrollHeight;
+}

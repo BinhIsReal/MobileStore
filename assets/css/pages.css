@@ -1,0 +1,130 @@
+/* =========================================
+   CORE LAYOUT FOR SUB-PAGES
+========================================= */
+.page-wrapper {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  margin: 30px auto;
+  padding: 40px;
+  min-height: 500px;
+}
+
+.page-title {
+  color: var(--primary);
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
+  text-transform: uppercase;
+}
+
+.page-content {
+  line-height: 1.8;
+  color: #444;
+  font-size: 15px;
+}
+.page-content h3 {
+  margin-top: 20px;
+  color: #333;
+}
+.page-content ul {
+  padding-left: 20px;
+  list-style: disc;
+  margin-bottom: 15px;
+}
+
+/* --- 1. TRA CỨU ĐƠN HÀNG (TRACKING) --- */
+.tracking-box {
+  max-width: 600px;
+  margin: 0 auto;
+  background: #f9f9f9;
+  padding: 30px;
+  border-radius: 10px;
+  border: 1px solid #eee;
+  text-align: center;
+}
+.tracking-input-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.tracking-input {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  outline: none;
+}
+.tracking-result {
+  margin-top: 30px;
+  display: none;
+  text-align: left;
+  border-top: 2px dashed #ddd;
+  padding-top: 20px;
+}
+
+/* --- 2. HỆ THỐNG CỬA HÀNG (STORE SYSTEM) --- */
+.store-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+.store-card {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 20px;
+  transition: 0.3s;
+}
+.store-card:hover {
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  border-color: var(--primary);
+}
+.store-name {
+  color: var(--primary);
+  font-weight: bold;
+  margin-bottom: 8px;
+  display: block;
+}
+.store-address {
+  font-size: 13px;
+  color: #666;
+  display: flex;
+  gap: 8px;
+}
+
+/* --- 3. TUYỂN DỤNG (CAREERS) --- */
+.job-item {
+  border: 1px solid #eee;
+  padding: 20px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: 0.2s;
+}
+.job-item:hover {
+  background: #f8faff;
+  border-color: #dbeaff;
+}
+.job-title {
+  font-weight: bold;
+  font-size: 16px;
+  color: #333;
+}
+.job-meta {
+  font-size: 13px;
+  color: #888;
+  margin-top: 5px;
+}
+.btn-apply {
+  background: var(--primary);
+  color: white;
+  padding: 8px 15px;
+  border-radius: 4px;
+  font-size: 13px;
+  border: none;
+  cursor: pointer;
+}
