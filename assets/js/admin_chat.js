@@ -1,37 +1,25 @@
 let currentChatUser = 0;
-let currentChatUserScrollInit = false;
+let currentChatUserName = "";
+let isScrolledToBottom = false;
 
 $(document).ready(function () {
   let targetUserId = parseInt($("#init-target-user-id").val()) || 0;
 
-  // 1. Logic khởi tạo ban đầu
+  // 1. Logic khởi tạo ban đầu (Khi ấn từ trang Quản lý KH sang)
   if (targetUserId > 0) {
-    // Tình huống: Admin click từ trang Quản lý Khách hàng sang
-    $.post(
-      "../api/chat_api.php",
-      {
-        action: "init_admin_chat",
-        user_id: targetUserId,
-      },
-      function (res) {
-        loadUserList(); // Load lại danh sách bên trái
-
-        // Chờ HTML render xong thì tự động click chọn user đó
-        setTimeout(() => {
-          selectUser(targetUserId);
-        }, 500);
-      },
-    );
-  } else {
-    // Tình huống: Admin vào thẳng trang Chat
-    loadUserList();
+    currentChatUser = targetUserId;
+    $("#input-area").css("display", "flex");
+    $("#chat-header-name").text("Khách hàng ID: #" + targetUserId);
+    loadConversation(targetUserId);
   }
+
+  loadUserList();
 
   // 2. Vòng lặp tự động cập nhật tin nhắn (mỗi 3s)
   setInterval(function () {
-    loadUserList(); // Cập nhật danh sách (để lấy badge chưa đọc)
+    loadUserList();
     if (currentChatUser > 0) {
-      loadConversation(currentChatUser); // Cập nhật khung chat hiện tại
+      loadConversation(currentChatUser);
     }
   }, 3000);
 
@@ -43,15 +31,24 @@ $(document).ready(function () {
   $("#btn-send-reply").click(function () {
     sendReply();
   });
+
+  // 4. Sự kiện Tìm kiếm User
+  $("#search-user").on("keyup", function () {
+    loadUserList();
+  });
 });
 
 // --- CÁC HÀM XỬ LÝ CHÍNH ---
 
 function loadUserList() {
+  let keyword = $("#search-user").val().trim();
+
   $.post(
     "../api/chat_api.php",
     {
       action: "get_chat_users",
+      search: keyword,
+      active_user: currentChatUser, // Gửi ID đang chat để API ép user này nổi lên
     },
     function (data) {
       try {
@@ -60,7 +57,7 @@ function loadUserList() {
 
         if (!users || users.length === 0) {
           $("#user-list").html(
-            '<div style="padding:15px; text-align:center; color:#999;">Chưa có khách hàng nào</div>',
+            '<div style="padding:15px; text-align:center; color:#999;">Không tìm thấy khách hàng.</div>',
           );
           return;
         }
@@ -72,11 +69,14 @@ function loadUserList() {
               ? `<span style="background:red; color:white; border-radius:50%; padding:2px 6px; font-size:11px; font-weight:bold; margin-left:auto;">${u.unread}</span>`
               : "";
 
-          html += `<div class="user-item ${activeClass}" onclick="selectUser(${u.id})" style="cursor:pointer; display:flex; align-items:center; gap:10px; padding:10px; border-bottom:1px solid #eee;">
-                            <i class="fa-solid fa-user-circle" style="font-size:30px; color:#ccc;"></i> 
-                            <span style="font-weight:600; font-size:14px;">${u.username}</span> 
-                            ${noti}
-                         </div>`;
+          html += `<div class="user-item ${activeClass}" onclick="selectUser(${u.id}, '${u.username}')">
+                                <i class="fa-solid fa-circle-user" style="font-size:30px; color:#aaa;"></i>
+                                <div>
+                                    <div style="font-weight:bold; color:#333;">${u.username}</div>
+                                    <div style="font-size:12px; color:#888;">ID: #${u.id}</div>
+                                </div>
+                                ${noti}
+                             </div>`;
         });
         $("#user-list").html(html);
       } catch (e) {
@@ -86,13 +86,17 @@ function loadUserList() {
   );
 }
 
-function selectUser(uid) {
+function selectUser(uid, uname) {
   currentChatUser = uid;
-  currentChatUserScrollInit = false; // Reset cờ cuộn màn hình
+  currentChatUserName = uname;
+  isScrolledToBottom = false;
 
   // UI Update
-  $("#input-area").css("display", "flex"); // Hiện khung gõ tin nhắn
-  $(".user-item").removeClass("active");
+  $("#chat-header-name").text(uname + " (ID: #" + uid + ")");
+  $("#input-area").css("display", "flex");
+
+  // Refresh danh sách ngay lập tức để đổi màu dòng vừa chọn
+  loadUserList();
 
   // Đánh dấu đã đọc
   $.post(
@@ -102,14 +106,13 @@ function selectUser(uid) {
       target_id: uid,
     },
     function () {
-      loadUserList(); // Cập nhật UI mất số đỏ
-      if (typeof fetchAdminStats === "function") fetchAdminStats(); // Cập nhật chuông thông báo tổng (nếu có)
+      if (typeof fetchAdminStats === "function") fetchAdminStats();
     },
   );
 
   // Tải nội dung chat
   $("#chat-window").html(
-    '<div class="no-select" style="text-align:center; padding:20px; color:#666;"><i class="fa fa-spinner fa-spin"></i> Đang tải...</div>',
+    '<div style="text-align:center; padding:20px; color:#666;"><i class="fa fa-spinner fa-spin"></i> Đang tải...</div>',
   );
   loadConversation(uid);
 }
@@ -128,19 +131,19 @@ function loadConversation(uid) {
 
         if (!msgs || msgs.length === 0) {
           $("#chat-window").html(
-            '<div class="no-select" style="text-align:center; padding:20px; color:#999; font-style:italic;">Hãy gửi lời chào đến khách hàng!</div>',
+            '<div style="text-align:center; padding:20px; color:#999; font-style:italic;">Bạn chưa có tin nhắn nào với khách hàng này.</div>',
           );
           return;
         }
 
         msgs.forEach((m) => {
-          let isMe = m.sender_id == 0; // 0 là Admin
+          let isMe = m.sender_id == 0;
           let align = isMe
             ? "align-self: flex-end;"
             : "align-self: flex-start;";
           let bubbleStyle = isMe
             ? "background:#00487a; color:white; border-radius: 15px 15px 2px 15px;"
-            : "background:#f1f1f1; color:#333; border-radius: 15px 15px 15px 2px; border:1px solid #ddd;";
+            : "background:#e9ecef; color:#333; border-radius: 15px 15px 15px 2px; border:1px solid #ddd;";
 
           let time = new Date(m.created_at).toLocaleTimeString("vi-VN", {
             hour: "2-digit",
@@ -155,23 +158,23 @@ function loadConversation(uid) {
           }
 
           html += `
-                <div style="max-width:70%; ${align} display:flex; flex-direction:column; margin-bottom:12px;">
-                    <div style="padding:10px 15px; font-size:14px; line-height:1.5; ${bubbleStyle}">
-                        ${m.message}
-                    </div>
-                    <div style="font-size:11px; color:#999; margin-top:4px; ${isMe ? "text-align:right;" : "text-align:left;"}">
-                        ${time} ${statusIcon}
-                    </div>
-                </div>`;
+                    <div style="max-width:70%; ${align} display:flex; flex-direction:column; margin-bottom:12px;">
+                        <div style="padding:10px 15px; font-size:14px; line-height:1.5; ${bubbleStyle}">
+                            ${m.message}
+                        </div>
+                        <div style="font-size:11px; color:#999; margin-top:4px; ${isMe ? "text-align:right;" : "text-align:left;"}">
+                            ${time} ${statusIcon}
+                        </div>
+                    </div>`;
         });
 
         $("#chat-window").html(html);
 
         // Cuộn xuống dòng tin nhắn mới nhất
-        if (!currentChatUserScrollInit) {
+        if (!isScrolledToBottom) {
           let d = document.getElementById("chat-window");
           if (d) d.scrollTop = d.scrollHeight;
-          currentChatUserScrollInit = true;
+          isScrolledToBottom = true;
         }
       } catch (e) {
         console.log("Lỗi parse JSON Conversation:", e);
@@ -194,8 +197,9 @@ function sendReply() {
       receiver_id: currentChatUser,
     },
     function (data) {
-      currentChatUserScrollInit = false; // Reset cờ để cuộn xuống đáy
+      isScrolledToBottom = false; // Bắt buộc cuộn
       loadConversation(currentChatUser);
+      loadUserList(); // Đôn user lên đầu
     },
   );
 }

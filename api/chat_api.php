@@ -205,29 +205,85 @@ if ($action == 'init_admin_chat') {
 // ---------------------------------------------------------
 // 3. ADMIN 
 // ---------------------------------------------------------
+// 1. LẤY DANH SÁCH USER (Có tích hợp Tìm kiếm và Ép hiển thị User đang chọn)
 if ($action == 'get_chat_users') {
-    $sql = "SELECT u.id, u.username, MAX(c.created_at) as last, 
-            (SELECT COUNT(*) FROM chat_messages WHERE sender_id=u.id AND receiver_id=0 AND is_read=0) as unread 
-            FROM chat_messages c JOIN users u ON c.sender_id=u.id 
-            WHERE c.receiver_id=0 GROUP BY u.id ORDER BY last DESC";
-    $res = $conn->query($sql); $u=[]; if($res) while($r=$res->fetch_assoc())$u[]=$r; echo json_encode($u); exit;
+    $search = $_POST['search'] ?? '';
+    $active_user = intval($_POST['active_user'] ?? 0);
+    $search_esc = $conn->real_escape_string($search);
+
+    // Mặc định: Chỉ lấy những khách đã từng chat
+    $where = "(u.id IN (SELECT sender_id FROM chat_messages) OR u.id IN (SELECT receiver_id FROM chat_messages))";
+
+    // Nếu Admin vừa click từ trang Khách hàng sang (có active_user), ép lấy cả người đó
+    if ($active_user > 0) {
+        $where = "($where OR u.id = $active_user)";
+    }
+
+    // Nếu Admin đang gõ tìm kiếm
+    if ($search !== '') {
+        $where = "(u.id = '$search_esc' OR u.username LIKE '%$search_esc%')";
+    }
+
+    $sql = "SELECT u.id, u.username,
+            (SELECT COUNT(id) FROM chat_messages WHERE sender_id = u.id AND is_read = 0 AND receiver_id = 0) as unread
+            FROM users u
+            WHERE u.role = 'user' AND $where
+            ORDER BY unread DESC, u.id DESC";
+            
+    $res = $conn->query($sql);
+    $users = [];
+    if ($res && $res->num_rows > 0) {
+        while ($row = $res->fetch_assoc()) {
+            $users[] = $row;
+        }
+    }
+    echo json_encode($users);
+    exit;
 }
 
+// 2. LẤY NỘI DUNG CUỘC TRÒ CHUYỆN
 if ($action == 'get_conversation') {
-    $uid=$_POST['user_id']; 
-    $res=$conn->query("SELECT * FROM chat_messages WHERE (sender_id=$uid AND receiver_id=0) OR (sender_id=0 AND receiver_id=$uid) ORDER BY created_at ASC");
-    $d=[]; if($res) while($r=$res->fetch_assoc())$d[]=$r; echo json_encode($d); exit;
+    $user_id = intval($_POST['user_id'] ?? 0);
+    $sql = "SELECT * FROM chat_messages 
+            WHERE (sender_id = $user_id AND receiver_id = 0) 
+               OR (sender_id = 0 AND receiver_id = $user_id) 
+            ORDER BY created_at ASC";
+    $res = $conn->query($sql);
+    $msgs = [];
+    if ($res) {
+        while($row = $res->fetch_assoc()) {
+            $msgs[] = $row;
+        }
+    }
+    echo json_encode($msgs);
+    exit;
 }
 
-if ($action == 'send_msg') { 
-    $conn->query("INSERT INTO chat_messages (sender_id, receiver_id, message, role, created_at) VALUES (0, {$_POST['receiver_id']}, '{$_POST['message']}', 'admin', NOW())");
-    echo json_encode(['status'=>'success']); exit;
+// 3. ADMIN GỬI TIN NHẮN
+if ($action == 'send_msg') {
+    $message = $_POST['message'] ?? '';
+    $receiver_id = intval($_POST['receiver_id'] ?? 0);
+    
+    if ($message != '' && $receiver_id > 0) {
+        // sender_id = 0 mặc định là Admin
+        $stmt = $conn->prepare("INSERT INTO chat_messages (sender_id, receiver_id, message, is_read) VALUES (0, ?, ?, 0)");
+        $stmt->bind_param("is", $receiver_id, $message);
+        $stmt->execute();
+        echo json_encode(['status' => 'success']);
+    } else {
+        echo json_encode(['status' => 'error']);
+    }
+    exit;
 }
 
-if ($action == 'check_notification') {
-    if ($real_user_id == 0) { echo json_encode(['unread'=>0]); exit; }
-    $res = $conn->query("SELECT COUNT(*) as t FROM chat_messages WHERE sender_id=0 AND receiver_id=$real_user_id AND is_read=0");
-    echo json_encode(['unread'=> $res->fetch_assoc()['t']]); exit;
+// 4. ĐÁNH DẤU ĐÃ ĐỌC
+if ($action == 'mark_read') {
+    $target_id = intval($_POST['target_id'] ?? 0);
+    if ($target_id > 0) {
+        $conn->query("UPDATE chat_messages SET is_read = 1 WHERE sender_id = $target_id AND receiver_id = 0");
+    }
+    echo json_encode(['status' => 'success']);
+    exit;
 }
 
 if ($action == 'mark_read_user' && $real_user_id > 0) {
@@ -235,8 +291,5 @@ if ($action == 'mark_read_user' && $real_user_id > 0) {
     echo json_encode(['status'=>'success']); exit;
 }
 
-if ($action == 'mark_read') {
-    $conn->query("UPDATE chat_messages SET is_read=1 WHERE sender_id={$_POST['target_id']} AND receiver_id=0");
-    echo json_encode(['status'=>'success']); exit;
-}
+
 ?>

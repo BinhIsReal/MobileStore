@@ -968,3 +968,66 @@ function scrollToBottom() {
   let d = document.getElementById("chat-content");
   if (d) d.scrollTop = d.scrollHeight;
 }
+
+// Chage_password
+// assets/js/main.js
+function changePassword() {
+  let oldPass = $("#old-pass").val().trim();
+  let newPass = $("#new-pass").val().trim();
+
+  // Kiểm tra rỗng: Hiển thị Popup cảnh báo
+  if (!oldPass || !newPass) {
+    Swal.fire({
+      icon: "warning",
+      title: "Thiếu thông tin",
+      text: "Vui lòng nhập đầy đủ mật khẩu cũ và mật khẩu mới!",
+      confirmButtonColor: "#00487a",
+    });
+    return;
+  }
+
+  $.post(
+    "api/profile_api.php",
+    {
+      action: "change_password",
+      old_password: oldPass,
+      new_password: newPass,
+    },
+    function (res) {
+      try {
+        let response = JSON.parse(res);
+
+        if (response.status === "success") {
+          // Thành công: Hiển thị Popup xanh lá, tự động tắt sau 2 giây
+          Swal.fire({
+            icon: "success",
+            title: "Thành công!",
+            text: response.message,
+            showConfirmButton: false,
+            timer: 2000,
+          });
+
+          // Xóa trống ô nhập
+          $("#old-pass").val("");
+          $("#new-pass").val("");
+        } else {
+          // Lỗi (Sai mật khẩu cũ): Hiển thị Popup đỏ
+          Swal.fire({
+            icon: "error",
+            title: "Lỗi",
+            text: response.message,
+            confirmButtonColor: "#d70018",
+          });
+        }
+      } catch (e) {
+        console.error(e);
+        // Lỗi hệ thống ngầm
+        Swal.fire({
+          icon: "error",
+          title: "Lỗi hệ thống",
+          text: "Đã có lỗi xảy ra, vui lòng thử lại sau!",
+        });
+      }
+    },
+  );
+}

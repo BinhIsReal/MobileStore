@@ -1,6 +1,6 @@
 :root {
   --primary: #00487a;
-  --accent: #d70018;
+  --accent: #eb3e51;
   --bg-gray: #f4f6f8;
   --white: #ffffff;
   --text: #333;
@@ -141,7 +141,7 @@ nav .menu-item:hover {
   position: absolute;
   top: -2px;
   right: -4px;
-  background-color: #de2020;
+  background-color: var(--accent);
   color: #ffffff;
   font-size: 10px;
   font-weight: 800;
@@ -471,35 +471,9 @@ nav .menu-item:hover {
   margin-top: 15px;
 }
 
-.btn-buy-now {
-  flex: 2;
-  background: linear-gradient(to bottom, #d70018, #be0015);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 10px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.2s;
-  box-shadow: 0 4px 10px rgba(215, 0, 24, 0.3);
-}
-
 .btn-buy-now:hover {
   transform: scale(1.02);
   box-shadow: 0 6px 15px rgba(215, 0, 24, 0.4);
-}
-.btn-buy-now strong {
-  font-size: 16px;
-  text-transform: uppercase;
-  margin-bottom: 2px;
-}
-
-.btn-buy-now span {
-  font-size: 11px;
-  opacity: 0.9;
 }
 
 /* Nút THÊM GIỎ (Viền đỏ, nền trắng) */
@@ -535,7 +509,7 @@ nav .menu-item:hover {
 }
 
 /* =========================================
-   6. CART PAGE (Đã Fix lỗi lệch)
+   6. CART PAGE 
 ========================================= */
 .cart-wrapper {
   display: flex;
@@ -553,55 +527,157 @@ nav .menu-item:hover {
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
 }
 
+/* --- CART HEADER --- */
 .cart-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   border-bottom: 1px solid #eee;
   padding-bottom: 15px;
   margin-bottom: 15px;
+  min-height: 35px;
+}
+.cart-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+#btn-delete-all {
+  background: #de2a3e;
+  color: white;
+  border: none;
+  padding: 12px 15px !important;
+  border-radius: 4px;
+  cursor: pointer;
+}
+#btn-delete-selected {
+  background: #ffecec;
+  color: #e82e44;
+  border: 1px solid #ffb3b3;
+  padding: 20px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+  transition: 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
 }
 
+#btn-delete-selected:hover {
+  background: #d41f34;
+  color: white;
+}
+
+/* --- CART ITEM  --- */
 .cart-item {
   display: flex;
   align-items: center;
   padding: 15px 0;
   border-bottom: 1px solid #f5f5f5;
+  gap: 15px;
 }
 
+/* 1. Ô Checkbox */
+.cart-item .cart-checkbox,
+.cart-item input[type="checkbox"] {
+  flex: 0 0 20px;
+  text-align: center;
+  cursor: pointer;
+}
+
+/* 2. Ô Hình ảnh */
 .cart-item img {
+  flex: 0 0 80px;
   width: 80px;
   height: 80px;
   object-fit: contain;
-  margin: 0 15px;
   border: 1px solid #eee;
   border-radius: 5px;
 }
 
-/* Nút tăng giảm số lượng */
+/* 3. Ô Tên sản phẩm */
+.cart-item-info {
+  flex: 1;
+  min-width: 150px;
+}
+.cart-item-info h4 {
+  margin: 0 0 5px 0;
+  font-size: 15px;
+  color: #333;
+}
+
+/* 4. Ô Giá tiền */
+.cart-item-price {
+  flex: 0 0 120px;
+  font-weight: bold;
+  color: #d70018;
+  text-align: right;
+}
+
+/* 5. Ô Chỉnh Số lượng */
 .qty-control {
+  flex: 0 0 100px;
   display: flex;
   align-items: center;
   border: 1px solid #ddd;
   border-radius: 4px;
-  margin-right: 20px;
+  height: 32px;
+  overflow: hidden;
+  background: #fff;
 }
 
 .qty-control button {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border: none;
-  background: #fff;
+  background: #f9f9f9;
   cursor: pointer;
+  font-weight: bold;
+  font-size: 16px;
+  color: #555;
+  transition: 0.2s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+}
+
+.qty-control button:hover {
+  background: #e0e0e0;
+  color: #d70018;
 }
 
 .qty-control span {
-  width: 35px;
-  text-align: center;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   font-weight: bold;
+  font-size: 14px;
   border-left: 1px solid #ddd;
   border-right: 1px solid #ddd;
+  height: 100%;
+}
+/* 6. Ô Nút Xóa Từng Sản Phẩm */
+.btn-remove-item {
+  flex: 0 0 40px; /* Cố định 40px */
+  text-align: right;
+  color: #999;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-size: 18px;
+  transition: 0.2s;
 }
 
+.btn-remove-item:hover {
+  color: #d70018;
+}
+
+/* --- CHECKOUT BAR (THANH THANH TOÁN DƯỚI CÙNG) --- */
 .checkout-bar {
   background: white;
   padding: 20px;
@@ -619,22 +695,20 @@ nav .menu-item:hover {
 .checkout-info {
   display: flex;
   flex-direction: column;
+  align-items: center;
   font-size: 16px;
   color: #555;
 }
 
 .checkout-info .total-price {
-  display: flex;
-  justify-content: center;
   font-size: 24px;
   margin: 10px 0;
   color: #d70018;
   font-weight: 800;
-  margin-left: 10px;
 }
 
 .btn-checkout-trigger {
-  background: linear-gradient(to right, #d70018, #ff4d4d);
+  background: linear-gradient(to right, #e6394c, #f94c4c);
   color: white;
   padding: 12px 40px;
   border: none;
@@ -646,10 +720,11 @@ nav .menu-item:hover {
   box-shadow: 0 4px 15px rgba(215, 0, 24, 0.4);
   transition: 0.3s;
 }
+
 .btn-checkout-trigger:hover {
   transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(215, 0, 24, 0.6);
 }
-
 /* --- MODAL (Popup Form) --- */
 .modal {
   display: none;
@@ -747,7 +822,7 @@ nav .menu-item:hover {
 }
 .modal-summary h3 {
   margin: 5px 0 0;
-  color: #d70018;
+  color: var(--accent);
   font-size: 22px;
 }
 
@@ -762,7 +837,7 @@ nav .menu-item:hover {
 }
 
 .btn-confirm {
-  background: #d70018;
+  background: var(--accent);
   color: white;
   padding: 16px 25px;
   border: none;
@@ -1642,22 +1717,6 @@ nav .menu-item:hover {
   gap: 10px;
   flex-wrap: wrap;
 }
-.btn-color {
-  padding: 8px 15px;
-  border: 1px solid #ddd;
-  background: white;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: 0.2s;
-}
-.btn-color:hover,
-.btn-color.active {
-  border-color: #d70018;
-  color: #d70018;
-  font-weight: bold;
-  background: #fff0f0;
-}
-
 /* Cấu hình */
 .pd-specs-box {
   margin-bottom: 25px;
@@ -1680,36 +1739,12 @@ nav .menu-item:hover {
   gap: 15px;
   margin-top: 20px;
 }
-.btn-buy-now {
-  flex: 2;
-  background: linear-gradient(to bottom, #d70018, #be0015);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 12px;
-  cursor: pointer;
-  transition: 0.2s;
-  text-align: center;
-}
-.btn-buy-now strong {
-  display: block;
-  font-size: 16px;
-  text-transform: uppercase;
-}
-.btn-buy-now span {
-  font-size: 12px;
-  opacity: 0.9;
-}
-.btn-buy-now:hover {
-  transform: scale(1.02);
-  box-shadow: 0 5px 15px rgba(215, 0, 24, 0.3);
-}
 
 .btn-add-cart-pd {
   flex: 1;
   background: white;
-  color: #d70018;
-  border: 2px solid #d70018;
+  color: #eb3e51;
+  border: 2px solid #eb3e51;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 700;
@@ -1851,6 +1886,7 @@ nav .menu-item:hover {
 .qty-btn {
   opacity: 1 !important;
   pointer-events: auto !important;
+  transform: translate();
 }
 /* =========================================
    TOAST NOTIFICATION (THÔNG BÁO TRÔI)
@@ -2731,7 +2767,8 @@ footer {
   margin-bottom: 20px;
 }
 .btn-color {
-  border: 1px solid #ddd;
+  border: 1px solid #d70018;
+  color: #d70018;
   padding: 8px 15px;
   border-radius: 4px;
   cursor: pointer;
@@ -2740,7 +2777,7 @@ footer {
   margin-bottom: 5px;
 }
 .btn-color.active {
-  border-color: #d70018;
+  border: 2px solid #d70018;
   color: #d70018;
   background: #ffebeb;
   font-weight: bold;
@@ -2784,14 +2821,21 @@ footer {
 }
 .btn-buy-now {
   flex: 2;
-  background: #d70018;
+  background: #eb3e51;
   color: #fff;
   border: none;
   padding: 12px;
   border-radius: 8px;
   cursor: pointer;
+  transition: transform 0.2s;
   text-align: center;
 }
+
+.btn-buy-now:hover {
+  transform: scale(1.02);
+  box-shadow: 0 5px 15px rgba(215, 0, 24, 0.3);
+}
+
 .btn-buy-now strong {
   display: block;
   font-size: 16px;
@@ -2804,10 +2848,11 @@ footer {
 
 .btn-add-cart-large {
   flex: 1;
-  border: 2px solid #d70018;
+  border: 2px solid #eb3e51;
   background: #fff;
-  color: #d70018;
+  color: #eb3e51;
   border-radius: 8px;
+  transition: transform 0.2s;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2815,6 +2860,10 @@ footer {
   cursor: pointer;
   font-weight: bold;
   font-size: 12px;
+}
+.btn-add-cart-large:hover {
+  transform: scale(1.02);
+  box-shadow: 0 5px 15px rgba(215, 0, 24, 0.3);
 }
 .btn-add-cart-large i {
   font-size: 20px;
@@ -2901,7 +2950,7 @@ footer {
   transition: 0.2s;
 }
 .slider-btn:hover {
-  background: #d70018;
+  background: var(--accent);
 }
 .slider-btn.prev {
   left: 6px;
@@ -3126,6 +3175,32 @@ footer {
   cursor: zoom-in;
 }
 
+/* Register */
+.login-box {
+  width: 350px;
+  margin: 100px auto;
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+input {
+  width: 100%;
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid #ccc;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
 /* Nút Like */
 .btn-like-review {
   background: none;
@@ -3282,4 +3357,58 @@ footer {
   background: #00487a;
   color: white;
   box-shadow: 0 4px 10px rgba(0, 72, 122, 0.2);
+}
+
+/* chage_password */
+.password-container {
+  max-width: 450px;
+  margin: 60px auto;
+  background: #fff;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.form-group label {
+  display: block;
+  font-weight: bold;
+  color: #333;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.btn-save {
+  background: var(--primary);
+  color: white;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  width: 100%;
+  font-size: 16px;
+  margin-top: 10px;
+}
+
+.btn-save:hover {
+  background: #01518a;
+}
+
+.back-link {
+  display: block;
+  text-align: center;
+  margin-top: 20px;
+  color: #00487a;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.back-link:hover {
+  text-decoration: underline;
 }

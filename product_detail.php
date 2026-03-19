@@ -115,7 +115,7 @@ $percent     = $is_sale ? round((($price - $sale_price) / $price) * 100) : 0;
             <div style="display: grid; grid-template-columns: 65% 35%; gap:30px;">
                 <div class="pd-description">
                     <h3
-                        style="color:#d70018; margin-bottom:15px; border-bottom:2px solid #d70018; display:inline-block; padding-bottom:5px;">
+                        style="color:#eb3e51; margin-bottom:15px; border-bottom:2px solid #eb3e51; display:inline-block; padding-bottom:5px;">
                         Đặc điểm nổi bật</h3>
                     <div class="content-body" style="line-height:1.6; color:#444;">
                         <?= nl2br($product['description'] ? $product['description'] : "Đang cập nhật nội dung...") ?>

@@ -5,9 +5,23 @@ include 'includes/header.php';
 $user_id = $_SESSION['user_id'] ?? 0;
 $cart_data = [];
 
+// Khởi tạo mảng thông tin user (rỗng nếu là khách vãng lai)
+$current_user = [
+    'username' => '',
+    'phone' => '',
+    'address' => ''
+];
+
 if ($user_id > 0) {
-    // Đã đăng nhập
-$sql = "SELECT p.id, p.name, p.image, p.price, p.sale_price, c.quantity 
+    // 1. LẤY THÔNG TIN USER ĐỂ TỰ ĐỘNG ĐIỀN VÀO FORM CHECKOUT
+    $user_sql = "SELECT username, phone, address FROM users WHERE id = $user_id";
+    $user_result = $conn->query($user_sql);
+    if ($user_result && $user_result->num_rows > 0) {
+        $current_user = $user_result->fetch_assoc();
+    }
+
+    // 2. LẤY DỮ LIỆU GIỎ HÀNG TỪ DATABASE
+    $sql = "SELECT p.id, p.name, p.image, p.price, p.sale_price, c.quantity 
             FROM cart c
             JOIN products p ON c.product_id = p.id
             WHERE c.user_id = $user_id";
@@ -18,11 +32,10 @@ $sql = "SELECT p.id, p.name, p.image, p.price, p.sale_price, c.quantity
         }
     }
 } else {
-    // Khách vãng lai
+    // LẤY DỮ LIỆU GIỎ HÀNG CỦA KHÁCH VÃNG LAI (TỪ SESSION)
     if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
         $ids = implode(',', array_keys($_SESSION['cart']));
         if (!empty($ids)) {
-            // Lấy thêm sale_price
             $sql = "SELECT id, name, image, price, sale_price FROM products WHERE id IN ($ids)";
             $result = $conn->query($sql);
             if ($result) {
@@ -72,14 +85,12 @@ $sql = "SELECT p.id, p.name, p.image, p.price, p.sale_price, c.quantity
                         <button id="btn-delete-selected" class="btn-delete-selected" style="display:none;">
                             <i class="fa fa-trash-can"></i> Xóa đã chọn
                         </button>
-                        <button id="btn-delete-all" class="btn-delete-all"
-                            style="background: #d70018; color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer;">
+                        <button id="btn-delete-all" class="btn-delete-all">
                             <i class="fa fa-trash"></i> Xóa tất cả
                         </button>
                     </div>
                 </div>
 
-                <!-- Product Item -->
                 <?php foreach ($cart_data as $item): 
                     $is_sale = isset($item['sale_price']) && $item['sale_price'] > 0;
                     $final_price = $is_sale ? $item['sale_price'] : $item['price'];
@@ -92,11 +103,21 @@ $sql = "SELECT p.id, p.name, p.image, p.price, p.sale_price, c.quantity
                     <?php 
                         $imgCart = (strpos($item['image'], 'http') === 0) ? $item['image'] : "assets/img/" . $item['image'];
                     ?>
-                    <img src="<?= $imgCart ?>" alt="sp">
+
+                    <a href="product_detail.php?id=<?= $item['id'] ?>" style="display: block; text-decoration: none;">
+                        <img src="<?= $imgCart ?>" alt="<?= htmlspecialchars($item['name']) ?>"
+                            style="transition: transform 0.2s; cursor: pointer;"
+                            onmouseover="this.style.transform='scale(1.05)'"
+                            onmouseout="this.style.transform='scale(1)'">
+                    </a>
 
                     <div class="cart-info" style="flex: 1;">
+                        <a href="product_detail.php?id=<?= $item['id'] ?>"
+                            style="text-decoration: none; color: inherit;">
+                            <h4 style="transition: color 0.2s;" onmouseover="this.style.color='#00487a'"
+                                onmouseout="this.style.color='inherit'"><?= htmlspecialchars($item['name']) ?></h4>
+                        </a>
 
-                        <h4><?= htmlspecialchars($item['name']) ?></h4>
                         <div class="cart-price">
                             <?php if ($is_sale): ?>
                             <span
@@ -145,16 +166,18 @@ $sql = "SELECT p.id, p.name, p.image, p.price, p.sale_price, c.quantity
                     <div class="modal-body">
                         <div class="form-group">
                             <label>Họ và tên <span style="color:red">*</span></label>
-                            <input type="text" id="c-name" class="modal-input" placeholder="Nguyễn Văn A">
+                            <input type="text" id="c-name" class="modal-input"
+                                value="<?= htmlspecialchars($current_user['username']) ?>">
                         </div>
                         <div class="form-group">
                             <label>Số điện thoại <span style="color:red">*</span></label>
-                            <input type="text" id="c-phone" class="modal-input" placeholder="0912345678">
+                            <input type="text" id="c-phone" class="modal-input"
+                                value="<?= htmlspecialchars($current_user['phone']) ?>">
                         </div>
                         <div class="form-group">
                             <label>Địa chỉ <span style="color:red">*</span></label>
                             <textarea id="c-address" class="modal-input" rows="2"
-                                placeholder="Số nhà, đường..."></textarea>
+                                placeholder="Số nhà, đường..."><?= htmlspecialchars($current_user['address']) ?></textarea>
                         </div>
                         <div class="form-group">
                             <label>Mã giảm giá</label>

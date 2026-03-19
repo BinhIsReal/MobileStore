@@ -2,7 +2,6 @@
 session_start(); 
 include '../config/db.php'; 
 
-// Check quyền Admin
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') { 
     header("Location: ../login.php"); 
     exit(); 
@@ -28,22 +27,28 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
 
             <h2>Hỗ trợ khách hàng</h2>
             <div class="chat-layout">
-                <div class="user-list" id="user-list">
+                <div class="chat-sidebar">
+                    <div class="search-box">
+                        <input type="text" id="search-user" placeholder="Tìm theo Tên hoặc ID...">
+                    </div>
+                    <div class="user-list" id="user-list">
+                    </div>
                 </div>
 
                 <div class="chat-area">
-                    <div id="chat-window" class="chat-messages">
-                        <div class="no-select">Chọn khách hàng để chat</div>
+                    <div class="chat-header" id="chat-header">
+                        <i class="fa-solid fa-comments" style="color:#00487a;"></i>
+                        <span id="chat-header-name">Chọn khách hàng để bắt đầu...</span>
                     </div>
 
-                    <div class="chat-input" id="input-area"
-                        style="display:none; padding:15px; border-top:1px solid #eee; background:#fff;">
-                        <input type="text" id="admin-msg" placeholder="Nhập tin nhắn..."
-                            style="flex:1; padding:15px; border:1px solid #ddd; border-radius:8px;">
-                        <button id="btn-send-reply"
-                            style="padding:15px 30px; background:#00487a; color:white; border:none; border-radius:8px; cursor:pointer; margin-left:10px; font-weight:bold;">
-                            <i class="fa fa-paper-plane"></i> Gửi
-                        </button>
+                    <div id="chat-window" class="chat-messages">
+                        <div class="no-select" style="text-align:center; color:#999; margin-top:50px;">Hãy chọn một cuộc
+                            hội thoại bên trái.</div>
+                    </div>
+
+                    <div class="chat-input" id="input-area">
+                        <input type="text" id="admin-msg" placeholder="Nhập tin nhắn hỗ trợ...">
+                        <button id="btn-send-reply"><i class="fa fa-paper-plane"></i> Gửi</button>
                     </div>
                 </div>
             </div>

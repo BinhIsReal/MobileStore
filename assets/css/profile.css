@@ -1,0 +1,133 @@
+/* CSS DÀNH RIÊNG CHO TRANG PROFILE */
+body {
+  background-color: #f4f6f8;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+}
+
+.profile-wrapper {
+  max-width: 650px;
+  margin: 50px auto;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.profile-header {
+  background: linear-gradient(135deg, #00487a 0%, #0077c2 100%);
+  color: white;
+  padding: 30px 20px;
+  text-align: center;
+  position: relative;
+}
+.profile-avatar {
+  font-size: 60px;
+  margin-bottom: 10px;
+  color: rgba(255, 255, 255, 0.9);
+}
+.profile-name {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+}
+.profile-joined {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 5px;
+}
+
+.profile-body {
+  padding: 30px;
+}
+.form-group {
+  margin-bottom: 20px;
+  position: relative;
+}
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 15px;
+  color: #212529;
+  box-sizing: border-box;
+  background-color: #e9ecef;
+  transition: all 0.3s ease;
+}
+.form-control:focus {
+  outline: none;
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 72, 122, 0.25);
+}
+textarea.form-control {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.editable .form-control:not(.readonly-always) {
+  background-color: #ffffff;
+  border-color: #00487a;
+}
+.readonly-always {
+  cursor: not-allowed;
+  color: #6c757d;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn-primary {
+  background-color: #00487a;
+  color: white;
+}
+.btn-primary:hover {
+  background-color: #00335a;
+}
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+.btn-secondary:hover {
+  background-color: #5a6268;
+}
+.btn-outline-danger {
+  background-color: transparent;
+  color: #00487a;
+  border: 2px solid #00487a;
+  flex: 0 0 auto;
+  padding: 10px 20px;
+}
+.btn-outline-danger:hover {
+  background-color: #1a6da8;
+  color: white;
+}

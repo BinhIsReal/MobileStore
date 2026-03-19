@@ -92,49 +92,97 @@ if ($brand) {
         </div>
         <?php endif; ?>
         <?php
+        // 1. CÂU TRUY VẤN CƠ BẢN
         $sql = "SELECT * FROM products WHERE 1=1";
         $params = []; 
         $types = "";
+
+        // 2. LỌC THEO DANH MỤC
         if ($cat_id > 0) {
             $sql .= " AND category_id = ?";
             $params[] = $cat_id; 
             $types .= "i";
         }
 
-        if (!empty($brand)) {
-            $sql .= " AND name LIKE ?"; 
-            $params[] = "%$brand%"; 
-            $types .= "s";
-        }
+        // 3. LỌC THEO TỪ KHÓA TÌM KIẾM (Ô Search box)
+        if (!empty($keyword)) {
+            $price_filters = [
+                'duoi-2-trieu' => " AND price < 2000000",
+                '2-4-trieu' => " AND price BETWEEN 2000000 AND 4000000",
+                '4-7-trieu' => " AND price BETWEEN 4000000 AND 7000000",
+                '7-13-trieu' => " AND price BETWEEN 7000000 AND 13000000",
+                'tren-13-trieu' => " AND price > 13000000"
+            ];
 
-        if (!empty($keyword) && empty($brand)) {
-            if ($keyword == 'duoi-2-trieu') $sql .= " AND price < 2000000";
-            elseif ($keyword == '2-4-trieu') $sql .= " AND price BETWEEN 2000000 AND 4000000";
-            elseif ($keyword == '4-7-trieu') $sql .= " AND price BETWEEN 4000000 AND 7000000";
-            elseif ($keyword == '7-13-trieu') $sql .= " AND price BETWEEN 7000000 AND 13000000";
-            elseif ($keyword == 'tren-13-trieu') $sql .= " AND price > 13000000";
-            else {
-                $words = explode(' ', trim($keyword));
+            if (array_key_exists($keyword, $price_filters)) {
+                $sql .= $price_filters[$keyword];
+            } else {
+                // Phân tách từ khóa bằng khoảng trắng
+                $words = preg_split('/\s+/', trim($keyword));
                 if (count($words) > 0) {
                     $sql .= " AND (";
-                    $conds = [];
+                    $name_conds = [];
                     foreach ($words as $w) {
-                        if(!empty($w)) {
-                            $conds[] = "name LIKE ?";
+                        if (!empty($w)) {
+                            $name_conds[] = "name LIKE ?";
                             $params[] = "%$w%";
                             $types .= "s";
                         }
                     }
-                    $sql .= implode(" AND ", $conds) . ")";
+                    $sql .= implode(" AND ", $name_conds) . ")";
                 }
             }
         }
 
-        if ($sort == 'price_asc') $sql .= " ORDER BY price ASC";
-        elseif ($sort == 'price_desc') $sql .= " ORDER BY price DESC";
-        else $sql .= " ORDER BY id DESC";
+        // 4. LỌC THEO HÃNG (BRAND) 
+       if (!empty($brand)) {
+            $brand_lower = mb_strtolower(trim($brand), 'UTF-8');
 
+            if ($brand_lower === 'apple') {
+                // Tìm kiếm bao quát toàn bộ sản phẩm của Apple.
+                // Do đã có lọc theo category_id ở bước 2, nên nếu đang ở danh mục Laptop 
+                // nó sẽ tự động chỉ lấy MacBook, không lo bị lẫn lộn iPhone hay iPad.
+                $sql .= " AND (name LIKE '%apple%' 
+                            OR name LIKE '%ipad%' 
+                            OR name LIKE '%macbook%' 
+                            OR name LIKE '%iphone%' 
+                            OR name LIKE '%watch%' 
+                            OR name LIKE '%airpods%'
+                            OR name LIKE '%imac%')";
+            } 
+            else {
+                // Xử lý bài toán chữ bị ngăn cách (VD: "Samsung Tab" tìm được "Samsung Galaxy Tab")
+                $brand_words = preg_split('/\s+/', trim($brand));
+                if (count($brand_words) > 0) {
+                    $sql .= " AND (";
+                    $brand_conds = [];
+                    foreach ($brand_words as $bw) {
+                        if (!empty($bw)) {
+                            // Bắt buộc TẤT CẢ các chữ trong tên Hãng đều phải xuất hiện trong tên
+                            $brand_conds[] = "name LIKE ?";
+                            $params[] = "%$bw%";
+                            $types .= "s";
+                        }
+                    }
+                    $sql .= implode(" AND ", $brand_conds) . ")";
+                }
+            }
+        }
+
+        // 5. SẮP XẾP SẢN PHẨM
+        if ($sort == 'price_asc') {
+            $sql .= " ORDER BY price ASC";
+        } elseif ($sort == 'price_desc') {
+            $sql .= " ORDER BY price DESC";
+        } else {
+            $sql .= " ORDER BY id DESC";
+        }
+
+        // 6. THỰC THI TRUY VẤN
         $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+             die("<div style='color:red; text-align:center;'>Lỗi truy vấn SQL: " . $conn->error . "</div>");
+        }
         if (!empty($params)) {
             $stmt->bind_param($types, ...$params);
         }
