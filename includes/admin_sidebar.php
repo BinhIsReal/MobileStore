@@ -23,6 +23,11 @@
         </span>
     </a>
 
+    <a href="vouchers.php" class="sb-link <?= basename($_SERVER['PHP_SELF'])=='vouchers.php'?'active':'' ?>">
+        <span><i class="fa-solid fa-gift"></i> Quản lý Voucher
+        </span>
+    </a>
+
     <a href="customers.php" class="sb-link <?= basename($_SERVER['PHP_SELF'])=='customers.php'?'active':'' ?>">
         <span><i class="fa-solid fa-users"></i> Quản lý khách hàng
         </span>

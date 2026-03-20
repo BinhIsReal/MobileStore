@@ -102,6 +102,8 @@ $join_date = !empty($user['created_at']) ? date('d/m/Y', strtotime($user['create
     </div>
 
     <script src="assets/js/profile.js?v=<?php echo time(); ?>"></script>
+
+    <script src="assets/js/main.js?v=<?php echo time(); ?>"></script>
 </body>
 
 </html>

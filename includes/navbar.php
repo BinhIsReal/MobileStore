@@ -54,10 +54,11 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                 <div class="dropdown-content" id="userDropdown">
                     <?php if (isset($_SESSION['role']) && $_SESSION['role'] == 'admin'): ?>
-                    <a href="admin/products.php"><i class="fa-solid fa-gauge"></i> Quản trị</a>
+                    <a href="<?= BASE_URL ?>/admin/products.php"><i class="fa-solid fa-gauge"></i> Quản trị</a>
                     <?php endif; ?>
                     <a href="<?= BASE_URL ?>/profile.php"><i class="fa-solid fa-file-invoice"></i> Thông tin cá nhân</a>
                     <a href="<?= BASE_URL ?>/order_history.php"><i class="fa-solid fa-file-invoice"></i> Đơn hàng</a>
+                    <a href="<?= BASE_URL ?>/my_vouchers.php"><i class="fa-solid fa-ticket-simple"></i> Kho Voucher</a>
                     <a href="<?= BASE_URL ?>/api/auth_api.php?logout=1" class="logout-link"><i
                             class="fa-solid fa-right-from-bracket"></i> Đăng xuất</a>
                 </div>

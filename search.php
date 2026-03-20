@@ -104,20 +104,38 @@ if ($brand) {
             $types .= "i";
         }
 
-        // 3. LỌC THEO TỪ KHÓA TÌM KIẾM (Ô Search box)
+        // 3. LỌC THEO TỪ KHÓA HOẶC MỨC GIÁ (Ô Search box)
         if (!empty($keyword)) {
-            $price_filters = [
-                'duoi-2-trieu' => " AND price < 2000000",
-                '2-4-trieu' => " AND price BETWEEN 2000000 AND 4000000",
-                '4-7-trieu' => " AND price BETWEEN 4000000 AND 7000000",
-                '7-13-trieu' => " AND price BETWEEN 7000000 AND 13000000",
-                'tren-13-trieu' => " AND price > 13000000"
-            ];
+            // Chuẩn hóa chuỗi tìm kiếm: Chuyển về chữ thường và xóa khoảng trắng thừa
+            $kw_normalized = mb_strtolower(trim($keyword), 'UTF-8');
+            $kw_normalized = preg_replace('/\s+/', ' ', $kw_normalized);
 
-            if (array_key_exists($keyword, $price_filters)) {
-                $sql .= $price_filters[$keyword];
-            } else {
-                // Phân tách từ khóa bằng khoảng trắng
+            $is_price_filter = false;
+
+            // Kiểm tra xem từ khóa có chứa các cụm từ chỉ giá tiền không
+            if (strpos($kw_normalized, 'dưới 2 triệu') !== false || $kw_normalized === 'duoi-2-trieu') {
+                $sql .= " AND price < 2000000";
+                $is_price_filter = true;
+            } 
+            elseif (strpos($kw_normalized, '2 - 4 triệu') !== false || $kw_normalized === '2-4-trieu') {
+                $sql .= " AND price BETWEEN 2000000 AND 4000000";
+                $is_price_filter = true;
+            } 
+            elseif (strpos($kw_normalized, '4 - 7 triệu') !== false || $kw_normalized === '4-7-trieu') {
+                $sql .= " AND price BETWEEN 4000000 AND 7000000";
+                $is_price_filter = true;
+            } 
+            elseif (strpos($kw_normalized, '7 - 13 triệu') !== false || $kw_normalized === '7-13-trieu') {
+                $sql .= " AND price BETWEEN 7000000 AND 13000000";
+                $is_price_filter = true;
+            } 
+            elseif (strpos($kw_normalized, 'trên 13 triệu') !== false || $kw_normalized === 'tren-13-trieu') {
+                $sql .= " AND price > 13000000";
+                $is_price_filter = true;
+            }
+
+            // Nếu KHÔNG PHẢI là thao tác lọc giá, thì mới đem đi tìm kiếm theo tên sản phẩm
+            if (!$is_price_filter) {
                 $words = preg_split('/\s+/', trim($keyword));
                 if (count($words) > 0) {
                     $sql .= " AND (";

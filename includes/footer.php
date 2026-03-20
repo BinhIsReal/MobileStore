@@ -94,3 +94,39 @@ const BASE_URL = "<?= BASE_URL ?>";
 </script>
 
 <script src="<?= BASE_URL ?>/assets/js/main.js?v=<?php echo time(); ?>"></script>
+
+<?php 
+// Kiểm tra nếu User đã đăng nhập thì mới check xem có voucher mới không
+if (isset($_SESSION['user_id'])): 
+    $uid = $_SESSION['user_id'];
+    $check_new = $conn->query("SELECT COUNT(*) as new_count FROM user_vouchers WHERE user_id = $uid AND is_new = 1");
+    $new_vouchers = $check_new->fetch_assoc()['new_count'] ?? 0;
+    
+    if ($new_vouchers > 0):
+?>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+$(document).ready(function() {
+    Swal.fire({
+        title: '🎉 Quà tặng bất ngờ!',
+        html: 'Bạn vừa nhận được <b><?= $new_vouchers ?> mã giảm giá mới</b> từ cửa hàng.<br>Hãy kiểm tra ngay nhé!',
+        icon: 'info',
+        iconHtml: '<i class="fa-solid fa-gift"></i>',
+        showCancelButton: true,
+        confirmButtonText: 'Xem Kho Voucher',
+        cancelButtonText: 'Để sau',
+        confirmButtonColor: '#00487a',
+        cancelButtonColor: '#6c757d',
+        allowOutsideClick: false // Bắt buộc phải bấm chọn
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Chuyển hướng sang trang Kho Voucher
+            window.location.href = 'my_vouchers.php';
+        }
+    });
+});
+</script>
+<?php 
+    endif;
+endif; 
+?>

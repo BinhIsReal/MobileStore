@@ -606,6 +606,15 @@ function loadReviews(isReset) {
 }
 
 // --- CART & CHECKOUT FUNCTIONS ---
+// ==========================================
+// FUNCTION BIẾN TOÀN CỤC LƯU TRỮ VOUCHER & TỔNG TIỀN
+// ==========================================
+let currentSubtotal = 0;
+let selectedVoucher = null;
+
+// ==========================================
+// 1. HÀM TÍNH TỔNG TIỀN (Đã cập nhật)
+// ==========================================
 function calcTotal() {
   let total = 0;
   $(".pay-check:checked").each(function () {
@@ -613,12 +622,284 @@ function calcTotal() {
     let qty = parseInt($(this).data("qty")) || 0;
     total += price * qty;
   });
+
   let fmt = new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
   }).format(total);
+
   $("#total-money").text(fmt);
   $("#selected-count").text($(".pay-check:checked").length);
+  $("#modal-subtotal").text(fmt);
+
+  // Lưu lại tổng tiền gốc
+  currentSubtotal = total;
+
+  // Gọi hàm tính toán lại Voucher (nếu có mã đang chọn)
+  applyVoucherLogic();
+}
+
+// ==========================================
+// 2. CÁC HÀM XỬ LÝ VOUCHER TẠI MODAL ĐẶT HÀNG
+// ==========================================
+// Hàm đóng danh sách Voucher và hiện lại bảng Thanh toán
+function closeVoucherList() {
+  $("#voucher-list-modal").fadeOut(200, function () {
+    $("#checkout-modal").fadeIn(200);
+  });
+}
+
+// Mở danh sách Voucher (Khi ấn nút "Chọn Mã")
+function openVoucherList() {
+  if (currentSubtotal === 0) {
+    Swal.fire("Lưu ý", "Bạn chưa chọn sản phẩm nào để thanh toán!", "warning");
+    return;
+  }
+
+  $("#checkout-modal").fadeOut(200, function () {
+    $("#voucher-list-modal").fadeIn(200);
+  });
+
+  $("#voucher-list-container").html(
+    '<div style="text-align: center; color: #888; padding: 20px;"><i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i> Đang tải danh sách...</div>',
+  );
+
+  let apiUrl = "api/voucher_api.php";
+
+  $.post(apiUrl, { action: "get_my_vouchers" }, function (res) {
+    try {
+      let cleanRes = res.substring(res.indexOf("{"));
+      let response = JSON.parse(cleanRes);
+
+      let container = $("#voucher-list-container");
+      container.empty();
+
+      if (response.status === "success" && response.data.length > 0) {
+        response.data.forEach(function (v) {
+          let isEligible = currentSubtotal >= parseFloat(v.min_order_value);
+          let opacity = isEligible ? "1" : "0.5";
+          let discountText =
+            v.type === "percent"
+              ? `Giảm ${parseFloat(v.discount_amount)}%`
+              : `Giảm ${new Intl.NumberFormat("vi-VN").format(v.discount_amount)}đ`;
+          let maxDesc =
+            v.type === "percent" && parseFloat(v.max_discount) > 0
+              ? `<br><small style="color:#666;">Tối đa ${new Intl.NumberFormat("vi-VN").format(v.max_discount)}đ</small>`
+              : "";
+          let minDesc =
+            parseFloat(v.min_order_value) > 0
+              ? `Đơn từ ${new Intl.NumberFormat("vi-VN").format(v.min_order_value)}đ`
+              : "Áp dụng cho mọi đơn hàng";
+
+          let btnAction = isEligible
+            ? `<button type="button" class="btn-primary" style="padding: 6px 12px; font-size: 13px; border-radius:4px;" onclick='selectVoucher(${JSON.stringify(v)})'>Chọn mã</button>`
+            : `<span style="color:#d70018; font-size: 12px; font-weight:bold;">Chưa đủ điều kiện</span>`;
+
+          let html = `
+                        <div style="border: 1px dashed #00487a; background: #f8fcfd; border-radius: 8px; padding: 12px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; opacity: ${opacity};">
+                            <div style="flex: 1;">
+                                <h4 style="margin: 0 0 5px 0; color: #00487a; font-size: 16px;">${v.code}</h4>
+                                <p style="margin: 0; font-size: 14px; font-weight: bold; color: #d70018;">${discountText} ${maxDesc}</p>
+                                <p style="margin: 5px 0 0 0; font-size: 12px; color: #555;">${minDesc}</p>
+                            </div>
+                            <div style="margin-left: 10px; text-align:right;">
+                                ${btnAction}
+                            </div>
+                        </div>
+                    `;
+          container.append(html);
+        });
+      } else {
+        container.html(
+          '<div style="text-align: center; color: #888; padding: 30px;">Bạn chưa có mã giảm giá nào hoặc không có mã phù hợp.</div>',
+        );
+      }
+    } catch (e) {
+      console.error("Lỗi Parse JSON:", e, res);
+      $("#voucher-list-container").html(
+        '<div style="text-align: center; color: red; padding: 20px;">Lỗi xử lý dữ liệu từ máy chủ.</div>',
+      );
+    }
+  }).fail(function () {
+    $("#voucher-list-container").html(
+      '<div style="text-align: center; color: red; padding: 20px;">Không thể kết nối đến máy chủ.</div>',
+    );
+  });
+}
+
+// Xử lý khi User bấm "Chọn mã"
+function selectVoucher(v) {
+  selectedVoucher = v;
+
+  // Đóng Modal Voucher và HIỆN LẠI Modal Thanh toán
+  $("#voucher-list-modal").fadeOut(200, function () {
+    $("#checkout-modal").fadeIn(200);
+  });
+
+  // Hiển thị mã lên ô Input
+  $("#c-coupon").val(v.code);
+  $("#c-voucher-id").val(v.id);
+
+  // Hiện nút "Bỏ chọn"
+  $("#btn-clear-voucher").show();
+
+  // Tính toán lại giá
+  applyVoucherLogic();
+
+  Swal.fire({
+    toast: true,
+    position: "top-end",
+    icon: "success",
+    title: "Đã áp dụng mã " + v.code,
+    showConfirmButton: false,
+    timer: 1500,
+  });
+}
+
+// Xử lý khi User bấm "Bỏ chọn" (Nút đỏ)
+function clearVoucher() {
+  selectedVoucher = null;
+  $("#c-coupon").val("");
+  $("#c-voucher-id").val("");
+  $("#btn-clear-voucher").hide();
+
+  // Tính toán lại giá (Trở về giá gốc)
+  applyVoucherLogic();
+}
+
+// ==========================================
+// 3. LOGIC TÍNH TOÁN TIỀN KHI CÓ VOUCHER
+// ==========================================
+function applyVoucherLogic() {
+  let fmtTotal = new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  });
+
+  // 1. KHÔNG CÓ VOUCHER HOẶC TIỀN = 0
+  if (!selectedVoucher || currentSubtotal === 0) {
+    $("#voucher-discount-info").hide();
+    $("#modal-old-total").hide();
+    $("#modal-total-money").text(fmtTotal.format(currentSubtotal));
+
+    // Reset nếu user bỏ chọn sản phẩm làm tổng tiền lùi về dưới mốc tối thiểu
+    if (
+      selectedVoucher &&
+      currentSubtotal > 0 &&
+      currentSubtotal < parseFloat(selectedVoucher.min_order_value)
+    ) {
+      clearVoucher();
+      Swal.fire(
+        "Hủy áp dụng",
+        "Tổng tiền không còn đủ điều kiện để dùng mã này.",
+        "info",
+      );
+    }
+    return;
+  }
+
+  // 2. CÓ VOUCHER HỢP LỆ
+  let discountValue = 0;
+
+  if (selectedVoucher.type === "percent") {
+    discountValue =
+      currentSubtotal * (parseFloat(selectedVoucher.discount_amount) / 100);
+    let maxDiscount = parseFloat(selectedVoucher.max_discount);
+    if (maxDiscount > 0 && discountValue > maxDiscount) {
+      discountValue = maxDiscount;
+    }
+  } else {
+    discountValue = parseFloat(selectedVoucher.discount_amount);
+  }
+
+  // Đảm bảo không giảm lố thành số âm
+  if (discountValue > currentSubtotal) {
+    discountValue = currentSubtotal;
+  }
+
+  let finalTotal = currentSubtotal - discountValue;
+
+  // 3. CẬP NHẬT GIAO DIỆN MODAL
+  $("#discount-label").text(selectedVoucher.code);
+  $("#modal-discount-amount").text("-" + fmtTotal.format(discountValue));
+  $("#voucher-discount-info").css("display", "flex");
+
+  $("#modal-old-total").text(fmtTotal.format(currentSubtotal)).show();
+  $("#modal-total-money").text(fmtTotal.format(finalTotal));
+}
+// ==========================================
+// 3. LOGIC TÍNH TOÁN TIỀN KHI CÓ VOUCHER
+// ==========================================
+function applyVoucherLogic() {
+  let fmtTotal = new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  });
+
+  // 1. TRƯỜNG HỢP: KHÔNG CÓ VOUCHER HOẶC TIỀN = 0
+  if (!selectedVoucher || currentSubtotal === 0) {
+    // Ẩn các dòng liên quan đến giảm giá
+    $("#voucher-discount-info").hide();
+    $("#modal-old-total").hide();
+
+    // Hiện tổng tiền gốc
+    $("#modal-total-money").text(fmtTotal.format(currentSubtotal));
+
+    // Kiểm tra xem user có lỡ uncheck sản phẩm làm tổng tiền tụt xuống dưới điều kiện của voucher không
+    if (
+      selectedVoucher &&
+      currentSubtotal > 0 &&
+      currentSubtotal < parseFloat(selectedVoucher.min_order_value)
+    ) {
+      clearVoucher(); // Hủy voucher ngay lập tức
+      Swal.fire(
+        "Hủy áp dụng",
+        "Tổng tiền không còn đủ điều kiện để dùng mã này.",
+        "info",
+      );
+    }
+    return;
+  }
+
+  // 2. TRƯỜNG HỢP: CÓ VOUCHER HỢP LỆ
+  let discountValue = 0;
+
+  // Nếu là mã phần trăm
+  if (selectedVoucher.type === "percent") {
+    discountValue =
+      currentSubtotal * (parseFloat(selectedVoucher.discount_amount) / 100);
+    // Kiểm tra mức giảm tối đa
+    let maxDiscount = parseFloat(selectedVoucher.max_discount);
+    if (maxDiscount > 0 && discountValue > maxDiscount) {
+      discountValue = maxDiscount;
+    }
+  }
+  // Nếu là mã trừ tiền thẳng
+  else {
+    discountValue = parseFloat(selectedVoucher.discount_amount);
+  }
+
+  // Đảm bảo không giảm lố thành số âm (nếu voucher lớn hơn tổng tiền)
+  if (discountValue > currentSubtotal) {
+    discountValue = currentSubtotal;
+  }
+
+  // Tính số tiền cuối cùng cần thanh toán
+  let finalTotal = currentSubtotal - discountValue;
+
+  // 3. CẬP NHẬT GIAO DIỆN MODAL
+  // Gắn tên mã voucher vào chữ "Giảm giá"
+  $("#discount-label").text(selectedVoucher.code);
+
+  // Hiện số tiền trừ đi (màu xanh)
+  $("#modal-discount-amount").text("-" + fmtTotal.format(discountValue));
+  $("#voucher-discount-info").css("display", "flex"); // Hiện dòng giảm giá
+
+  // Gạch ngang giá cũ
+  $("#modal-old-total").text(fmtTotal.format(currentSubtotal)).show();
+
+  // In đậm giá mới
+  $("#modal-total-money").text(fmtTotal.format(finalTotal));
 }
 
 function toggleDeleteSelectedBtn() {
@@ -970,7 +1251,6 @@ function scrollToBottom() {
 }
 
 // Chage_password
-// assets/js/main.js
 function changePassword() {
   let oldPass = $("#old-pass").val().trim();
   let newPass = $("#new-pass").val().trim();
@@ -998,7 +1278,6 @@ function changePassword() {
         let response = JSON.parse(res);
 
         if (response.status === "success") {
-          // Thành công: Hiển thị Popup xanh lá, tự động tắt sau 2 giây
           Swal.fire({
             icon: "success",
             title: "Thành công!",
@@ -1007,11 +1286,9 @@ function changePassword() {
             timer: 2000,
           });
 
-          // Xóa trống ô nhập
           $("#old-pass").val("");
           $("#new-pass").val("");
         } else {
-          // Lỗi (Sai mật khẩu cũ): Hiển thị Popup đỏ
           Swal.fire({
             icon: "error",
             title: "Lỗi",
@@ -1021,7 +1298,6 @@ function changePassword() {
         }
       } catch (e) {
         console.error(e);
-        // Lỗi hệ thống ngầm
         Swal.fire({
           icon: "error",
           title: "Lỗi hệ thống",

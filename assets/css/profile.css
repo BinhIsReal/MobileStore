@@ -1,4 +1,3 @@
-/* CSS DÀNH RIÊNG CHO TRANG PROFILE */
 body {
   background-color: #f4f6f8;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -130,4 +129,39 @@ textarea.form-control {
 .btn-outline-danger:hover {
   background-color: #1a6da8;
   color: white;
+}
+
+/* =========================================
+   RESPONSIVE / MOBILE OPTIMIZATION
+========================================= */
+
+@media (max-width: 768px) {
+  .profile-wrapper {
+    margin: 20px;
+  }
+  .profile-body {
+    padding: 20px;
+  }
+  .action-buttons {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-header {
+    padding: 20px 15px;
+  }
+  .profile-avatar {
+    font-size: 50px;
+  }
+  .profile-name {
+    font-size: 20px;
+  }
+  .form-group label {
+    font-size: 13px;
+  }
+  .form-control {
+    font-size: 14px;
+    padding: 10px;
+  }
 }

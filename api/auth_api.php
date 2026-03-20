@@ -5,7 +5,6 @@ include '../config/db.php';
 $action = $_POST['action'] ?? '';
 
 // 1. LOGIN VÀ GỘP GIỎ HÀNG
-// 1. LOGIN VÀ GỘP GIỎ HÀNG
 if ($action == 'login') {
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';

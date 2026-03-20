@@ -159,7 +159,7 @@ if ($user_id > 0) {
             <div id="checkout-modal" class="modal">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h2><i class="fa-solid fa-file-invoice-dollar"></i> Xác Nhận Đặt Hàng</h2>
+                        <h2><i class="fa-solid fa-file-invoice-dollar"></i>  Xác Nhận Đặt Hàng</h2>
                         <span class="close-modal" onclick="$('#checkout-modal').fadeOut()">&times;</span>
                     </div>
 
@@ -167,51 +167,98 @@ if ($user_id > 0) {
                         <div class="form-group">
                             <label>Họ và tên <span style="color:red">*</span></label>
                             <input type="text" id="c-name" class="modal-input"
-                                value="<?= htmlspecialchars($current_user['username']) ?>">
+                                value="<?= htmlspecialchars($current_user['username'] ?? '') ?>">
                         </div>
                         <div class="form-group">
                             <label>Số điện thoại <span style="color:red">*</span></label>
                             <input type="text" id="c-phone" class="modal-input"
-                                value="<?= htmlspecialchars($current_user['phone']) ?>">
+                                value="<?= htmlspecialchars($current_user['phone'] ?? '') ?>">
                         </div>
                         <div class="form-group">
                             <label>Địa chỉ <span style="color:red">*</span></label>
                             <textarea id="c-address" class="modal-input" rows="2"
-                                placeholder="Số nhà, đường..."><?= htmlspecialchars($current_user['address']) ?></textarea>
+                                placeholder="Số nhà, đường..."><?= htmlspecialchars($current_user['address'] ?? '') ?></textarea>
                         </div>
+
                         <div class="form-group">
                             <label>Mã giảm giá</label>
-                            <input type="text" id="c-coupon" class="modal-input" placeholder="Nhập mã voucher">
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="c-coupon" class="modal-input" placeholder="Chọn mã voucher"
+                                    readonly style="flex: 1; background-color: #f8f9fa;">
+                                <input type="hidden" id="c-voucher-id" value="">
+
+                                <button type="button" class="btn-primary" onclick="openVoucherList()">
+                                    <p class="active-code" style="transform: translate(0px, -5px);">Chọn
+                                        Mã</p>
+                                </button>
+                                <button type="button" id="btn-clear-voucher" class="btn-cancel"
+                                    onclick="clearVoucher()">X</button>
+                            </div>
                         </div>
 
                         <div class="form-group" style="margin-top: 15px;">
                             <label style="font-weight:600; display:block; margin-bottom:8px;">Hình thức thanh
                                 toán:</label>
                             <div style="display:flex; gap:15px;">
-                                <label
-                                    style="cursor:pointer; display:flex; align-items:center; gap:8px; border:1px solid #ddd; padding:10px; border-radius:6px; flex:1;">
-                                    <input type="radio" name="payment_method" value="cod" checked>
-                                    <div><b>Thanh toán khi nhận hàng</b><br><span
-                                            style="font-size:12px; color:#666;">COD</span></div>
+                                <label class="payment-option">
+                                    <input type="radio" name="payment_method" value="cod" class="payment-radio" checked>
+                                    <div class="payment-content">
+                                        <b>Thanh toán khi nhận hàng</b><br>
+                                        <span class="payment-sub">COD</span>
+                                    </div>
                                 </label>
-                                <label
-                                    style="cursor:pointer; display:flex; align-items:center; gap:8px; border:1px solid #ddd; padding:10px; border-radius:6px; flex:1;">
-                                    <input type="radio" name="payment_method" value="banking">
-                                    <div><b>Chuyển khoản ngân hàng</b><br><span style="font-size:12px; color:#666;">Quét
-                                            mã QR</span></div>
+                                <label class="payment-option">
+                                    <input type="radio" name="payment_method" value="banking" class="payment-radio">
+                                    <div class="payment-content">
+                                        <b>Chuyển khoản ngân hàng</b><br>
+                                        <span class="payment-sub">Quét mã QR</span>
+                                    </div>
                                 </label>
                             </div>
                         </div>
 
-                        <div class="modal-summary">
-                            <p>Tổng tiền thanh toán:</p>
-                            <h3 id="modal-total-money" style="color:#d70018">0 ₫</h3>
+                        <div class="modal-summary"
+                            style="margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 15px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <span>Tạm tính:</span>
+                                <span id="modal-subtotal" style="font-weight: bold;">0 ₫</span>
+                            </div>
+
+                            <div id="voucher-discount-info"
+                                style="display: none; justify-content: space-between; margin-bottom: 5px; color: #28a745;">
+                                <span>Giảm giá (<span id="discount-label"></span>):</span>
+                                <span id="modal-discount-amount" style="font-weight: bold;">-0 ₫</span>
+                            </div>
+
+                            <div
+                                style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 18px;">
+                                <span style="font-weight: bold;">Tổng thanh toán:</span>
+                                <del id="modal-old-total"
+                                    style="color: #999; font-size: 14px; margin-right: 10px; display: none;">0 ₫</del>
+                                <h3 id="modal-total-money" style="color:#d70018; margin: 0;">0 ₫</h3>
+                            </div>
                         </div>
                     </div>
 
                     <div class="modal-footer">
                         <button class="btn-cancel" onclick="$('#checkout-modal').fadeOut()">Hủy</button>
                         <button id="btn-confirm-order" class="btn-confirm">XÁC NHẬN THANH TOÁN</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="voucher-list-modal" class="modal" style="z-index: 10000 !important; background: rgba(0,0,0,0.7);">
+                <div class="modal-content" style="max-width: 400px; padding: 20px;">
+                    <div class="modal-header"
+                        style="margin-top:-20px;margin-left:-20px;margin-right:-20px;border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+                        <h3 style="margin: 0;">Chọn Mã Giảm Giá</h3>
+                        <span class="close-modal" onclick="closeVoucherList()">&times;</span>
+                    </div>
+
+                    <div class="modal-body" id="voucher-list-container" style="max-height: 400px; overflow-y: auto;">
+                        <div style="text-align: center; color: #888; padding: 20px;">
+                            <i class="fa fa-spinner fa-spin" style="font-size: 24px;"></i> Đang tải...
+                        </div>
                     </div>
                 </div>
             </div>

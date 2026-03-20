@@ -162,33 +162,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] != 'admin') header("Location:
             </table>
         </div>
     </div>
-
-    <script>
-    function updateStatus(id, st) {
-        const btn = event.target;
-        btn.disabled = true;
-
-        $.post('../api/admin_api.php', {
-            action: 'update_status',
-            order_id: id,
-            status: st
-        }, function(res) {
-            btn.disabled = false;
-            try {
-                let data = typeof res === 'object' ? res : JSON.parse(res);
-                if (data.status === 'success') {
-                    showToast({
-                        title: "Thành công",
-                        message: "Đơn hàng #" + id + " đã cập nhật",
-                        type: "success"
-                    });
-                }
-            } catch (e) {
-                console.error(res);
-            }
-        });
-    }
-    </script>
+    <script src="../assets/js/admin_main.js"></script>
 </body>
 
 </html>

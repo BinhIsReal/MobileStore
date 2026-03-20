@@ -1,6 +1,3 @@
-/* =========================================
-   CORE LAYOUT FOR SUB-PAGES
-========================================= */
 .page-wrapper {
   background: #fff;
   border-radius: 8px;
@@ -127,4 +124,40 @@
   font-size: 13px;
   border: none;
   cursor: pointer;
+}
+
+/* =========================================
+   RESPONSIVE / MOBILE OPTIMIZATION
+========================================= */
+
+@media (max-width: 768px) {
+  .page-wrapper {
+    margin: 15px auto;
+    padding: 20px;
+    min-height: auto;
+  }
+  .page-title {
+    font-size: 20px;
+  }
+  .tracking-box {
+    padding: 20px;
+  }
+  .tracking-input-group {
+    flex-direction: column;
+  }
+  .store-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .job-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .btn-apply {
+    width: 100%;
+    text-align: center;
+  }
 }
