@@ -54,17 +54,39 @@ $(document).ready(function () {
     $.post("api/profile_api.php", data, function (res) {
       try {
         let response = JSON.parse(res);
-        alert(response.message);
 
-        if (response.status === "success") {
-          // Cập nhật lại biến lưu tạm thành dữ liệu mới nhất
+        let isSuccess = response.status === "success";
+        let title = isSuccess ? "Thành công!" : "Cảnh báo!";
+        let icon = isSuccess ? "fa-circle-check" : "fa-circle-xmark";
+        let color = isSuccess ? "#28a745" : "#d70018";
+
+        let toastHtml = `
+          <div style="background: #fff; border-left: 5px solid ${color}; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 15px 20px; margin-bottom: 10px; border-radius: 4px; display: flex; align-items: center; gap: 15px; min-width: 280px; z-index: 9999; pointer-events: auto; animation: slideInLeft 0.3s ease, fadeOut linear 0.5s 2.5s forwards;">
+              <i class="fa-solid ${icon}" style="color: ${color}; font-size: 24px;"></i>
+              <div style="display: flex; flex-direction: column; text-align: left;">
+                  <strong style="color: #333; font-size: 16px; margin-bottom: 4px;">${title}</strong>
+                  <span style="color: #666; font-size: 14px;">${response.message}</span>
+              </div>
+          </div>
+        `;
+
+        // 3. Hiển thị (CSS animation sẽ tự động chạy hiệu ứng)
+        let $toast = $(toastHtml);
+        $("#toast-container").append($toast);
+
+        // Tự động xóa element khỏi DOM sau khi animation hoàn tất (3 giây)
+        setTimeout(() => {
+          $toast.remove();
+        }, 3000);
+
+        // 4. Cập nhật giao diện nếu thành công
+        if (isSuccess) {
           originalData = {
             email: data.email,
             phone: data.phone,
             address: data.address,
           };
 
-          // Khóa lại giao diện (giống thao tác Hủy)
           $(".form-control:not(.readonly-always)").prop("disabled", true);
           $("#profile-form").removeClass("editable");
           $("#btn-cancel").hide();
@@ -74,7 +96,6 @@ $(document).ready(function () {
         }
       } catch (e) {
         console.error("Lỗi parse JSON:", e);
-        alert("Có lỗi xảy ra khi lưu thông tin!");
       }
     });
   });

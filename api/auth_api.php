@@ -40,6 +40,10 @@ if ($action == 'login') {
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
 
+           if ($user['role'] !== 'admin') {
+                $_SESSION['login_success_msg'] = "Chào mừng " . $user['username'] . " đén với MobileStore!";
+            }
+
             // 2. LOGIC GỘP GIỎ HÀNG (Auto Merge) - Giữ nguyên của bạn
             if (isset($_SESSION['cart']) && count($_SESSION['cart']) > 0) {
                 foreach ($_SESSION['cart'] as $p_id => $session_qty) {

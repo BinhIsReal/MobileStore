@@ -208,3 +208,81 @@ $("#assign-voucher-form").submit(function (e) {
     }
   });
 });
+
+function editVoucher(id, code, type, discount, max, min, expiry) {
+  // 1. Đổi tiêu đề form và tên nút
+  $("#form-title").html('<i class="fa fa-edit"></i> Cập Nhật Mã Giảm Giá');
+  $("#btn-submit-voucher").text("Lưu Thay Đổi");
+  $("#btn-cancel-edit").show(); // Hiện nút Hủy
+
+  // 2. Chuyển Action thành Cập nhật và lưu ID
+  $("#voucher-action").val("update_voucher");
+  $("#voucher-id").val(id);
+
+  // 3. Đổ dữ liệu hiện tại vào các ô input
+  $('input[name="code"]')
+    .val(code)
+    .prop("readonly", true)
+    .css("background", "#e9ecef"); // Không cho sửa mã code
+  $("#discount-type").val(type);
+  $('input[name="discount_amount"]').val(discount);
+  $('input[name="max_discount"]').val(max);
+  $('input[name="min_order_value"]').val(min);
+  $('input[name="expiry_date"]').val(expiry);
+
+  // 4. Cuộn mượt lên vị trí Form
+  $("html, body").animate(
+    { scrollTop: $(".form-section").offset().top - 20 },
+    300,
+  );
+}
+
+function cancelEdit() {
+  // Reset toàn bộ Form về trạng thái Tạo mới ban đầu
+  $("#create-voucher-form")[0].reset();
+  $("#form-title").html('<i class="fa fa-plus-circle"></i> Tạo Mã Giảm Giá');
+  $("#btn-submit-voucher").text("Tạo Voucher");
+  $("#btn-cancel-edit").hide();
+
+  $("#voucher-action").val("create_voucher");
+  $("#voucher-id").val("");
+  $('input[name="code"]').prop("readonly", false).css("background", "#fff");
+}
+
+// Xử lý Gửi Form AJAX (Chung cho cả Tạo Mới và Cập Nhật)
+$("#create-voucher-form").submit(function (e) {
+  e.preventDefault();
+  let formData = $(this).serialize(); // Lấy tất cả input bao gồm cả action (ẩn)
+
+  $.post("../api/voucher_api.php", formData, function (res) {
+    try {
+      let response = JSON.parse(res);
+      if (response.status === "success") {
+        Swal.fire("Thành công!", response.message, "success").then(() => {
+          window.location.reload();
+        });
+      } else {
+        Swal.fire("Lỗi!", response.message, "error");
+      }
+    } catch (error) {
+      console.error("Lỗi:", error);
+    }
+  });
+});
+
+function confirmDelete(id) {
+  Swal.fire({
+    title: "Xác nhận xóa?",
+    text: "Bạn có chắc chắn muốn xóa mã giảm giá này? Mọi người dùng đang sở hữu mã này sẽ bị mất quyền sử dụng.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d70018",
+    cancelButtonColor: "#6c757d",
+    confirmButtonText: '<i class="fa-solid fa-trash-can"></i> Xóa ngay',
+    cancelButtonText: "Hủy bỏ",
+  }).then((result) => {
+    if (result.isConfirmed) {
+      window.location.href = `vouchers.php?delete_id=${id}`;
+    }
+  });
+}

@@ -64,75 +64,57 @@ if ($action == 'send_message') {
             exit;
         }
 
-        // --- BOT TRẢ LỜI (Chỉ khi tab = bot) ---
+        // --- BOT TRẢ LỜI BẰNG GEMINI API ---
         if ($tab == 'bot') {
-            $bot_reply = "";
-            $msg_lower = mb_strtolower($msg, 'UTF-8');
+            $apiKey = "AIzaSyBdJWezPzPSaLMN7XMHyFyxa0bUryw1-Vg";
+            $model = "gemini-2.5-flash"; 
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
 
-            // 1. Rẻ nhất / Đắt nhất
-            if (strpos($msg_lower, 'rẻ nhất') !== false) {
-                $res = $conn->query("SELECT * FROM products ORDER BY price ASC LIMIT 1");
-                if ($p = $res->fetch_assoc()) $bot_reply = "Rẻ nhất là: <b>{$p['name']}</b> giá " . number_format($p['price']) . "đ.";
-            } elseif (strpos($msg_lower, 'đắt nhất') !== false) {
-                $res = $conn->query("SELECT * FROM products ORDER BY price DESC LIMIT 1");
-                if ($p = $res->fetch_assoc()) $bot_reply = "Cao cấp nhất là: <b>{$p['name']}</b> giá " . number_format($p['price']) . "đ.";
-            }
-
-            // 2. Khoảng giá
-            if (empty($bot_reply) && preg_match('/(triệu|tr|giá)/', $msg_lower)) {
-                $price = extractPrice($msg_lower);
-                if ($price > 0) {
-                    $min = $price - 2000000; $max = $price + 2000000;
-                    if (strpos($msg_lower, 'dưới') !== false) { $min = 0; $max = $price; }
-                    if (strpos($msg_lower, 'trên') !== false) { $min = $price; $max = 100000000; }
+            $data = [
+                "system_instruction" => [
+                    "parts" => [
+                        [
+                            "text" => "Bạn là một nhân viên tư vấn bán hàng điện thoại nhiệt tình của cửa hàng MobileStore. Hãy trả lời bằng tiếng Việt thật tự nhiên, ngắn gọn (dưới 50 từ), thân thiện và tập trung vào việc tư vấn sản phẩm."
+                        ]
+                    ]
+                ],
+                "contents" => [
+                    [
+                        "role" => "user",
+                        "parts" => [
+                            [ "text" => $msg ]
+                        ]
+                    ]
+                ]
+            ];
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            
+            $response = curl_exec($ch);
+            $curl_err = curl_error($ch);
+            curl_close($ch);
+            
+            $bot_reply = "Xin lỗi, hiện tại BOT đang quá tải do nhiều người liên hệ cùng lúc. Vui lòng chọn chat trực tiếp với Shop nhé!";
+            
+            if ($response && !$curl_err) {
+                $res_data = json_decode($response, true);
+                
+                if (isset($res_data['candidates'][0]['content']['parts'][0]['text'])) {
+                    $raw_reply = trim($res_data['candidates'][0]['content']['parts'][0]['text']);
                     
-                    $res = $conn->query("SELECT * FROM products WHERE price BETWEEN $min AND $max LIMIT 3");
-                    if ($res && $res->num_rows > 0) {
-                        $bot_reply = "Tìm thấy:<br>";
-                        while ($p = $res->fetch_assoc()) $bot_reply .= "- <a href='product_detail.php?id={$p['id']}'>{$p['name']}</a>: " . number_format($p['price']) . "đ<br>";
-                    } else $bot_reply = "Không tìm thấy máy nào tầm giá này ạ.";
+                    // Lọc Markdown (in đậm)
+                    $raw_reply = preg_replace('/\*\*(.*?)\*\*/', '<b>$1</b>', $raw_reply);
+                    $bot_reply = nl2br(htmlspecialchars($raw_reply));
+                    $bot_reply = str_replace(['&lt;b&gt;', '&lt;/b&gt;'], ['<b>', '</b>'], $bot_reply);
                 }
             }
-
-            // 3. Kịch bản tư vấn
-            if (empty($bot_reply)) {
-                $kb = [
-                    ['keys' => ['game'], 'reply' => 'Chơi game nên chọn Xiaomi hoặc iPhone chip khỏe.'],
-                    ['keys' => ['chụp', 'ảnh'], 'reply' => 'Chụp ảnh đẹp chọn Samsung S hoặc iPhone.'],
-                    ['keys' => ['pin', 'sạc'], 'reply' => 'Pin 5000mAh dùng thoải mái cả ngày.'],
-                    ['keys' => ['góp', 'khuyến mãi'], 'reply' => 'Shop hỗ trợ trả góp 0% nhé.'],
-                    ['keys' => ['chào', 'hi'], 'reply' => 'Chào bạn! Bạn cần tìm máy nào?']
-                ];
-                foreach ($kb as $item) {
-                    foreach ($item['keys'] as $k) { if (strpos($msg_lower, $k) !== false) { $bot_reply = $item['reply']; break 2; } }
-                }
-            }
-
-            // 4. Tìm theo tên
-           if (empty($bot_reply)) {
-            $kw = trim(str_replace(['giá', 'mua', 'tìm', 'điện thoại'], '', $msg_lower));
-            if (strlen($kw) > 1) {
-                // Sử dụng JOIN để tìm kiếm cả trong tên sản phẩm và tên hãng
-                $sql_bot = "SELECT p.* FROM products p 
-                            LEFT JOIN brands b ON p.brand_id = b.id 
-                            WHERE p.name LIKE ? OR b.name LIKE ? 
-                            LIMIT 3";
-                $stmt_bot = $conn->prepare($sql_bot);
-                $search_kw = "%$kw%";
-                $stmt_bot->bind_param("ss", $search_kw, $search_kw);
-                $stmt_bot->execute();
-                $res = $stmt_bot->get_result();
-
-                if ($res && $res->num_rows > 0) {
-                    $bot_reply = "MobileStore tìm thấy sản phẩm phù hợp:<br>";
-                    while ($p = $res->fetch_assoc()) {
-                        $bot_reply .= "- <a href='product_detail.php?id={$p['id']}'>{$p['name']}</a>: " . number_format($p['price']) . "đ<br>";
-            }
-        }
-    }
-}
-
-            if (empty($bot_reply)) $bot_reply = "Bạn thử hỏi 'giá iphone' hoặc 'tầm 5 triệu' xem sao?";
 
             // Lưu tin Bot trả lời
             $stmt = $conn->prepare("INSERT INTO chat_messages (sender_id, receiver_id, message, role, created_at) VALUES (9999, ?, ?, 'bot', NOW())");

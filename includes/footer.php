@@ -94,8 +94,34 @@ const BASE_URL = "<?= BASE_URL ?>";
 </script>
 
 <script src="<?= BASE_URL ?>/assets/js/main.js?v=<?php echo time(); ?>"></script>
+<?php 
+// =========================================================
+// 1. HIỂN THỊ THÔNG BÁO CHÀO MỪNG SAU KHI ĐĂNG NHẬP
+// =========================================================
+if (isset($_SESSION['login_success_msg'])): 
+?>
+<script>
+$(document).ready(function() {
+    if (typeof showToast === "function") {
+        showToast({
+            title: "Thành công!",
+            message: "<?= $_SESSION['login_success_msg'] ?>",
+            type: "success"
+        });
+    }
+});
+</script>
+<?php 
+    // Xóa biến session để thông báo không hiện lại khi f5 trang
+    unset($_SESSION['login_success_msg']); 
+endif; 
+?>
+
 
 <?php 
+// =========================================================
+// 2. HIỂN THỊ POPUP KHI CÓ VOUCHER MỚI
+// =========================================================
 // Kiểm tra nếu User đã đăng nhập thì mới check xem có voucher mới không
 if (isset($_SESSION['user_id'])): 
     $uid = $_SESSION['user_id'];

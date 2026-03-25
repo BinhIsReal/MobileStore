@@ -8,6 +8,25 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit;
 }
 
+// 1. Tự động xóa các voucher đã hết hạn (Expiry date nhỏ hơn ngày hiện tại)
+$conn->query("DELETE FROM vouchers WHERE expiry_date < CURDATE() AND expiry_date != '0000-00-00'");
+
+// 2. Xử lý Xóa voucher thủ công khi click nút Xóa
+if (isset($_GET['delete_id'])) {
+    $del_id = intval($_GET['delete_id']);
+    
+    // Xóa các bản ghi liên kết trong user_vouchers trước (tránh lỗi khóa ngoại)
+    $conn->query("DELETE FROM user_vouchers WHERE voucher_id = $del_id");
+    
+    // Xóa voucher chính
+    if ($conn->query("DELETE FROM vouchers WHERE id = $del_id")) {
+        echo "<script>window.location='vouchers.php';</script>";
+        exit;
+    } else {
+        echo "<script>alert('Lỗi xóa voucher: " . $conn->error . "');</script>";
+    }
+}
+
 // Lấy danh sách Voucher để hiển thị
 $vouchers = $conn->query("SELECT * FROM vouchers ORDER BY created_at DESC");
 
@@ -42,8 +61,12 @@ $users = $conn->query("SELECT id, username, email FROM users WHERE role != 'admi
 
             <div class="voucher-container">
                 <div class="form-section">
-                    <h3 style="margin-top: 0; color: #333;"><i class="fa fa-plus-circle"></i> Tạo Mã Giảm Giá</h3>
+                    <h3 id="form-title" style="margin-top: 0; color: #333;"><i class="fa fa-plus-circle"></i> Tạo Mã
+                        Giảm Giá</h3>
                     <form id="create-voucher-form">
+                        <input type="hidden" name="action" id="voucher-action" value="create_voucher">
+                        <input type="hidden" name="voucher_id" id="voucher-id" value="">
+
                         <div class="form-group">
                             <label>Mã Voucher (Code)</label>
                             <input type="text" name="code" class="form-control" placeholder="VD: TET2024" required
@@ -75,7 +98,11 @@ $users = $conn->query("SELECT id, username, email FROM users WHERE role != 'admi
                             <label>Ngày hết hạn</label>
                             <input type="date" name="expiry_date" class="form-control" required>
                         </div>
-                        <button type="submit" class="btn-primary">Tạo Voucher</button>
+
+                        <button type="submit" id="btn-submit-voucher" class="btn-primary">Tạo Voucher</button>
+                        <button type="button" id="btn-cancel-edit" class="btn-secondary"
+                            style="display: none; width: 100%; margin-top: 10px; padding: 10px; border: none; border-radius: 4px; cursor: pointer; background-color: #6c757d; color: white; font-weight: bold;"
+                            onclick="cancelEdit()">Hủy Cập Nhật</button>
                     </form>
                 </div>
 
@@ -84,11 +111,13 @@ $users = $conn->query("SELECT id, username, email FROM users WHERE role != 'admi
                     <table>
                         <thead>
                             <tr>
-                                <th>Mã Code</th>
-                                <th>Loại - Mức giảm</th>
-                                <th>Điều kiện</th>
+                                <th>Mã</th>
+                                <th>Loại</th>
+                                <th>Mức giảm</th>
+                                <th>Tối đa</th>
+                                <th>Đơn tối thiểu</th>
                                 <th>Hết hạn</th>
-                                <th>Hành động</th>
+                                <th width="15%">Hành động</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -96,31 +125,43 @@ $users = $conn->query("SELECT id, username, email FROM users WHERE role != 'admi
                             <?php while ($row = $vouchers->fetch_assoc()): ?>
                             <tr>
                                 <td><b style="color: #00487a;"><?= htmlspecialchars($row['code']) ?></b></td>
+                                <td><?= $row['type'] == 'percent' ? 'Phần trăm' : 'Tiền mặt' ?></td>
                                 <td>
                                     <?php if ($row['type'] == 'percent'): ?>
                                     <span
                                         style="color:#d70018; font-weight:bold;"><?= (float)$row['discount_amount'] ?>%</span>
-                                    <br>
-                                    <small style="color: #666;">(Tối đa
-                                        <?= number_format($row['max_discount']) ?>đ)</small>
                                     <?php else: ?>
                                     <span
                                         style="color:#d70018; font-weight:bold;"><?= number_format($row['discount_amount']) ?>đ</span>
                                     <?php endif; ?>
                                 </td>
-                                <td>Đơn từ <?= number_format($row['min_order_value']) ?>đ</td>
+                                <td><?= number_format($row['max_discount']) ?>đ</td>
+                                <td><?= number_format($row['min_order_value']) ?>đ</td>
                                 <td><?= date('d/m/Y', strtotime($row['expiry_date'])) ?></td>
-                                <td>
+                                <td style="text-align: center;">
                                     <button class="btn-success"
-                                        onclick="openAssignModal(<?= $row['id'] ?>, '<?= $row['code'] ?>')">
-                                        <i class="fa fa-gift"></i> Gán mã
+                                        onclick="openAssignModal(<?= $row['id'] ?>, '<?= $row['code'] ?>')"
+                                        style="margin-bottom: 5px; width: 100%; display: block;">
+                                        <i class="fa-solid fa-users"></i> Gán
+                                    </button>
+
+                                    <button type="button" class="btn-primary"
+                                        onclick="editVoucher(<?= $row['id'] ?>, '<?= htmlspecialchars($row['code']) ?>', '<?= $row['type'] ?>', <?= $row['discount_amount'] ?>, <?= $row['max_discount'] ?>, <?= $row['min_order_value'] ?>, '<?= $row['expiry_date'] ?>')"
+                                        style="margin-bottom: 5px; width: 100%; display: block; box-sizing: border-box; padding: 8px 12px; border-radius: 5px; font-size: 13px; border: none; cursor: pointer;">
+                                        <i class="fa-solid fa-pen-to-square"></i> Sửa
+                                    </button>
+
+                                    <button type="button"
+                                        style="background: #d70018; color: #fff; width: 100%; display: block; box-sizing: border-box; padding: 8px 12px; border-radius: 5px; font-size: 13px; font-weight: bold; border: none; cursor: pointer; transition: 0.2s;"
+                                        onclick="confirmDelete(<?= $row['id'] ?>)">
+                                        <i class="fa-solid fa-trash-can"></i> Xóa
                                     </button>
                                 </td>
                             </tr>
                             <?php endwhile; ?>
                             <?php else: ?>
                             <tr>
-                                <td colspan="5" style="text-align: center; color: #888; padding: 30px;">Chưa có mã giảm
+                                <td colspan="7" style="text-align: center; color: #888; padding: 30px;">Chưa có mã giảm
                                     giá nào được tạo.</td>
                             </tr>
                             <?php endif; ?>
