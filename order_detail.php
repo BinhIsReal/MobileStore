@@ -69,8 +69,7 @@ $allow_cancel = ($current_status == 'pending');
                 </div>
 
                 <?php if($allow_cancel): ?>
-                <button onclick="confirmCancel(<?= $order_id ?>)"
-                    style="background:#fff; border:1px solid #d70018; color:#d70018; padding:8px 15px; border-radius:4px; font-weight:bold; cursor:pointer;">
+                <button class="btn-cancel-order" onclick="confirmCancel(<?= $order_id ?>)">
                     <i class="fa fa-trash"></i> Hủy đơn hàng
                 </button>
                 <?php elseif($current_status == 'shipping'): ?>

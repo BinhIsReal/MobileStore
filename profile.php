@@ -1,6 +1,7 @@
 <?php
 session_start();
 include 'config/db.php';
+include_once __DIR__ . '/includes/security.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -33,6 +34,8 @@ $join_date = !empty($user['created_at']) ? date('d/m/Y', strtotime($user['create
 
 <head>
     <title>Hồ sơ của tôi</title>
+    <!-- CSRF Meta Tag -->
+    <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/profile.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">

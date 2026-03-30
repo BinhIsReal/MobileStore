@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+include_once '../includes/security.php';
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') { 
     header("Location: ../login.php"); 
     exit(); 
@@ -20,8 +21,23 @@ if ($id > 0) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $name = $_POST['name'];
-    $price = floatval($_POST['price']);
+    // SECURITY: Xác thực CSRF Token
+    csrf_verify_or_redirect('product_form.php' . ($id > 0 ? "?id=$id" : ''));
+
+    // SECURITY: trim() và validate bắt buộc trước khi xử lý
+    $name = trim($_POST['name'] ?? '');
+    $price = floatval($_POST['price'] ?? 0);
+
+    if (empty($name)) {
+        $msg_type    = 'error';
+        $msg_content = 'Tên sản phẩm không được để trống!';
+        goto render_form;
+    }
+    if ($price <= 0) {
+        $msg_type    = 'error';
+        $msg_content = 'Giá sản phẩm không hợp lệ!';
+        goto render_form;
+    }
     
     // Xử lý giá khuyến mãi
     $sale_input = $_POST['sale_price'] ?? 0;
@@ -37,15 +53,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     $brand_id = intval($_POST['brand_id']);
     $category_id = intval($_POST['category_id']);
-    $colors = $_POST['colors'];
-    $desc = $_POST['description'];
+    $colors = trim($_POST['colors'] ?? '');
+    // SECURITY: Không dùng htmlspecialchars ở đây vì sẽ mã hóa khi in ra HTML; strip_tags đủ để loại XSS ở field text
+    $desc = trim($_POST['description'] ?? '');
     
     // Xử lý ảnh
     $image = $_POST['image_link'] ?? '';
-    if (isset($_FILES['image_file']) && $_FILES['image_file']['error'] == 0) {
-        $target = "../assets/img/" . basename($_FILES['image_file']['name']);
-        if (move_uploaded_file($_FILES['image_file']['tmp_name'], $target)) {
-            $image = basename($_FILES['image_file']['name']);
+    if (isset($_FILES['image_file']) && $_FILES['image_file']['error'] === 0) {
+        // SECURITY: Chỉ chấp nhận các định dạng ảnh hợp lệ
+        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        $allowed_mimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        $file_ext = strtolower(pathinfo($_FILES['image_file']['name'], PATHINFO_EXTENSION));
+        $file_mime = mime_content_type($_FILES['image_file']['tmp_name']);
+
+        if (in_array($file_ext, $allowed_exts) && in_array($file_mime, $allowed_mimes)) {
+            // SECURITY: Đặt lại tên file an toàn (không dùng tên gốc từ user)
+            $safe_name = 'product_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $file_ext;
+            $target = '../assets/img/' . $safe_name;
+            if (move_uploaded_file($_FILES['image_file']['tmp_name'], $target)) {
+                $image = $safe_name;
+            }
         }
     }
     if (empty($image) && $product) {
@@ -87,7 +114,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         // Xử lý Gallery
-        $conn->query("DELETE FROM product_gallery WHERE product_id = $current_pid");
+        // FIXED: Dùng Prepared Statement thay vì ghép $current_pid
+        $stmt_del_gal = $conn->prepare("DELETE FROM product_gallery WHERE product_id = ?");
+        $stmt_del_gal->bind_param("i", $current_pid);
+        $stmt_del_gal->execute();
+        $stmt_del_gal->close();
+
         if (!empty($_POST['gallery'])) {
             $stmt_gal = $conn->prepare("INSERT INTO product_gallery (product_id, image_url) VALUES (?, ?)");
             foreach ($_POST['gallery'] as $img_url) {
@@ -104,13 +136,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $msg_content = 'Lưu sản phẩm thành công! Đang chuyển hướng...';
     } else {
         $msg_type = 'error';
-        $msg_content = 'Lỗi DB: ' . $stmt->error;
+        // SECURITY: Không expose chi tiết lỗi DB ra ngoài, ghi log thay thế
+        error_log("Product form DB Error: " . $stmt->error);
+        $msg_content = 'Lỗi hệ thống, vui lòng thử lại!';
     }
 }
 
-$brands_res = $conn->query("SELECT * FROM brands");
-$cats_res = $conn->query("SELECT * FROM categories");
-$spec_data = ($product && !empty($product['specs'])) ? json_decode($product['specs'], true) : [];
+// FIXED: Dùng Prepared Statement thay vì ghép biến $id trực tiếp
+$brands_res = $conn->query("SELECT * FROM brands ORDER BY name ASC");
+$cats_res   = $conn->query("SELECT * FROM categories ORDER BY name ASC");
+$spec_data  = ($product && !empty($product['specs'])) ? json_decode($product['specs'], true) : [];
+render_form:
 ?>
 
 <!DOCTYPE html>
@@ -135,6 +171,7 @@ $spec_data = ($product && !empty($product['specs'])) ? json_decode($product['spe
             </div>
 
             <form method="POST" enctype="multipart/form-data" id="product-form">
+                <?= csrf_field() ?>
                 <div class="form-section">
                     <h4 class="form-sec-title">1. Thông tin & Giá bán</h4>
                     <div class="grid-2">
@@ -201,9 +238,13 @@ $spec_data = ($product && !empty($product['specs'])) ? json_decode($product['spe
                     <div id="gallery-wrapper">
                         <?php 
                         if ($id > 0) {
-                            $res_gal = $conn->query("SELECT image_url FROM product_gallery WHERE product_id = $id");
-                            if($res_gal && $res_gal->num_rows > 0) {
-                                while($g = $res_gal->fetch_assoc()): 
+                            // FIXED: Dùng Prepared Statement
+                            $res_gal = $conn->prepare("SELECT image_url FROM product_gallery WHERE product_id = ?");
+                            $res_gal->bind_param("i", $id);
+                            $res_gal->execute();
+                            $res_gal = $res_gal->get_result();
+                            if ($res_gal && $res_gal->num_rows > 0) {
+                                while ($g = $res_gal->fetch_assoc()): 
                         ?>
                         <div class="gallery-row">
                             <input type="text" name="gallery[]" class="form-control"
@@ -254,9 +295,10 @@ $spec_data = ($product && !empty($product['specs'])) ? json_decode($product['spe
     <script>
     $(document).ready(function() {
         showToast({
-            title: "<?= $msg_type == 'success' ? 'Thành công' : 'Lỗi' ?>",
-            message: "<?= $msg_content ?>",
-            type: "<?= $msg_type ?>"
+            title: "<?= $msg_type === 'success' ? 'Thành công' : 'Lỗi' ?>",
+            // SECURITY: Escape nội dung trước khi nhúng vào JS string
+            message: "<?= htmlspecialchars($msg_content, ENT_QUOTES, 'UTF-8') ?>",
+            type: "<?= htmlspecialchars($msg_type, ENT_QUOTES, 'UTF-8') ?>"
         });
         <?php if ($msg_type == 'success'): ?>
         setTimeout(function() {

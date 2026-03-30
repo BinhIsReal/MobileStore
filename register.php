@@ -1,8 +1,14 @@
+<?php 
+session_start();
+include_once __DIR__ . '/includes/security.php';
+?>
 <!DOCTYPE html>
 <html lang="vi">
 
 <head>
     <title>Đăng ký tài khoản</title>
+    <!-- CSRF Meta Tag -->
+    <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
     <link rel="stylesheet" href="assets/css/style.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
@@ -27,6 +33,18 @@
     </div>
 
     <script>
+    $(document).ajaxSend(function(event, jqXHR, settings) {
+        if (settings.type === "POST" || settings.type === "post") {
+            const token = $('meta[name="csrf-token"]').attr("content");
+            if (token) {
+                jqXHR.setRequestHeader("X-CSRF-Token", token);
+                if (typeof settings.data === "string") {
+                    settings.data += "&csrf_token=" + encodeURIComponent(token);
+                }
+            }
+        }
+    });
+
     function register() {
         let u = $('#reg-user').val();
         let p = $('#reg-pass').val();

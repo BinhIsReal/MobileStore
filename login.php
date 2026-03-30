@@ -1,9 +1,14 @@
-<?php session_start(); ?>
+<?php 
+session_start();
+include_once __DIR__ . '/includes/security.php';
+?>
 <!DOCTYPE html>
 <html lang="vi">
 
 <head>
     <title>Đăng nhập - MobileStore</title>
+    <!-- CSRF Meta Tag -->
+    <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 
@@ -28,6 +33,18 @@
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
+    $(document).ajaxSend(function(event, jqXHR, settings) {
+        if (settings.type === "POST" || settings.type === "post") {
+            const token = $('meta[name="csrf-token"]').attr("content");
+            if (token) {
+                jqXHR.setRequestHeader("X-CSRF-Token", token);
+                if (typeof settings.data === "string") {
+                    settings.data += "&csrf_token=" + encodeURIComponent(token);
+                }
+            }
+        }
+    });
+
     function login() {
         let u = $('#username').val();
         let p = $('#password').val();
@@ -47,4 +64,4 @@
     </script>
 </body>
 
-</html>
+</html>

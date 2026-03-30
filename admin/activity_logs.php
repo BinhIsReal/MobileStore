@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+include_once '../includes/security.php';
 
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../login.php");

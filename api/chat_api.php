@@ -4,6 +4,7 @@ ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
 include '../config/db.php';
+include_once '../includes/security.php';
 header('Content-Type: application/json');
 
 $action = $_POST['action'] ?? '';
@@ -44,6 +45,8 @@ function extractPrice($str) {
 // 1. GỬI TIN NHẮN
 // ---------------------------------------------------------
 if ($action == 'send_message') {
+    // SECURITY: Xác thực CSRF Token
+    csrf_verify_or_die();
     $msg = trim($_POST['message'] ?? '');
 
     // CHECK QUYỀN: Chat Shop bắt buộc đăng nhập
@@ -324,6 +327,8 @@ if ($action == 'get_conversation') {
 
 // 3. ADMIN GỬI TIN NHẮN
 if ($action == 'send_msg') {
+    // SECURITY: Xác thực CSRF Token
+    csrf_verify_or_die();
     $message = $_POST['message'] ?? '';
     $receiver_id = intval($_POST['receiver_id'] ?? 0);
     
@@ -355,6 +360,8 @@ if ($action == 'check_notification') {
 
 // 5. ĐÁNH DẤU ĐÃ ĐỌC
 if ($action == 'mark_read') {
+    // SECURITY: Xác thực CSRF Token
+    csrf_verify_or_die();
     $target_id = intval($_POST['target_id'] ?? 0);
     if ($target_id > 0) {
         $conn->query("UPDATE chat_messages SET is_read = 1 WHERE sender_id = $target_id AND receiver_id = 0");
@@ -364,6 +371,8 @@ if ($action == 'mark_read') {
 }
 
 if ($action == 'mark_read_user' && $real_user_id > 0) {
+    // SECURITY: Xác thực CSRF Token
+    csrf_verify_or_die();
     $conn->query("UPDATE chat_messages SET is_read=1 WHERE receiver_id=$real_user_id AND sender_id=0");
     echo json_encode(['status'=>'success']); exit;
 }

@@ -1,30 +1,46 @@
 <?php
 session_start();
 include '../config/db.php';
+include_once '../includes/security.php';
 
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') { 
     header("Location: ../login.php"); 
     exit(); 
 }
 if (isset($_GET['delete_id'])) {
-    $del_id = intval($_GET['delete_id']);
+    $del_id = (int)$_GET['delete_id'];
+    if ($del_id <= 0) {
+        header("Location: products.php");
+        exit;
+    }
+
+    // FIXED: Dùng Prepared Statement lấy dữ liệu cũ
+    $stmt_old = $conn->prepare("SELECT * FROM products WHERE id = ?");
+    $stmt_old->bind_param("i", $del_id);
+    $stmt_old->execute();
+    $old_data = $stmt_old->get_result()->fetch_assoc();
+    $stmt_old->close();
     
-    // TRỢ GIÚP LOG: Lấy dữ liệu cũ trước khi xóa
-    $stmt_old = $conn->query("SELECT * FROM products WHERE id = $del_id");
-    $old_data = $stmt_old->fetch_assoc();
-    
-    $conn->query("DELETE FROM product_gallery WHERE product_id = $del_id");
+    // FIXED: Dùng Prepared Statement xóa gallery
+    $stmt_gal = $conn->prepare("DELETE FROM product_gallery WHERE product_id = ?");
+    $stmt_gal->bind_param("i", $del_id);
+    $stmt_gal->execute();
+    $stmt_gal->close();
+
     $stmt = $conn->prepare("DELETE FROM products WHERE id = ?");
     $stmt->bind_param("i", $del_id);
     if ($stmt->execute()) {
-        // GHI LOG THAO TÁC XÓA SẢN PHẨM
+        $stmt->close();
         include_once '../includes/admin_logger.php';
         $product_name = $old_data['name'] ?? "Sản phẩm ID #$del_id";
         logAdminAction($conn, 'Xóa Sản Phẩm', 'admin/products.php', "Xóa sản phẩm: $product_name", $old_data, null);
-        
-        echo "<script>alert('Đã xóa sản phẩm!'); window.location='products.php';</script>";
+        // SECURITY: Dùng header redirect thay vì in script
+        header("Location: products.php?msg=deleted");
+        exit;
     } else {
-        echo "<script>alert('Lỗi xóa: " . $conn->error . "');</script>";
+        error_log("Delete product error: " . $stmt->error);
+        header("Location: products.php?msg=error");
+        exit;
     }
 }
 

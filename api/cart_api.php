@@ -1,122 +1,214 @@
 <?php
 session_start();
-// Hiển thị lỗi để debug nếu cần
-ini_set('display_errors', 0);
-error_reporting(E_ALL);
-
 include '../config/db.php';
+include_once '../includes/security.php';
 header('Content-Type: application/json');
 
-$action = $_POST['action'] ?? '';
-$user_id = $_SESSION['user_id'] ?? 0;
+// =============================================
+// SECURITY: Không bao giờ expose lỗi ra ngoài
+// =============================================
+ini_set('display_errors', 0);
+error_reporting(0);
 
-// 1. ADD
-if ($action == 'add') {
-    $pid = intval($_POST['product_id']);
-    $qty = intval($_POST['quantity'] ?? 1);
+$action  = $_POST['action'] ?? '';
+$user_id = (int)($_SESSION['user_id'] ?? 0);
+
+// SECURITY: Xác thực CSRF Token cho mọi action thay đổi trạng thái giỏ hàng
+$state_changing_actions = ['add', 'delete', 'delete_list', 'delete_all', 'update_qty', 'checkout'];
+if (in_array($action, $state_changing_actions, true)) {
+    csrf_verify_or_die();
+}
+
+// -----------------------------------------------
+// 1. ADD TO CART
+// -----------------------------------------------
+if ($action === 'add') {
+    $pid = (int)($_POST['product_id'] ?? 0);
+    $qty = max(1, (int)($_POST['quantity'] ?? 1));
+
+    if ($pid <= 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Sản phẩm không hợp lệ']);
+        exit;
+    }
 
     if ($user_id > 0) {
-        $check = $conn->query("SELECT quantity FROM cart WHERE user_id=$user_id AND product_id=$pid");
-        if ($check->num_rows > 0) 
-            $conn->query("UPDATE cart SET quantity=quantity+$qty WHERE user_id=$user_id AND product_id=$pid");
-        else 
-            $conn->query("INSERT INTO cart (user_id, product_id, quantity) VALUES ($user_id, $pid, $qty)");
+        // FIXED: Dùng Prepared Statement thay vì ghép chuỗi trực tiếp
+        $stmt = $conn->prepare("SELECT quantity FROM cart WHERE user_id=? AND product_id=?");
+        $stmt->bind_param("ii", $user_id, $pid);
+        $stmt->execute();
+        $check = $stmt->get_result();
+        $stmt->close();
+
+        if ($check->num_rows > 0) {
+            $stmt = $conn->prepare("UPDATE cart SET quantity=quantity+? WHERE user_id=? AND product_id=?");
+            $stmt->bind_param("iii", $qty, $user_id, $pid);
+        } else {
+            $stmt = $conn->prepare("INSERT INTO cart (user_id, product_id, quantity) VALUES (?,?,?)");
+            $stmt->bind_param("iii", $user_id, $pid, $qty);
+        }
+        $stmt->execute();
+        $stmt->close();
     } else {
         if (!isset($_SESSION['cart'][$pid])) $_SESSION['cart'][$pid] = 0;
         $_SESSION['cart'][$pid] += $qty;
     }
-    echo json_encode(['status'=>'success']);
+    echo json_encode(['status' => 'success']);
     exit;
 }
 
-// 2. COUNT
-if ($action == 'count') {
+// -----------------------------------------------
+// 2. COUNT CART
+// -----------------------------------------------
+if ($action === 'count') {
     $c = 0;
     if ($user_id > 0) {
-        $r = $conn->query("SELECT SUM(quantity) as t FROM cart WHERE user_id=$user_id")->fetch_assoc();
-        $c = $r['t'] ?? 0;
+        $stmt = $conn->prepare("SELECT SUM(quantity) as t FROM cart WHERE user_id=?");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $r = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        $c = (int)($r['t'] ?? 0);
     } else {
-        if(isset($_SESSION['cart'])) $c = array_sum($_SESSION['cart']);
+        $c = isset($_SESSION['cart']) ? (int)array_sum($_SESSION['cart']) : 0;
     }
     echo json_encode(['count' => $c]);
     exit;
 }
 
-// 3. DELETE
-if ($action == 'delete') {
-    $pid = intval($_POST['id']);
-    if ($user_id > 0) $conn->query("DELETE FROM cart WHERE user_id=$user_id AND product_id=$pid");
-    else unset($_SESSION['cart'][$pid]);
-    echo json_encode(['status'=>'success']);
+// -----------------------------------------------
+// 3. DELETE ONE ITEM
+// -----------------------------------------------
+if ($action === 'delete') {
+    $pid = (int)($_POST['id'] ?? 0);
+    if ($user_id > 0) {
+        $stmt = $conn->prepare("DELETE FROM cart WHERE user_id=? AND product_id=?");
+        $stmt->bind_param("ii", $user_id, $pid);
+        $stmt->execute();
+        $stmt->close();
+    } else {
+        unset($_SESSION['cart'][$pid]);
+    }
+    echo json_encode(['status' => 'success']);
     exit;
 }
 
+// -----------------------------------------------
 // 4. DELETE LIST
-if ($action == 'delete_list') {
-    $ids = json_decode($_POST['ids'], true);
+// -----------------------------------------------
+if ($action === 'delete_list') {
+    $raw_ids = json_decode($_POST['ids'] ?? '[]', true);
+    if (!is_array($raw_ids)) { echo json_encode(['status' => 'error']); exit; }
+
+    // FIXED: ép kiểu int cho từng phần tử, loại bỏ giá trị 0/âm
+    $ids = array_filter(array_map('intval', $raw_ids), fn($v) => $v > 0);
+
     if (!empty($ids)) {
         if ($user_id > 0) {
-            $ids_str = implode(',', array_map('intval', $ids));
-            $conn->query("DELETE FROM cart WHERE user_id=$user_id AND product_id IN ($ids_str)");
+            // Dùng placeholder động thay vì implode trực tiếp
+            $placeholders = implode(',', array_fill(0, count($ids), '?'));
+            $types  = str_repeat('i', count($ids) + 1);
+            $params = array_merge([$user_id], array_values($ids));
+            $stmt   = $conn->prepare("DELETE FROM cart WHERE user_id=? AND product_id IN ($placeholders)");
+            // FIXED: dùng call_user_func_array thay vì spread operator để pass by reference
+            $bind_args = [$types];
+            foreach ($params as &$param) $bind_args[] = &$param;
+            call_user_func_array([$stmt, 'bind_param'], $bind_args);
+            $stmt->execute();
+            $stmt->close();
         } else {
-            foreach($ids as $pid) if(isset($_SESSION['cart'][$pid])) unset($_SESSION['cart'][$pid]);
+            foreach ($ids as $pid) unset($_SESSION['cart'][$pid]);
         }
     }
-    echo json_encode(['status'=>'success']);
+    echo json_encode(['status' => 'success']);
     exit;
 }
 
+// -----------------------------------------------
 // 5. DELETE ALL
-if ($action == 'delete_all') {
-    if ($user_id > 0) $conn->query("DELETE FROM cart WHERE user_id=$user_id");
-    else unset($_SESSION['cart']);
-    echo json_encode(['status'=>'success']);
+// -----------------------------------------------
+if ($action === 'delete_all') {
+    if ($user_id > 0) {
+        $stmt = $conn->prepare("DELETE FROM cart WHERE user_id=?");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $stmt->close();
+    } else {
+        unset($_SESSION['cart']);
+    }
+    echo json_encode(['status' => 'success']);
     exit;
 }
 
-// 6. UPDATE QTY (QUAN TRỌNG: Trả về new_qty để JS cập nhật)
-if ($action == 'update_qty') {
-    $pid = intval($_POST['product_id']);
-    $delta = intval($_POST['delta']);
+// -----------------------------------------------
+// 6. UPDATE QUANTITY
+// -----------------------------------------------
+if ($action === 'update_qty') {
+    $pid   = (int)($_POST['product_id'] ?? 0);
+    $delta = (int)($_POST['delta'] ?? 0);
     $new_qty = 0;
-    
+
     if ($user_id > 0) {
-        $curr = $conn->query("SELECT quantity FROM cart WHERE user_id=$user_id AND product_id=$pid")->fetch_assoc();
+        $stmt = $conn->prepare("SELECT quantity FROM cart WHERE user_id=? AND product_id=?");
+        $stmt->bind_param("ii", $user_id, $pid);
+        $stmt->execute();
+        $curr = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
         if ($curr) {
             $new_qty = $curr['quantity'] + $delta;
-            if ($new_qty >= 1) $conn->query("UPDATE cart SET quantity=$new_qty WHERE user_id=$user_id AND product_id=$pid");
-            else $new_qty = 1;
+            if ($new_qty >= 1) {
+                $stmt = $conn->prepare("UPDATE cart SET quantity=? WHERE user_id=? AND product_id=?");
+                $stmt->bind_param("iii", $new_qty, $user_id, $pid);
+                $stmt->execute();
+                $stmt->close();
+            } else {
+                $new_qty = 1;
+            }
         }
     } else {
         if (isset($_SESSION['cart'][$pid])) {
-            $_SESSION['cart'][$pid] += $delta;
-            if ($_SESSION['cart'][$pid] < 1) $_SESSION['cart'][$pid] = 1;
+            $_SESSION['cart'][$pid] = max(1, $_SESSION['cart'][$pid] + $delta);
             $new_qty = $_SESSION['cart'][$pid];
         }
     }
-    echo json_encode(['status'=>'success', 'new_qty' => $new_qty]);
+    echo json_encode(['status' => 'success', 'new_qty' => $new_qty]);
     exit;
 }
 
+// -----------------------------------------------
 // 7. GET CART
-if ($action == 'get_cart') {
+// -----------------------------------------------
+if ($action === 'get_cart') {
     $data = [];
     if ($user_id > 0) {
-        $sql = "SELECT p.id as product_id, p.name, p.image, p.price, c.quantity 
-                FROM cart c JOIN products p ON c.product_id = p.id 
-                WHERE c.user_id = $user_id";
-        $res = $conn->query($sql);
-        while($r = $res->fetch_assoc()) $data[] = $r;
+        $stmt = $conn->prepare("SELECT p.id as product_id, p.name, p.image, p.price, c.quantity
+                                FROM cart c JOIN products p ON c.product_id = p.id
+                                WHERE c.user_id = ?");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        while ($r = $res->fetch_assoc()) $data[] = $r;
+        $stmt->close();
     } else {
-        if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
-            $ids = implode(',', array_keys($_SESSION['cart']));
-            if($ids){
-                $sql = "SELECT id as product_id, name, image, price FROM products WHERE id IN ($ids)";
-                $res = $conn->query($sql);
-                while($r = $res->fetch_assoc()) {
+        if (!empty($_SESSION['cart'])) {
+            // FIXED: array_keys của session đã được ép int khi lưu, nhưng phòng ngừa thêm
+            $ids = array_filter(array_map('intval', array_keys($_SESSION['cart'])), fn($v) => $v > 0);
+            if ($ids) {
+                $placeholders = implode(',', array_fill(0, count($ids), '?'));
+                $types  = str_repeat('i', count($ids));
+                $vals   = array_values($ids);
+                $stmt   = $conn->prepare("SELECT id as product_id, name, image, price FROM products WHERE id IN ($placeholders)");
+                // FIXED: call_user_func_array thay vì spread operator
+                $bind_args = [$types];
+                foreach ($vals as &$val) $bind_args[] = &$val;
+                call_user_func_array([$stmt, 'bind_param'], $bind_args);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                while ($r = $res->fetch_assoc()) {
                     $r['quantity'] = $_SESSION['cart'][$r['product_id']];
                     $data[] = $r;
                 }
+                $stmt->close();
             }
         }
     }
@@ -124,70 +216,93 @@ if ($action == 'get_cart') {
     exit;
 }
 
+// -----------------------------------------------
 // 8. CHECKOUT
-if ($action == 'checkout') {
-    if ($user_id == 0) { echo json_encode(['status'=>'error', 'message'=>'Vui lòng đăng nhập!']); exit; }
-    
-    $info = $_POST['info'];
-    $items = json_decode($_POST['items'], true);
-    
-    if (empty($items)) { echo json_encode(['status'=>'error', 'message'=>'Giỏ hàng rỗng']); exit; }
+// -----------------------------------------------
+if ($action === 'checkout') {
+    // SECURITY: Bắt buộc đăng nhập mới được checkout
+    if ($user_id === 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Vui lòng đăng nhập!']);
+        exit;
+    }
 
-    $total = 0;
-    
-    // --- BƯỚC 1: TÍNH TỔNG TIỀN (Server side) ---
-    foreach($items as $it) {
-        $pid = intval($it['product_id']);
-        $qty = intval($it['quantity']);
-        
-        // Lấy cả giá gốc và giá giảm
-        $p = $conn->query("SELECT price, sale_price FROM products WHERE id=$pid")->fetch_assoc();
-        
-        if($p) {
-            // Ưu tiên giá sale nếu có
-            $unit_price = ($p['sale_price'] > 0) ? $p['sale_price'] : $p['price'];
-            $total += $unit_price * $qty;
+    $info  = $_POST['info'] ?? [];
+    $items = json_decode($_POST['items'] ?? '[]', true);
+
+    if (empty($items) || !is_array($items)) {
+        echo json_encode(['status' => 'error', 'message' => 'Giỏ hàng rỗng']);
+        exit;
+    }
+
+    // SECURITY: Validate & Sanitize thông tin người dùng trước khi lưu
+    $buyer_name    = trim(htmlspecialchars($info['name']    ?? '', ENT_QUOTES, 'UTF-8'));
+    $buyer_phone   = trim(preg_replace('/[^0-9+\-]/', '', $info['phone']   ?? ''));
+    $buyer_address = trim(htmlspecialchars($info['address'] ?? '', ENT_QUOTES, 'UTF-8'));
+
+    if (empty($buyer_name) || empty($buyer_phone) || empty($buyer_address)) {
+        echo json_encode(['status' => 'error', 'message' => 'Thông tin nhận hàng không đầy đủ']);
+        exit;
+    }
+
+    // SECURITY: Whitelist payment method
+    $allowed_methods  = ['cod', 'banking'];
+    $payment_method   = in_array($_POST['payment_method'] ?? '', $allowed_methods) ? $_POST['payment_method'] : 'cod';
+    $discount_amount  = 0;
+    $total            = 0;
+
+    // BƯỚC 1: Tính tổng tiền Server-side (an toàn, không tin giá từ client)
+    $valid_items = [];
+    foreach ($items as $it) {
+        $pid = (int)($it['product_id'] ?? 0);
+        $qty = max(1, (int)($it['quantity'] ?? 1));
+        if ($pid <= 0) continue;
+
+        $stmt = $conn->prepare("SELECT price, sale_price FROM products WHERE id=?");
+        $stmt->bind_param("i", $pid);
+        $stmt->execute();
+        $p = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if ($p) {
+            $unit_price     = ($p['sale_price'] > 0) ? (float)$p['sale_price'] : (float)$p['price'];
+            $total         += $unit_price * $qty;
+            $valid_items[]  = ['pid' => $pid, 'qty' => $qty, 'price' => $unit_price];
         }
     }
-    
-    $payment_method = $_POST['payment_method'] ?? 'cod'; 
-    $discount_amount = 0; 
-    
-    $sql = "INSERT INTO orders (user_id, name, phone, address, total_price, discount_amount, status, payment_method, payment_status, created_at) 
-    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, 'unpaid', NOW())";
+
+    if (empty($valid_items)) {
+        echo json_encode(['status' => 'error', 'message' => 'Không có sản phẩm hợp lệ']);
+        exit;
+    }
+
+    // BƯỚC 2: Tạo đơn hàng
+    $sql  = "INSERT INTO orders (user_id, name, phone, address, total_price, discount_amount, status, payment_method, payment_status, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, 'unpaid', NOW())";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("isssdds", $user_id, $info['name'], $info['phone'], $info['address'], $total, $discount_amount, $payment_method);
+    $stmt->bind_param("isssdds", $user_id, $buyer_name, $buyer_phone, $buyer_address, $total, $discount_amount, $payment_method);
 
     if ($stmt->execute()) {
-        $oid = $conn->insert_id;
-        $stmt_d = $conn->prepare("INSERT INTO order_details (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)");
-        
-        // --- BƯỚC 2: LƯU CHI TIẾT ĐƠN HÀNG ---
-        foreach($items as $it) {
-            $pid = intval($it['product_id']);
-            $qty = intval($it['quantity']);
-            
-            $p = $conn->query("SELECT price, sale_price FROM products WHERE id=$pid")->fetch_assoc();
-            if($p) {
-                // Lưu đúng giá thực tế đã mua
-                $unit_price = ($p['sale_price'] > 0) ? $p['sale_price'] : $p['price'];
-                
-                $stmt_d->bind_param("iiid", $oid, $pid, $qty, $unit_price);
-                $stmt_d->execute();
-                
-                // Xóa sản phẩm khỏi giỏ hàng
-                $conn->query("DELETE FROM cart WHERE user_id=$user_id AND product_id=$pid");
-            }   
+        $oid   = $conn->insert_id;
+        $stmt->close();
+
+        $stmt_d = $conn->prepare("INSERT INTO order_details (order_id, product_id, quantity, price) VALUES (?,?,?,?)");
+        $stmt_del = $conn->prepare("DELETE FROM cart WHERE user_id=? AND product_id=?");
+
+        foreach ($valid_items as $v) {
+            $stmt_d->bind_param("iiid", $oid, $v['pid'], $v['qty'], $v['price']);
+            $stmt_d->execute();
+
+            $stmt_del->bind_param("ii", $user_id, $v['pid']);
+            $stmt_del->execute();
         }
         $stmt_d->close();
-        
-        echo json_encode([
-            'status' => 'success',
-            'order_id' => $oid,       
-            'total_money' => $total  
-        ]);
+        $stmt_del->close();
+
+        echo json_encode(['status' => 'success', 'order_id' => $oid, 'total_money' => $total]);
     } else {
-        echo json_encode(['status'=>'error', 'message'=>'DB Error: '.$stmt->error]);
+        // SECURITY: Không expose chi tiết lỗi DB ra ngoài
+        error_log("Checkout DB Error: " . $stmt->error);
+        echo json_encode(['status' => 'error', 'message' => 'Đặt hàng thất bại, vui lòng thử lại.']);
     }
     exit;
 }

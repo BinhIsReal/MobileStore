@@ -1,0 +1,37 @@
+# ============================================================
+# .htaccess — Good_Phone Security Rules
+# Chặn mọi truy cập trực tiếp vào thư mục /api/ từ browser
+# Chỉ cho phép gọi nội bộ từ PHP (XMLHttpRequest/Fetch/AJAX)
+# ============================================================
+
+# 1. Kiểm tra header X-Requested-With (AJAX) hoặc Referer hợp lệ
+# Nếu không có header này → redirect về trang chủ
+
+RewriteEngine On
+
+# Cho phép file OPTIONS (preflight CORS nếu cần)
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule .* - [L]
+
+# Chặn truy cập browser trực tiếp (không có X-Requested-With)
+# Các request từ jQuery AJAX sẽ có header X-Requested-With: XMLHttpRequest
+RewriteCond %{HTTP:X-Requested-With} !xmlhttprequest [NC]
+RewriteCond %{HTTP_REFERER} !^https?://%{HTTP_HOST}/ [NC]
+RewriteRule ^ - [F,L]
+
+# 2. Cấm xem directory listing
+Options -Indexes
+
+# 3. Cấm các extension nguy hiểm
+<FilesMatch "\.(sh|bash|py|rb|pl|env|log|sql|bak|htpasswd)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# 4. Header bảo mật
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

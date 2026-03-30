@@ -1,7 +1,12 @@
 <?php
 session_start();
 include '../config/db.php';
-if (!isset($_SESSION['role']) || $_SESSION['role'] != 'admin') header("Location: ../login.php");
+include_once '../includes/security.php';
+// SECURITY: Kiểm tra quyền admin + exit() bắt buộc sau header
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    header("Location: ../login.php");
+    exit();
+}
 ?>
 <!DOCTYPE html>
 <html lang="vi">

@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+include_once '../includes/security.php';
 
 // Kiểm tra quyền admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
@@ -13,26 +14,38 @@ $conn->query("DELETE FROM vouchers WHERE expiry_date < CURDATE() AND expiry_date
 
 // 2. Xử lý Xóa voucher thủ công khi click nút Xóa
 if (isset($_GET['delete_id'])) {
-    $del_id = intval($_GET['delete_id']);
+    $del_id = (int)$_GET['delete_id'];
+    if ($del_id <= 0) { header("Location: vouchers.php"); exit; }
     
-    // TRỢ GIÚP LOG: Lấy dữ liệu cũ trước khi xóa
-    $stmt_old = $conn->query("SELECT * FROM vouchers WHERE id = $del_id");
-    $old_data = $stmt_old->fetch_assoc();
+    // FIXED: Dùng Prepared Statement lấy dữ liệu cũ
+    $stmt_old = $conn->prepare("SELECT * FROM vouchers WHERE id = ?");
+    $stmt_old->bind_param("i", $del_id);
+    $stmt_old->execute();
+    $old_data = $stmt_old->get_result()->fetch_assoc();
+    $stmt_old->close();
     
-    // Xóa các bản ghi liên kết trong user_vouchers trước (tránh lỗi khóa ngoại)
-    $conn->query("DELETE FROM user_vouchers WHERE voucher_id = $del_id");
+    // FIXED: Prepared Statement xóa user_vouchers liên kết
+    $stmt_uv = $conn->prepare("DELETE FROM user_vouchers WHERE voucher_id = ?");
+    $stmt_uv->bind_param("i", $del_id);
+    $stmt_uv->execute();
+    $stmt_uv->close();
     
-    // Xóa voucher chính
-    if ($conn->query("DELETE FROM vouchers WHERE id = $del_id")) {
-        // GHI LOG THAO TÁC XÓA VOUCHER
+    // FIXED: Prepared Statement xóa voucher chính
+    $stmt_del = $conn->prepare("DELETE FROM vouchers WHERE id = ?");
+    $stmt_del->bind_param("i", $del_id);
+    if ($stmt_del->execute()) {
+        $stmt_del->close();
         include_once '../includes/admin_logger.php';
         $v_code = $old_data['code'] ?? "ID $del_id";
         logAdminAction($conn, 'Xóa Voucher', 'admin/vouchers.php', "Xóa mã giảm giá: $v_code", $old_data, null);
         
-        echo "<script>window.location='vouchers.php';</script>";
+        header("Location: vouchers.php?msg=deleted");
         exit;
     } else {
-        echo "<script>alert('Lỗi xóa voucher: " . $conn->error . "');</script>";
+        // SECURITY: Không expose lỗi DB, ghi log
+        error_log("Delete voucher error: " . $stmt_del->error);
+        header("Location: vouchers.php?msg=error");
+        exit;
     }
 }
 

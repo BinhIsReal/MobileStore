@@ -1,0 +1,31 @@
+# ============================================================
+# .htaccess — Good_Phone Root Security Config
+# ============================================================
+
+Options -Indexes
+
+<IfModule mod_headers.c>
+    # Chống XSS trên browser cũ
+    Header set X-XSS-Protection "1; mode=block"
+    # Chống MIME sniffing
+    Header set X-Content-Type-Options "nosniff"
+    # Chặn site bị nhúng trong iframe của domain khác (Chống Clickjacking)
+    Header set X-Frame-Options "SAMEORIGIN"
+    # Không gửi Referer ra external domain
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    # Chỉ kết nối HTTPS (bật khi deploy production)
+    # Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# Chặn truy cập vào các file nhạy cảm
+<FilesMatch "\.(env|log|sql|bak|sh|py|rb|htpasswd|git)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Chặn truy cập trực tiếp vào thư mục config
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^config/ - [F,L]
+    RewriteRule ^includes/ - [F,L]
+</IfModule>

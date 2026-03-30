@@ -1,3 +1,21 @@
+// =========================================
+// SECURITY: Tự động đính kèm CSRF token vào
+// mọi AJAX POST request (jQuery global setup)
+// =========================================
+$(document).ajaxSend(function (event, jqXHR, settings) {
+  if (settings.type === "POST" || settings.type === "post") {
+    const token = $('meta[name="csrf-token"]').attr("content");
+    if (token) {
+      // Thêm vào header (API xử lý từ header hoặc POST body đều được)
+      jqXHR.setRequestHeader("X-CSRF-Token", token);
+      // Thêm vào body data để tương thích với csrf_verify() đọc từ $_POST
+      if (typeof settings.data === "string") {
+        settings.data += "&csrf_token=" + encodeURIComponent(token);
+      }
+    }
+  }
+});
+
 $(document).ready(function () {
   let lastOrderCount = 0;
 

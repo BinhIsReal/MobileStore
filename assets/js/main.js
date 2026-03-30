@@ -1,3 +1,19 @@
+// =========================================
+// SECURITY: Tự động đính kèm CSRF token vào
+// mọi AJAX POST request từ frontend
+// =========================================
+$(document).ajaxSend(function (event, jqXHR, settings) {
+  if (settings.type === "POST" || settings.type === "post") {
+    const token = $('meta[name="csrf-token"]').attr("content");
+    if (token) {
+      jqXHR.setRequestHeader("X-CSRF-Token", token);
+      if (typeof settings.data === "string") {
+        settings.data += "&csrf_token=" + encodeURIComponent(token);
+      }
+    }
+  }
+});
+
 var currentUserId = 0;
 var currentChatTab = "bot";
 var chatInterval = null;
@@ -1343,5 +1359,78 @@ function changePassword() {
         });
       }
     },
+  );
+}
+
+// =========================================
+// ORDER HISTORY - HỦY ĐƠN HÀNG
+// =========================================
+function confirmCancel(orderId) {
+  customConfirm(
+    "Bạn có chắc chắn muốn hủy đơn hàng #" + orderId + " không?",
+    function () {
+      const btn = document.querySelector(".btn-cancel-order");
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Đang hủy...';
+      }
+
+      $.post(
+        "api/order_api.php",
+        {
+          action: "cancel_order",
+          order_id: orderId,
+        },
+        function (res) {
+          try {
+            let data = typeof res === "object" ? res : JSON.parse(res);
+            if (data.status === "success") {
+              Swal.fire({
+                icon: "success",
+                title: "Thành công!",
+                text: data.message,
+                showConfirmButton: false,
+                timer: 2000,
+              }).then(() => {
+                window.location.reload();
+              });
+            } else {
+              Swal.fire({
+                icon: "error",
+                title: "Thất bại",
+                text: data.message,
+                confirmButtonColor: "#d70018",
+              });
+              if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa fa-trash"></i> Hủy đơn hàng';
+              }
+            }
+          } catch (e) {
+            Swal.fire({
+              icon: "error",
+              title: "Lỗi",
+              text: "Lỗi hệ thống khi hủy đơn hàng.",
+              confirmButtonColor: "#d70018",
+            });
+            if (btn) {
+              btn.disabled = false;
+              btn.innerHTML = '<i class="fa fa-trash"></i> Hủy đơn hàng';
+            }
+          }
+        }
+      ).fail(function () {
+        Swal.fire({
+          icon: "error",
+          title: "Lỗi kết nối",
+          text: "Không thể kết nối đến máy chủ.",
+          confirmButtonColor: "#d70018",
+        });
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa fa-trash"></i> Hủy đơn hàng';
+        }
+      });
+    }
   );
 }

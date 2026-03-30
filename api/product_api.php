@@ -2,6 +2,7 @@
 // BẮT BUỘC: session_start phải ở dòng đầu tiên, không có khoảng trắng phía trước
 session_start();
 include '../config/db.php';
+include_once '../includes/security.php';
 header('Content-Type: application/json');
 
 // Lấy ID từ Session PHP (Server) - Cái này đáng tin cậy nhất
@@ -12,6 +13,9 @@ $action = $_POST['action'] ?? '';
 // 1. XỬ LÝ ĐÁNH GIÁ (REVIEW)
 // =================================================================
 if ($action == 'submit_review') {
+    // SECURITY: Xác thực CSRF Token
+    csrf_verify_or_die();
+
     // Debug: Nếu lỗi, hãy bật dòng dưới để xem nó nhận được gì
     // echo json_encode(['status'=>'error', 'message'=>"Debug ID: $current_user_id"]); exit;
 
@@ -126,6 +130,9 @@ if ($action == 'get_reviews') {
 
 // --- LOGIC THÍCH / BỎ THÍCH ĐÁNH GIÁ (TOGGLE) ---
 if ($action == 'like_review') {
+    // SECURITY: Xác thực CSRF Token
+    csrf_verify_or_die();
+
     if ($current_user_id <= 0) {
         echo json_encode(['status' => 'error', 'message' => 'require_login']);
         exit;

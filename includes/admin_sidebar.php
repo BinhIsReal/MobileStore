@@ -1,3 +1,11 @@
+<?php
+// Đảm bảo security helper đã được load (có thể đã include từ trang cha)
+if (!function_exists('csrf_token')) {
+    include_once dirname(__DIR__) . '/includes/security.php';
+}
+?>
+<!-- CSRF Meta Tag — JS đọc token từ đây để gửi kèm AJAX -->
+<meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
 <div class="admin-sidebar">
     <h3>Admin Panel</h3>
 

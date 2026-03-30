@@ -354,7 +354,7 @@ nav .menu-item:hover {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: #d70018;
+  background: var(--accent);
   color: white;
   padding: 4px 8px;
   border-radius: 4px;
@@ -1819,7 +1819,7 @@ nav .menu-item:hover {
   position: absolute;
   top: -5px;
   right: -8px;
-  background-color: #de2020;
+  background-color: var(--accent);
   color: white;
   font-size: 11px;
   font-weight: 800;
@@ -1966,7 +1966,7 @@ nav .menu-item:hover {
 }
 
 /* =========================================
-   CUSTOM CONFIRM MODAL (HỘP XÁC NHẬN)
+   CUSTOM CONFIRM MODAL 
 ========================================= */
 .confirm-overlay {
   position: fixed;
@@ -2003,7 +2003,7 @@ nav .menu-item:hover {
   gap: 10px;
 }
 .btn-yes {
-  background: #d70018;
+  background: var(--accent);
   color: white;
   border: none;
   padding: 10px 25px;
@@ -2100,7 +2100,7 @@ nav .menu-item:hover {
   margin-left: 10px;
 }
 /* =========================================
-   10. ORDER HISTORY PAGE (LỊCH SỬ ĐƠN HÀNG)
+   10. ORDER HISTORY PAGE 
 ========================================= */
 
 .history-wrapper {
@@ -3762,17 +3762,15 @@ button {
 }
 
 /* =========================================
-   UTILITY CLASSES (Extracted from PHP inline styles)
+   UTILITY CLASSES 
 ========================================= */
 
-/* footer.php - confirm icon */
 .confirm-icon-danger {
   font-size: 50px;
   color: #d70018;
   margin-bottom: 15px;
 }
 
-/* footer.php - DMCA badge */
 .footer-dmca {
   margin-top: 10px;
 }
@@ -3782,8 +3780,6 @@ button {
   display: inline-block;
   opacity: 0.8;
 }
-
-/* index.php - sidebar menu icon */
 .sidebar-icon-flex {
   display: flex;
   align-items: center;
@@ -3793,4 +3789,25 @@ button {
 .sidebar-icon-width {
   width: 20px;
   text-align: center;
+}
+
+/* =========================================
+   ORDER CANCEL BUTTON STYLES
+========================================= */
+.btn-cancel-order {
+  background: #fff;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 8px 15px;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-cancel-order:hover {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(215, 0, 24, 0.2);
+  transform: translateY(-2px);
 }

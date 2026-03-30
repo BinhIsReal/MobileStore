@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+include_once '../includes/security.php';
 header('Content-Type: application/json');
 
 $action = $_POST['action'] ?? '';
@@ -13,6 +14,7 @@ if ($user_id == 0) {
 
 // XỬ LÝ HỦY ĐƠN HÀNG
 if ($action == 'cancel_order') {
+    csrf_verify_or_die();
     $order_id = intval($_POST['order_id']);
 
     // 1. Kiểm tra đơn hàng có tồn tại và thuộc về user này không?
