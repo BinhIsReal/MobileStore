@@ -9,6 +9,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] != 'admin') header("Location:
 <head>
     <title>Quản lý Đơn hàng</title>
     <link rel="stylesheet" href="../assets/css/admin.css">
+    <link rel="stylesheet" href="../assets/css/orders.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
@@ -66,10 +67,10 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] != 'admin') header("Location:
                     </div>
 
                     <button type="submit" class="adm-order-filter-btn">
-                        <i class="fa fa-search" style="transform: translateY(2px);"></i> LỌC
+                        <i class="fa fa-search"></i> LỌC
                     </button>
 
-                    <a href="orders.php" class="adm-order-filter-btn" style="background:#666; text-decoration:none;">
+                    <a href="orders.php" class="adm-order-filter-btn adm-order-filter-btn-reset">
                         <i class="fa fa-undo"></i> RESET
                     </a>
                 </form>
@@ -82,6 +83,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] != 'admin') header("Location:
                         <th>Tổng tiền</th>
                         <th>Ngày đặt</th>
                         <th>Trạng thái</th>
+                        <th>Hành động</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -135,12 +137,11 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] != 'admin') header("Location:
                     <tr>
                         <td>#<?= $row['id'] ?></td>
                         <td><?= $row['username'] ?? 'Khách lẻ' ?></td>
-                        <td style="color:#d9534f; font-weight:bold;"><?= number_format($row['total_price']) ?> đ</td>
+                        <td class="order-total-price"><?= number_format($row['total_price']) ?> đ</td>
                         <td><?= $row['created_at'] ?></td>
                         <td>
                             <select onchange="updateStatus(<?= $row['id'] ?>, this.value)"
-                                class="status-badge bg-<?= $row['status'] ?>"
-                                style="padding: 5px; border-radius:4px; border:1px solid #ccc;color:black;">
+                                class="status-badge bg-<?= $row['status'] ?> status-badge-select">
                                 <option value="pending" <?= $row['status']=='pending'?'selected':'' ?>>Chờ xử lý
                                 </option>
                                 <option value="shipping" <?= $row['status']=='shipping'?'selected':'' ?>>Đang giao
@@ -151,18 +152,44 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] != 'admin') header("Location:
                                 </option>
                             </select>
                         </td>
+                        <td>
+                            <button onclick="viewOrderDetail(<?= $row['id'] ?>)" title="Xem chi tiết" class="btn-view-order">
+                                <i class="fa fa-eye"></i> Xem
+                            </button>
+                        </td>
                     </tr>
                     <?php endwhile;
                     else: ?>
                     <tr>
-                        <td colspan="5">Chưa có đơn hàng nào.</td>
+                        <td colspan="6" class="text-center-pad">Chưa có đơn hàng nào.</td>
                     </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
         </div>
+        </div>
     </div>
+
+    <!-- MODAL CHI TIẾT ĐƠN HÀNG -->
+    <div id="orderDetailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header-bar">
+                <h3>Chi tiết đơn hàng #<span id="modal-order-id"></span></h3>
+                <span class="btn-close-modal" onclick="$('#orderDetailModal').fadeOut()">&times;</span>
+            </div>
+            
+            <div id="order-detail-content" class="modal-body-pad">
+                <div style="text-align:center;"><i class="fa fa-spinner fa-spin fa-2x"></i> Đang tải dữ liệu...</div>
+            </div>
+            
+            <div class="modal-footer-bar">
+                <button onclick="$('#orderDetailModal').fadeOut()" class="adm-btn" style="background:#6c757d; color:#fff; border:none; padding:8px 15px; border-radius:4px; cursor:pointer;">Đóng</button>
+            </div>
+        </div>
+    </div>
+
     <script src="../assets/js/admin_main.js"></script>
+    <script src="../assets/js/orders.js"></script>
 </body>
 
 </html>

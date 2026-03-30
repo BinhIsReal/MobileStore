@@ -8,10 +8,20 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
 }
 if (isset($_GET['delete_id'])) {
     $del_id = intval($_GET['delete_id']);
+    
+    // TRỢ GIÚP LOG: Lấy dữ liệu cũ trước khi xóa
+    $stmt_old = $conn->query("SELECT * FROM products WHERE id = $del_id");
+    $old_data = $stmt_old->fetch_assoc();
+    
     $conn->query("DELETE FROM product_gallery WHERE product_id = $del_id");
     $stmt = $conn->prepare("DELETE FROM products WHERE id = ?");
     $stmt->bind_param("i", $del_id);
     if ($stmt->execute()) {
+        // GHI LOG THAO TÁC XÓA SẢN PHẨM
+        include_once '../includes/admin_logger.php';
+        $product_name = $old_data['name'] ?? "Sản phẩm ID #$del_id";
+        logAdminAction($conn, 'Xóa Sản Phẩm', 'admin/products.php', "Xóa sản phẩm: $product_name", $old_data, null);
+        
         echo "<script>alert('Đã xóa sản phẩm!'); window.location='products.php';</script>";
     } else {
         echo "<script>alert('Lỗi xóa: " . $conn->error . "');</script>";
@@ -116,8 +126,7 @@ $result = $stmt->get_result();
                 </div>
             </form>
 
-            <div class="table-responsive"
-                style="background:white; border-radius:8px; padding:10px; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+            <div class="table-responsive table-responsive-box">
                 <table class="admin-table">
                     <thead>
                         <tr>
@@ -144,22 +153,21 @@ $result = $stmt->get_result();
                                 <img src="<?= $img_src ?>" class="product-thumb" alt="Img">
                             </td>
                             <td>
-                                <div style="font-weight:600; color:#00487a;"><?= $row['name'] ?></div>
-                                <small style="color:#777;">Kho: 100 (Demo)</small>
+                                <div class="product-name-text"><?= $row['name'] ?></div>
+                                <small class="product-stock-text">Kho: 100 (Demo)</small>
                             </td>
                             <td><?= $row['cat_name'] ?></td>
                             <td><?= $row['brand_name'] ?></td>
                             <td>
                                 <div class="price-tag"><?= number_format($row['price'], 0, ',', '.') ?>đ</div>
                                 <?php if($row['sale_price'] > 0): ?>
-                                <small style="text-decoration:line-through; color:#999;">
+                                <small class="product-sale-old">
                                     <?= number_format($row['sale_price'], 0, ',', '.') ?>đ
                                 </small>
                                 <?php endif; ?>
                             </td>
-                            <td class="action-btns" style="text-align:center; gap: 6px">
-                                <a href="product_form.php?id=<?= $row['id'] ?>" class="btn-edit" title="Sửa"
-                                    style="  margin-bottom: 6px;">
+                            <td class="action-btns">
+                                <a href="product_form.php?id=<?= $row['id'] ?>" class="btn-edit" title="Sửa">
                                     <i class="fa-solid fa-pen-to-square"
                                         style="color:#f39c12; font-size:14px; color:white;  "></i>
                                 </a>
@@ -184,7 +192,7 @@ $result = $stmt->get_result();
                 </table>
             </div>
 
-            <div style="margin-top:20px; text-align:right; font-size:13px; color:#666;">
+            <div class="result-count-bar">
                 Hiển thị <?= $result->num_rows ?> kết quả
             </div>
         </div>

@@ -41,7 +41,7 @@ if ($action == 'login') {
             $_SESSION['role'] = $user['role'];
 
            if ($user['role'] !== 'admin') {
-                $_SESSION['login_success_msg'] = "Chào mừng " . $user['username'] . " đén với MobileStore!";
+                $_SESSION['login_success_msg'] = 'Chào mừng <b>' . $user['username'] . '</b> đến với MobileStore!';
             }
 
             // 2. LOGIC GỘP GIỎ HÀNG (Auto Merge) - Giữ nguyên của bạn
@@ -78,6 +78,8 @@ if ($action == 'login') {
 // 2. LOGOUT
 if (isset($_GET['logout'])) {
     session_destroy();
+    session_start();
+    $_SESSION['logout_success_msg'] = "Bạn đã đăng xuất tài khoản thành công!";
     header("Location: ../index.php"); 
     exit();
 }

@@ -1,7 +1,7 @@
 $(document).ready(function () {
   let lastOrderCount = 0;
 
-  function fetchAdminStats() {
+  window.fetchAdminStats = function () {
     $.ajax({
       url: "../api/get_admin_stats.php",
       method: "GET",
@@ -21,7 +21,7 @@ $(document).ready(function () {
         lastOrderCount = res.order_count;
       },
     });
-  }
+  };
 
   function updateBadge(selector, count) {
     let el = $(selector);
@@ -126,32 +126,6 @@ $("#discount-type").change(function () {
   } else {
     $("#max-discount-group").show();
   }
-});
-
-// Xử lý tạo Voucher
-$("#create-voucher-form").submit(function (e) {
-  e.preventDefault();
-  let formData = $(this).serialize() + "&action=create_voucher";
-
-  $.post("../api/voucher_api.php", formData, function (res) {
-    try {
-      let response = JSON.parse(res);
-      if (response.status === "success") {
-        Swal.fire("Thành công", response.message, "success").then(() =>
-          location.reload(),
-        );
-      } else {
-        Swal.fire("Lỗi", response.message, "error");
-      }
-    } catch (e) {
-      console.error("Lỗi parse JSON:", e, res);
-      Swal.fire(
-        "Lỗi hệ thống",
-        "Có lỗi xảy ra, vui lòng thử lại sau.",
-        "error",
-      );
-    }
-  });
 });
 
 // Mở Modal Gán Voucher bằng hiệu ứng Fade
@@ -285,4 +259,115 @@ function confirmDelete(id) {
       window.location.href = `vouchers.php?delete_id=${id}`;
     }
   });
+}
+
+// =========================================
+//   ACTIVITY LOGS & BADGES
+// =========================================
+function formatJSON(jsonStr) {
+  if (!jsonStr) return null;
+  try {
+    let obj = JSON.parse(jsonStr);
+    let html =
+      '<table style="width:100%; border-collapse: collapse; font-size:13px; text-align:left;">';
+
+    const keyMap = {
+      name: "Tên",
+      price: "Giá",
+      sale_price: "Giá KM",
+      category_id: "Mã Danh mục",
+      brand_id: "Mã Hãng",
+      status: "Trạng thái",
+      code: "Mã Voucher",
+      discount_amount: "Mức giảm",
+      type: "Loại",
+      usage_limit: "Lượt dùng",
+      colors: "Màu sắc",
+      description: "Mô tả",
+      image: "Ảnh đại diện",
+      specs: "Thông số kỹ thuật",
+    };
+
+    for (let key in obj) {
+      let val = obj[key];
+      if (val === null || val === "") continue; // Bỏ qua dữ liệu rỗng
+
+      if (typeof val === "object") {
+        val = JSON.stringify(val);
+      }
+
+      let keyName = keyMap[key] || key;
+
+      // Format kiểu hiển thị cho một số trường cụ thể
+      if (
+        key === "price" ||
+        key === "sale_price" ||
+        (key === "discount_amount" && obj.type === "fixed")
+      ) {
+        if (!isNaN(val) && val > 0)
+          val = Number(val).toLocaleString("vi-VN") + "đ";
+      }
+      if (key === "type") {
+        val =
+          val === "percent"
+            ? "Phần trăm (%)"
+            : val === "fixed"
+              ? "Tiền mặt (VNĐ)"
+              : val;
+      }
+      if (key === "status") {
+        const statusMap = {
+          pending: "Chờ xử lý",
+          shipping: "Đang giao",
+          completed: "Hoàn thành",
+          cancelled: "Đã hủy",
+        };
+        if (statusMap[val]) val = statusMap[val];
+      }
+
+      html += `<tr>
+                        <td style="padding:6px; border-bottom:1px dashed #ddd; width:120px; font-weight:bold; color:#555;">${keyName}</td>
+                        <td style="padding:6px; border-bottom:1px dashed #ddd; color:#000; word-break: break-word;">${val}</td>
+                    </tr>`;
+    }
+    html += "</table>";
+    return html;
+  } catch (e) {
+    return `<div style="padding:10px;">${jsonStr}</div>`;
+  }
+}
+
+function viewLogDetail(log) {
+  $("#modal-log-id").text(log.id);
+  $("#modal-log-admin").html(
+    `<b style="color:#00487a;"><i class="fa fa-user-shield"></i> ${log.admin_name}</b>`,
+  );
+  $("#modal-log-time").text(log.created_at);
+  let actionClass = log.action.split(" ")[0];
+  $("#modal-log-action").html(
+    `<span class="badge ${actionClass}">${log.action}</span>`,
+  );
+  $("#modal-log-file").html(
+    `<b style="color:#2c3e50;">${log.display_page}</b> <small style="color:#aaa;">(${log.page_name})</small>`,
+  );
+  $("#modal-log-desc").text(log.description);
+
+  let oldData = formatJSON(log.old_data);
+  let newData = formatJSON(log.new_data);
+
+  if (oldData) {
+    $("#col-old-data").show();
+    $("#modal-log-old").html(oldData);
+  } else {
+    $("#col-old-data").hide();
+  }
+
+  if (newData) {
+    $("#col-new-data").show();
+    $("#modal-log-new").html(newData);
+  } else {
+    $("#col-new-data").hide();
+  }
+
+  $("#logDetailModal").fadeIn();
 }

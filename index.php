@@ -225,8 +225,8 @@
 
             <li>
                 <a href="search.php?cat_id=<?= $cid ?>">
-                    <span style="display:flex; align-items:center; gap:10px;">
-                        <i class="fa-solid <?= $icon ?>" style="width:20px; text-align:center;"></i>
+                    <span class="sidebar-icon-flex">
+                        <i class="fa-solid <?= $icon ?> sidebar-icon-width"></i>
                         <?= $cat['name'] ?>
                     </span>
                     <?php if ($config): ?>

@@ -11,11 +11,9 @@ $search = $_GET['search'] ?? '';
 $where = "role = 'user'";
 if ($search !== '') {
     $search_esc = $conn->real_escape_string($search);
-    // BÂY GIỜ ĐÃ CÓ THỂ TÌM KIẾM THEO CẢ EMAIL VÀ PHONE
     $where .= " AND (username LIKE '%$search_esc%' OR email LIKE '%$search_esc%' OR phone LIKE '%$search_esc%')";
 }
 
-// Lấy lại đầy đủ các cột u.email và u.phone
 $sql = "SELECT u.id, u.username, u.email, u.phone, u.created_at,
         (SELECT COUNT(id) FROM orders WHERE user_id = u.id) as total_orders
         FROM users u 
@@ -43,54 +41,45 @@ $result = $conn->query($sql);
                 <h2>Danh sách Khách hàng</h2>
             </div>
 
-            <form method="GET" class="filter-wrapper"
-                style="display:flex; gap:10px; margin-bottom:20px; background:#fff; padding:15px; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
-                <input type="text" name="search" class="form-control-sm"
-                    style="flex:1; padding:10px; border:1px solid #ddd; border-radius:4px;"
+            <form method="GET" class="filter-wrapper customers-filter-form">
+                <input type="text" name="search" class="form-control-sm customers-filter-input"
                     placeholder="Tìm theo tên, SĐT hoặc Email..." value="<?= htmlspecialchars($search) ?>">
-                <button type="submit" class="btn-filter"
-                    style="background:#00487a; color:white; padding:10px 20px; border:none; border-radius:4px; cursor:pointer;"><i
-                        class="fa fa-search"></i> Tìm kiếm</button>
-                <a href="customers.php" class="btn-reset"
-                    style="background:#6c757d; color:white; padding:10px 20px; text-decoration:none; border-radius:4px;"><i
-                        class="fa fa-refresh"></i> Reset</a>
+                <button type="submit" class="btn-filter"><i class="fa fa-search"></i> Tìm kiếm</button>
+                <a href="customers.php" class="btn-reset"><i class="fa fa-refresh"></i> Reset</a>
             </form>
 
-            <div class="table-responsive"
-                style="background:white; border-radius:8px; padding:10px; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
-                <table class="admin-table" style="width:100%; border-collapse:collapse;">
+            <div class="table-responsive customers-table-wrap">
+                <table class="admin-table">
                     <thead>
-                        <tr style="background:#f4f6f8; text-align:left;">
-                            <th style="padding:12px; border-bottom:2px solid #ddd;">ID</th>
-                            <th style="padding:12px; border-bottom:2px solid #ddd;">Khách hàng</th>
-                            <th style="padding:12px; border-bottom:2px solid #ddd;">Liên hệ</th>
-                            <th style="padding:12px; border-bottom:2px solid #ddd; text-align:center;">Tổng đơn</th>
-                            <th style="padding:12px; border-bottom:2px solid #ddd;">Hành động</th>
+                        <tr>
+                            <th>ID</th>
+                            <th>Khách hàng</th>
+                            <th>Liên hệ</th>
+                            <th class="text-center">Tổng đơn</th>
+                            <th>Hành động</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if ($result && $result->num_rows > 0): ?>
                         <?php while ($row = $result->fetch_assoc()): ?>
                         <tr>
-                            <td style="padding:12px; border-bottom:1px solid #eee;">#<?= $row['id'] ?></td>
-                            <td style="padding:12px; border-bottom:1px solid #eee;">
+                            <td>#<?= $row['id'] ?></td>
+                            <td>
                                 <b><?= htmlspecialchars($row['username']) ?></b><br>
-                                <small style="color:#777;">Ngày ĐK:
+                                <small class="customer-date-small">Ngày ĐK:
                                     <?= date('d/m/Y', strtotime($row['created_at'])) ?></small>
                             </td>
-                            <td style="padding:12px; border-bottom:1px solid #eee;">
-                                <i class="fa fa-phone" style="font-size:12px; color:#666;"></i>
+                            <td>
+                                <i class="fa fa-phone customer-phone-icon"></i>
                                 <?= htmlspecialchars($row['phone'] ?? 'N/A') ?><br>
-                                <i class="fa fa-envelope" style="font-size:12px; color:#666;"></i>
+                                <i class="fa fa-envelope customer-phone-icon"></i>
                                 <?= htmlspecialchars($row['email'] ?? 'N/A') ?>
                             </td>
-                            <td style="padding:12px; border-bottom:1px solid #eee; text-align:center;">
-                                <span
-                                    style="background:#e9ecef; padding:3px 8px; border-radius:12px; font-weight:bold; font-size:12px;"><?= $row['total_orders'] ?></span>
+                            <td class="text-center">
+                                <span class="badge-total-orders"><?= $row['total_orders'] ?></span>
                             </td>
-                            <td style="padding:12px; border-bottom:1px solid #eee;">
-                                <a href="chat.php?user_id=<?= $row['id'] ?>"
-                                    style="display:inline-block; background:#28a745; color:white; padding:6px 12px; border-radius:4px; text-decoration:none; font-size:13px; font-weight:bold;">
+                            <td>
+                                <a href="chat.php?user_id=<?= $row['id'] ?>" class="btn-chat-customer">
                                     <i class="fa-solid fa-comment-dots"></i> Nhắn tin
                                 </a>
                             </td>
@@ -98,8 +87,7 @@ $result = $conn->query($sql);
                         <?php endwhile; ?>
                         <?php else: ?>
                         <tr>
-                            <td colspan="5" style="text-align:center; padding:30px; color:#777;">Không tìm thấy khách
-                                hàng nào.</td>
+                            <td colspan="5" class="text-center-pad">Không tìm thấy khách hàng nào.</td>
                         </tr>
                         <?php endif; ?>
                     </tbody>

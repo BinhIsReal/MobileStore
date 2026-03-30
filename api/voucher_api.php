@@ -46,7 +46,43 @@ if ($action === 'create_voucher') {
     $stmt->bind_param("ssddds", $code, $type, $discount_amount, $max_discount, $min_order_value, $expiry_date);
     
     if ($stmt->execute()) {
+        include_once '../includes/admin_logger.php';
+        logAdminAction($conn, 'Thêm Voucher', 'api/voucher_api.php', "Tạo mã giảm giá mới: $code", null, [
+            'code' => $code, 'type' => $type, 'discount_amount' => $discount_amount
+        ]);
         echo json_encode(['status' => 'success', 'message' => 'Tạo Voucher thành công!']);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Lỗi DB: ' . $conn->error]);
+    }
+}
+
+// 1.5 CẬP NHẬT VOUCHER
+if ($action === 'update_voucher') {
+    $voucher_id = intval($_POST['voucher_id']);
+    $type = $_POST['type'];
+    $discount_amount = $_POST['discount_amount'];
+    $max_discount = !empty($_POST['max_discount']) ? $_POST['max_discount'] : 0;
+    $min_order_value = !empty($_POST['min_order_value']) ? $_POST['min_order_value'] : 0;
+    $expiry_date = $_POST['expiry_date'];
+
+    // Lấy dữ liệu cũ phục vụ Log
+    $res_old = $conn->query("SELECT * FROM vouchers WHERE id = $voucher_id");
+    if ($res_old->num_rows == 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Không tìm thấy Voucher!']);
+        exit;
+    }
+    $old_data = $res_old->fetch_assoc();
+
+    $sql = "UPDATE vouchers SET type=?, discount_amount=?, max_discount=?, min_order_value=?, expiry_date=? WHERE id=?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("sdddsi", $type, $discount_amount, $max_discount, $min_order_value, $expiry_date, $voucher_id);
+    
+    if ($stmt->execute()) {
+        include_once '../includes/admin_logger.php';
+        logAdminAction($conn, 'Sửa Voucher', 'api/voucher_api.php', "Cập nhật mã giảm giá: " . $old_data['code'], $old_data, [
+            'type' => $type, 'discount_amount' => $discount_amount, 'max_discount' => $max_discount, 'min_order_value' => $min_order_value, 'expiry_date' => $expiry_date
+        ]);
+        echo json_encode(['status' => 'success', 'message' => 'Cập nhật Voucher thành công!']);
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Lỗi DB: ' . $conn->error]);
     }
@@ -83,6 +119,11 @@ if ($action === 'assign_voucher') {
     foreach ($user_ids as $uid) {
         $stmt->bind_param("iiii", $uid, $voucher_id, $usage_limit, $usage_limit);
         if($stmt->execute()) $success_count++;
+    }
+    
+    if ($success_count > 0) {
+        include_once '../includes/admin_logger.php';
+        logAdminAction($conn, 'Gán Voucher', 'api/voucher_api.php', "Phát Voucher ID #$voucher_id cho $success_count người dùng", null, ['voucher_id' => $voucher_id, 'users_count' => $success_count, 'usage_limit' => $usage_limit]);
     }
 
     echo json_encode(['status' => 'success', 'message' => "Đã gán thành công cho $success_count người dùng."]);

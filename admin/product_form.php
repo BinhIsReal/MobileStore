@@ -74,6 +74,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $current_pid = ($id > 0) ? $id : $stmt->insert_id;
         $stmt->close(); 
 
+        // GHI LOG THAO TÁC SẢN PHẨM
+        include_once '../includes/admin_logger.php';
+        $new_data = [
+            'name' => $name, 'price' => $price, 'sale_price' => $sale_price, 
+            'brand_id' => $brand_id, 'category_id' => $category_id, 'colors' => $colors
+        ];
+        if ($id > 0) {
+            logAdminAction($conn, 'Sửa Sản Phẩm', 'admin/product_form.php', "Cập nhật sản phẩm: $name", $product, $new_data);
+        } else {
+            logAdminAction($conn, 'Thêm Sản Phẩm', 'admin/product_form.php', "Thêm mới sản phẩm: $name", null, $new_data);
+        }
+
         // Xử lý Gallery
         $conn->query("DELETE FROM product_gallery WHERE product_id = $current_pid");
         if (!empty($_POST['gallery'])) {
@@ -180,10 +192,10 @@ $spec_data = ($product && !empty($product['specs'])) ? json_decode($product['spe
                 <div class="form-section">
                     <h4 class="form-sec-title">2. Hình ảnh</h4>
                     <label class="form-label">Ảnh đại diện chính</label>
-                    <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <div class="image-upload-row">
                         <input type="text" name="image_link" class="form-control" placeholder="Link ảnh online..."
                             value="<?= htmlspecialchars($product['image'] ?? '') ?>">
-                        <input type="file" name="image_file" class="form-control" style="width:150px;">
+                        <input type="file" name="image_file" class="form-control form-control-file">
                     </div>
                     <label class="form-label">Bộ sưu tập ảnh (Gallery)</label>
                     <div id="gallery-wrapper">
@@ -206,8 +218,7 @@ $spec_data = ($product && !empty($product['specs'])) ? json_decode($product['spe
                         </div>
                         <?php endif; ?>
                     </div>
-                    <button type="button" id="btn-add-gallery" class="btn-add-new"
-                        style="background:#17a2b8; font-size:12px;">
+                    <button type="button" id="btn-add-gallery" class="btn-add-new btn-add-gallery">
                         <i class="fa fa-plus"></i> Thêm dòng ảnh
                     </button>
                 </div>
@@ -226,7 +237,7 @@ $spec_data = ($product && !empty($product['specs'])) ? json_decode($product['spe
                         <div><label class="form-label">Bộ nhớ</label><input type="text" name="spec_storage"
                                 class="form-control" value="<?= $spec_data['storage'] ?? '' ?>"></div>
                     </div>
-                    <label class="form-label" style="margin-top:15px;">Mô tả chi tiết</label>
+                    <label class="form-label form-label-mt">Mô tả chi tiết</label>
                     <textarea name="description" class="form-control"
                         rows="5"><?= htmlspecialchars($product['description'] ?? '') ?></textarea>
                 </div>
@@ -238,33 +249,23 @@ $spec_data = ($product && !empty($product['specs'])) ? json_decode($product['spe
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="../assets/js/main.js"></script>
-
-    <script>
-    document.getElementById('btn-add-gallery').addEventListener('click', function() {
-        var wrapper = document.getElementById('gallery-wrapper');
-        var div = document.createElement('div');
-        div.className = 'gallery-row';
-        div.innerHTML = `
-                <input type="text" name="gallery[]" class="form-control" placeholder="Link ảnh mới...">
-                <button type="button" class="btn-del-gal" onclick="this.parentElement.remove()"><i class="fa fa-trash"></i></button>
-            `;
-        wrapper.appendChild(div);
-    });
-
+    <script src="../assets/js/product_form.js"></script>
     <?php if (!empty($msg_type)): ?>
-    showToast({
-        title: "<?= $msg_type == 'success' ? 'Thành công' : 'Lỗi' ?>",
-        message: "<?= $msg_content ?>",
-        type: "<?= $msg_type ?>"
+    <script>
+    $(document).ready(function() {
+        showToast({
+            title: "<?= $msg_type == 'success' ? 'Thành công' : 'Lỗi' ?>",
+            message: "<?= $msg_content ?>",
+            type: "<?= $msg_type ?>"
+        });
+        <?php if ($msg_type == 'success'): ?>
+        setTimeout(function() {
+            window.location.href = 'products.php';
+        }, 1500);
+        <?php endif; ?>
     });
-
-    <?php if ($msg_type == 'success'): ?>
-    setTimeout(function() {
-        window.location.href = 'products.php';
-    }, 1500);
-    <?php endif; ?>
-    <?php endif; ?>
     </script>
+    <?php endif; ?>
 </body>
 
 </html>

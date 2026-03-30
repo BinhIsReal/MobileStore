@@ -1,0 +1,107 @@
+/* =====================================================
+   dashboard.css - Admin Dashboard Page Styles
+   ===================================================== */
+
+.dashboard-report-title {
+    margin-bottom: 25px;
+}
+
+/* Stat card màu thứ 2 */
+.stat-card-revenue {
+    border-left-color: #27ae60;
+}
+
+.stat-card-revenue .stat-icon {
+    color: #27ae60;
+}
+
+/* Stat card màu thứ 3 */
+.stat-card-customers {
+    border-left-color: #f39c12;
+}
+
+.stat-card-customers .stat-icon {
+    color: #f39c12;
+}
+
+/* Chart row cho top/worst products */
+.chart-row-products {
+    margin-top: 25px;
+}
+
+.chart-col-flex {
+    flex: 1;
+}
+
+/* Bảng top sản phẩm */
+.product-rank-table {
+    width: 100%;
+    text-align: left;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.product-rank-thead-row {
+    border-bottom: 2px solid #eee;
+}
+
+.product-rank-th {
+    padding: 10px;
+}
+
+.product-rank-th-center {
+    padding: 10px;
+    text-align: center;
+}
+
+.product-rank-tbody-row {
+    border-bottom: 1px solid #10101011;
+}
+
+.product-rank-td {
+    padding: 10px;
+}
+
+.product-rank-td-center {
+    padding: 10px;
+    text-align: center;
+}
+
+.product-rank-img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+.product-rank-name {
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.product-rank-sold-best {
+    font-weight: bold;
+    color: #27ae60;
+    font-size: 15px;
+}
+
+.product-rank-sold-worst {
+    font-weight: bold;
+    color: #e74c3c;
+    font-size: 15px;
+}
+
+.product-rank-empty {
+    text-align: center;
+    padding: 15px;
+    color: #999;
+}
+
+/* Icon màu cho chart title */
+.icon-fire {
+    color: #e74c3c;
+}
+
+.icon-snow {
+    color: #3498db;
+}

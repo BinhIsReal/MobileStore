@@ -70,22 +70,92 @@ if ($action == 'send_message') {
             $model = "gemini-2.5-flash"; 
             $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
 
+            // 1. TÍCH HỢP BỘ NHỚ NGỮ CẢNH (MEMORY)
+            $history_messages = [];
+            $history_sql = "SELECT message, role FROM chat_messages 
+                            WHERE (sender_id = $current_chat_id AND receiver_id = 9999) 
+                               OR (sender_id = 9999 AND receiver_id = $current_chat_id) 
+                            ORDER BY created_at DESC LIMIT 10";
+            $history_res = $conn->query($history_sql);
+            if ($history_res && $history_res->num_rows > 0) {
+                while($row = $history_res->fetch_assoc()) {
+                    $history_messages[] = [
+                        "role" => ($row['role'] == 'bot') ? 'model' : 'user',
+                        "parts" => [["text" => $row['message']]]
+                    ];
+                }
+            }
+            $history_messages = array_reverse($history_messages); // Đảo ngược thành từ cũ đến mới
+
+            // 2. TÍCH HỢP RAG TÌM KIẾM SẢN PHẨM KHỚP Ý ĐỊNH MUA HÀNG
+            $categories = ['điện thoại', 'màn hình', 'đồng hồ', 'linh kiện', 'pc', 'loa', 'máy ảnh', 'laptop', 'tai nghe', 'chuột', 'bàn phím', 'phụ kiện', 'smartwatch'];
+            $brands = ['iphone', 'samsung', 'xiaomi', 'oppo', 'vivo', 'asus', 'dell', 'hp', 'macbook', 'apple', 'sony', 'jbl', 'lg'];
+            $action_keywords = ['giá', 'mua', 'bao nhiêu', 'rẻ', 'tư vấn', 'tìm', 'có'];
+            $keywords = array_merge($categories, $brands, $action_keywords);
+            
+            $msg_lower = mb_strtolower($msg, 'UTF-8');
+            $has_intent = false;
+            foreach ($keywords as $kw) {
+                if (strpos($msg_lower, $kw) !== false) {
+                    $has_intent = true;
+                    break;
+                }
+            }
+
+            $product_context = "";
+            if ($has_intent) {
+                $search_term = '';
+                
+                // Trích xuất thương hiệu hoặc loại sản phẩm
+                foreach (array_merge($brands, $categories) as $item) {
+                    if (strpos($msg_lower, $item) !== false) {
+                        $search_term = $item;
+                        break;
+                    }
+                }
+                
+                if (empty($search_term)) {
+                     // Dự phòng tìm kiếm từ khóa bất kỳ nếu chỉ hỏi "tư vấn", "giá",...
+                     preg_match_all('/\b\w+\b/u', mb_strtolower(str_replace($action_keywords, '', $msg), 'UTF-8'), $matches);
+                     if (!empty($matches[0])) {
+                         $search_term = implode(' ', array_slice($matches[0], 0, 2));
+                     }
+                }
+                
+                $like_term = "%{$search_term}%";
+                if ($search_term == '') $like_term = "%";
+                $search_stmt = $conn->prepare("SELECT id, name, price FROM products WHERE name LIKE ? LIMIT 5");
+                $search_stmt->bind_param("s", $like_term);
+                $search_stmt->execute();
+                $search_res = $search_stmt->get_result();
+                
+                if ($search_res->num_rows > 0) {
+                    $product_context = "Hiện tại kho đang có các sản phẩm sau:\n";
+                    $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'];
+                    
+                    while ($p = $search_res->fetch_assoc()) {
+                        $price_format = number_format($p['price'], 0, ',', '.') . 'đ';
+                        $url_product = $base_url . "/product_detail.php?id=" . $p['id']; 
+                        $product_context .= "- {$p['name']} (Giá: {$price_format} - Link: {$url_product})\n";
+                    }
+                } else {
+                    $product_context = "Dạ hiện tại sản phẩm mẫu này bên trong kho đang tạm hết hàng...";
+                }
+                $search_stmt->close();
+            }
+
+            // 3. TỐI ƯU PERSONA & SYSTEM INSTRUCTIONS
+            $system_prompt = "Bạn là chuyên gia tư vấn công nghệ của cửa hàng MobileStore (bán điện thoại, máy tính, laptop, đồng hồ thông minh, phụ kiện, âm thanh). Xưng hô (Dạ/Thưa, Em/Anh/Chị), câu trả lời ngắn gọn, xuống dòng RÕ RÀNG để không bị đặc chữ, ưu tiên tập trung chốt sale.\nBẮT BUỘC trả về link sản phẩm dưới dạng Markdown [Tên Sản Phẩm](Link).\nDựa vào thông tin kho hàng sau đây để tư vấn:\n" . $product_context;
+
             $data = [
                 "system_instruction" => [
                     "parts" => [
                         [
-                            "text" => "Bạn là một nhân viên tư vấn bán hàng điện thoại nhiệt tình của cửa hàng MobileStore. Hãy trả lời bằng tiếng Việt thật tự nhiên, ngắn gọn (dưới 50 từ), thân thiện và tập trung vào việc tư vấn sản phẩm."
+                            "text" => $system_prompt
                         ]
                     ]
                 ],
-                "contents" => [
-                    [
-                        "role" => "user",
-                        "parts" => [
-                            [ "text" => $msg ]
-                        ]
-                    ]
-                ]
+                "contents" => $history_messages
             ];
             
             $ch = curl_init();
@@ -99,20 +169,31 @@ if ($action == 'send_message') {
             
             $response = curl_exec($ch);
             $curl_err = curl_error($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
             
-            $bot_reply = "Xin lỗi, hiện tại BOT đang quá tải do nhiều người liên hệ cùng lúc. Vui lòng chọn chat trực tiếp với Shop nhé!";
+            // Xử lý lỗi & Timeout (Error Handling)
+            $bot_reply = "Dạ hiện tại hệ thống AI đang bảo trì, anh/chị vui lòng để lại lời nhắn, nhân viên thật của Shop sẽ hỗ trợ anh/chị ngay ạ!";
             
-            if ($response && !$curl_err) {
+            if ($response && !$curl_err && $http_code == 200) {
                 $res_data = json_decode($response, true);
                 
                 if (isset($res_data['candidates'][0]['content']['parts'][0]['text'])) {
                     $raw_reply = trim($res_data['candidates'][0]['content']['parts'][0]['text']);
                     
+                    // Gemini đôi khi trả về thẻ <br> dở dang, ta chuẩn hóa thành \n trước khi htmlspecialchars
+                    $raw_reply = str_ireplace(['<br>', '<br/>', '<br />', '&lt;br&gt;', '&lt;br/&gt;', '&lt;br /&gt;'], "\n", $raw_reply);
+                    
+                    // NÉN NHIỀU KHOẢNG TRẮNG XUỐNG DÒNG (THU GỌN KHOẢNG CÁCH)
+                    $raw_reply = preg_replace("/\n+/", "\n", $raw_reply);
+                    
+                    $raw_reply = htmlspecialchars($raw_reply);
                     // Lọc Markdown (in đậm)
                     $raw_reply = preg_replace('/\*\*(.*?)\*\*/', '<b>$1</b>', $raw_reply);
-                    $bot_reply = nl2br(htmlspecialchars($raw_reply));
-                    $bot_reply = str_replace(['&lt;b&gt;', '&lt;/b&gt;'], ['<b>', '</b>'], $bot_reply);
+                    // Lọc Markdown đường dẫn link (RAG)
+                    $raw_reply = preg_replace('/\[(.*?)\]\((.*?)\)/', '<a href="$2" target="_blank" style="color:#0d47a1; font-weight:bold;">$1</a>', $raw_reply);
+                    
+                    $bot_reply = nl2br($raw_reply);
                 }
             }
 
@@ -247,8 +328,8 @@ if ($action == 'send_msg') {
     $receiver_id = intval($_POST['receiver_id'] ?? 0);
     
     if ($message != '' && $receiver_id > 0) {
-        // sender_id = 0 mặc định là Admin
-        $stmt = $conn->prepare("INSERT INTO chat_messages (sender_id, receiver_id, message, is_read) VALUES (0, ?, ?, 0)");
+        // sender_id = 0 mặc định là Admin, role = 'shop' để phân biệt giao diện
+        $stmt = $conn->prepare("INSERT INTO chat_messages (sender_id, receiver_id, message, role, is_read) VALUES (0, ?, ?, 'shop', 0)");
         $stmt->bind_param("is", $receiver_id, $message);
         $stmt->execute();
         echo json_encode(['status' => 'success']);
@@ -258,7 +339,21 @@ if ($action == 'send_msg') {
     exit;
 }
 
-// 4. ĐÁNH DẤU ĐÃ ĐỌC
+// 4. CHECK NOTIFICATION CỦA ADMIN GỬI USER
+if ($action == 'check_notification') {
+    $unread = 0;
+    if ($real_user_id > 0) {
+        $res = $conn->query("SELECT COUNT(id) as c FROM chat_messages WHERE receiver_id = $real_user_id AND sender_id = 0 AND is_read = 0");
+        $unread = $res->fetch_assoc()['c'] ?? 0;
+    } else if ($current_chat_id < 0) {
+        $res = $conn->query("SELECT COUNT(id) as c FROM chat_messages WHERE receiver_id = $current_chat_id AND sender_id = 0 AND is_read = 0");
+        $unread = $res->fetch_assoc()['c'] ?? 0;
+    }
+    echo json_encode(['unread' => $unread]);
+    exit;
+}
+
+// 5. ĐÁNH DẤU ĐÃ ĐỌC
 if ($action == 'mark_read') {
     $target_id = intval($_POST['target_id'] ?? 0);
     if ($target_id > 0) {

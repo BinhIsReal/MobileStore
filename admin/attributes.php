@@ -12,7 +12,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $table = ($type == 'brand') ? 'brands' : 'categories';
         $stmt = $conn->prepare("INSERT INTO $table (name) VALUES (?)");
         $stmt->bind_param("s", $name);
-        $stmt->execute();
+        if ($stmt->execute()) {
+            include_once '../includes/admin_logger.php';
+            $log_action = ($type == 'brand') ? 'Thêm Hãng' : 'Thêm Danh Mục';
+            logAdminAction($conn, $log_action, 'admin/attributes.php', "Thêm mới $type: $name", null, ['name' => $name]);
+        }
     }
     header("Location: attributes.php"); exit();
 }
@@ -21,7 +25,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 if (isset($_GET['del_type']) && isset($_GET['id'])) {
     $table = ($_GET['del_type'] == 'brand') ? 'brands' : 'categories';
     $id = intval($_GET['id']);
-    $conn->query("DELETE FROM $table WHERE id=$id");
+    
+    $res_old = $conn->query("SELECT * FROM $table WHERE id=$id");
+    $old_data = $res_old->fetch_assoc();
+    
+    if ($conn->query("DELETE FROM $table WHERE id=$id") && $old_data) {
+        include_once '../includes/admin_logger.php';
+        $log_action = ($_GET['del_type'] == 'brand') ? 'Xóa Hãng' : 'Xóa Danh Mục';
+        $type_text = ($_GET['del_type'] == 'brand') ? 'Hãng' : 'Danh mục';
+        logAdminAction($conn, $log_action, 'admin/attributes.php', "Xóa $type_text: " . $old_data['name'], $old_data, null);
+    }
     header("Location: attributes.php"); exit();
 }
 

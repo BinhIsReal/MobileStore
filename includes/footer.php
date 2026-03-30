@@ -2,7 +2,7 @@
 
 <div id="custom-confirm" class="confirm-overlay">
     <div class="confirm-box">
-        <i class="fa-solid fa-circle-question" style="font-size: 50px; color: #d70018; margin-bottom: 15px;"></i>
+        <i class="fa-solid fa-circle-question confirm-icon-danger"></i>
         <h3 id="confirm-title">Xác nhận</h3>
         <p id="confirm-msg">Bạn có chắc chắn muốn thực hiện?</p>
         <div class="confirm-actions">
@@ -80,9 +80,8 @@
             <p>© 2025 CÔNG TY CỔ PHẦN MOBILE STORE VIỆT NAM. MST: 0101234567.</p>
             <p>Địa chỉ: Số 89 Đường Tam Trinh, Phường Vĩnh Tuy, Quận Hai Bà Trưng, Thành Phố Hà Nội, Việt Nam.</p>
             <p>Điện thoại: 024.7300.xxxx - Email: cskh@mobilestore.com.vn</p>
-            <div style="margin-top: 10px;">
-                <img src="https://images.dmca.com/Badges/dmca_protected_sml_120n.png" alt="DMCA"
-                    style="height: 25px; display:inline-block; opacity:0.8;">
+            <div class="footer-dmca">
+                <img src="https://images.dmca.com/Badges/dmca_protected_sml_120n.png" alt="DMCA">
             </div>
         </div>
     </div>
@@ -100,20 +99,42 @@ const BASE_URL = "<?= BASE_URL ?>";
 // =========================================================
 if (isset($_SESSION['login_success_msg'])): 
 ?>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(document).ready(function() {
-    if (typeof showToast === "function") {
-        showToast({
-            title: "Thành công!",
-            message: "<?= $_SESSION['login_success_msg'] ?>",
-            type: "success"
-        });
-    }
+    Swal.fire({
+        title: 'Đăng nhập thành công!',
+        html: '<?= $_SESSION['login_success_msg'] ?>',
+        icon: 'success',
+        timer: 3000,
+        showConfirmButton: false
+    });
 });
 </script>
 <?php 
     // Xóa biến session để thông báo không hiện lại khi f5 trang
     unset($_SESSION['login_success_msg']); 
+endif; 
+
+// =========================================================
+// 1.5. HIỂN THỊ THÔNG BÁO ĐĂNG XUẤT
+// =========================================================
+if (isset($_SESSION['logout_success_msg'])): 
+?>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+$(document).ready(function() {
+    Swal.fire({
+        title: 'Đã đăng xuất!',
+        text: '<?= $_SESSION['logout_success_msg'] ?>',
+        icon: 'info',
+        timer: 3000,
+        showConfirmButton: false
+    });
+});
+</script>
+<?php 
+    unset($_SESSION['logout_success_msg']); 
 endif; 
 ?>
 

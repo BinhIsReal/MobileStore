@@ -1127,6 +1127,9 @@ function handleAddToCart(e, btn, isBuyNow) {
 }
 
 // --- CHAT FUNCTIONS ---
+checkUserNotifications();
+setInterval(checkUserNotifications, 3000);
+
 setTimeout(() => {
   if (!$("#chat-box").hasClass("open")) {
     $("#chat-welcome-bubble").fadeIn();
@@ -1225,21 +1228,56 @@ function checkUserNotifications() {
   }
 }
 
+function showBotTyping() {
+  if ($("#bot-typing-indicator").length > 0) return;
+  let typingHtml = `
+    <div class="msg bot" id="bot-typing-indicator">
+      <div class="msg-text" style="padding: 10px 14px; background: #f1f2f6; border-radius: 14px; border-bottom-left-radius: 4px;">
+        <div class="typing-indicator">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    </div>
+  `;
+  $("#chat-content").append(typingHtml);
+  scrollToBottom();
+}
+
+function hideBotTyping() {
+  $("#bot-typing-indicator").remove();
+}
+
 function sendMessage() {
   let msg = $("#chat-input").val().trim();
   if (!msg || isSending) return;
   isSending = true;
   $(".chat-footer button").css("opacity", "0.5");
+  
+  // 1. Hiện tin nhắn user
+  $("#chat-input").val("");
+  let safeMsg = msg.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  $("#chat-content").append(`<div class="msg user"><div class="msg-text">${safeMsg}</div></div>`);
+  scrollToBottom();
+  
+  // 2. Bật hoạt ảnh: Ngay khi user vừa gửi tin và AJAX bắt đầu
+  if (currentChatTab === 'bot') {
+      showBotTyping();
+  }
+
+  // 3. Gọi AJAX
   $.post(
     "api/chat_api.php",
     { action: "send_message", message: msg, tab: currentChatTab },
     function () {
-      $("#chat-input").val("");
+      // Ẩn hoạt ảnh: Khi Server trả về và trước khi in câu trả lời thật (sẽ load qua loadMessages)
+      hideBotTyping();
       loadMessages(true);
+      
       isSending = false;
       $(".chat-footer button").css("opacity", "1");
     },
   ).fail(function () {
+    hideBotTyping();
     isSending = false;
     $(".chat-footer button").css("opacity", "1");
   });

@@ -38,6 +38,10 @@
         <span id="badge-chat" class="nav-badge" style="display: none;"></span>
     </a>
 
+    <a href="activity_logs.php" class="sb-link <?= basename($_SERVER['PHP_SELF'])=='activity_logs.php'?'active':'' ?>">
+        <span><i class="fa-solid fa-history"></i> Lịch sử hoạt động</span>
+    </a>
+
     <a href="../api/auth_api.php?logout=1" class="sb-link logout-btn">
         <span><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</span>
     </a>

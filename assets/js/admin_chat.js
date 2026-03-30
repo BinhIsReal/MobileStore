@@ -106,7 +106,7 @@ function selectUser(uid, uname) {
       target_id: uid,
     },
     function () {
-      if (typeof fetchAdminStats === "function") fetchAdminStats();
+      if (typeof window.fetchAdminStats === "function") window.fetchAdminStats();
     },
   );
 
