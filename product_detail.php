@@ -36,6 +36,7 @@ $percent     = $is_sale ? round((($price - $sale_price) / $price) * 100) : 0;
 
 <head>
     <title><?= htmlspecialchars($product['name']) ?> - MobileStore</title>
+    <link rel="stylesheet" href="assets/css/compare.css?v=<?= time() ?>">
 </head>
 
 <body data-user-id="<?= isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0 ?>">
@@ -181,6 +182,9 @@ $percent     = $is_sale ? round((($price - $sale_price) / $price) * 100) : 0;
                             <h3><?= $rel['name'] ?></h3>
                             <div class="price"><?= number_format($r_price, 0, ',', '.') ?> ₫</div>
                         </a>
+                        <div style="text-align:center; padding-bottom:10px;">
+                            <a href="compare.php?ids=<?= $current_id ?>,<?= $rel['id'] ?>" class="btn-compare-add">+ so sánh</a>
+                        </div>
                     </div>
                     <?php endforeach; ?>
                 </div>

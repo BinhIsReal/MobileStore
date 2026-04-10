@@ -142,7 +142,8 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
                     <tr>
                         <td>#<?= $row['id'] ?></td>
                         <td><?= $row['username'] ?? 'Khách lẻ' ?></td>
-                        <td class="order-total-price"><?= number_format($row['total_price']) ?> đ</td>
+                        <?php $final_admin = max(0, $row['total_price'] - $row['discount_amount']); ?>
+                        <td class="order-total-price"><?= number_format($final_admin) ?> đ</td>
                         <td><?= $row['created_at'] ?></td>
                         <td>
                             <select onchange="updateStatus(<?= $row['id'] ?>, this.value)"

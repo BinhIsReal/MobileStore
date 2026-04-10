@@ -53,7 +53,7 @@ include_once __DIR__ . '/includes/security.php';
             username: u,
             password: p
         }, function(data) {
-            let res = JSON.parse(data);
+            let res = typeof data === 'string' ? JSON.parse(data) : data;
             if (res.status == 'success') {
                 window.location.href = res.redirect;
             } else {

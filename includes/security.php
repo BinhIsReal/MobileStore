@@ -39,6 +39,12 @@ function csrf_field(): string {
  */
 function csrf_verify(): bool {
     $token = $_POST['csrf_token'] ?? '';
+    
+    // Fallback: Check header for AJAX requests
+    if (empty($token) && isset($_SERVER['HTTP_X_CSRF_TOKEN'])) {
+        $token = $_SERVER['HTTP_X_CSRF_TOKEN'];
+    }
+
     if (empty($token) || empty($_SESSION['csrf_token'])) {
         return false;
     }

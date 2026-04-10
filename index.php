@@ -5,6 +5,9 @@
 <head>
     <meta charset="UTF-8">
     <title>Mobile Store - Hệ thống bán lẻ di động</title>
+    <!-- CSRF Meta Tag -->
+    <?php include_once 'includes/security.php'; ?>
+    <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
     <link rel="stylesheet" href="assets/css/style.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

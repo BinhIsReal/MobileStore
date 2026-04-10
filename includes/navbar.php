@@ -58,7 +58,8 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     <?php endif; ?>
                     <a href="<?= BASE_URL ?>/profile.php"><i class="fa-solid fa-file-invoice"></i> Thông tin cá nhân</a>
                     <a href="<?= BASE_URL ?>/order_history.php"><i class="fa-solid fa-file-invoice"></i> Đơn hàng</a>
-                    <a href="<?= BASE_URL ?>/my_vouchers.php"><i class="fa-solid fa-ticket-simple"></i> Kho Voucher</a>
+                    <a href="<?= BASE_URL ?>/my_vouchers.php"><i class="fa-solid fa-ticket-simple   "></i> Kho
+                        Voucher</a>
                     <a href="<?= BASE_URL ?>/api/auth_api.php?logout=1" class="logout-link"><i
                             class="fa-solid fa-right-from-bracket"></i> Đăng xuất</a>
                 </div>

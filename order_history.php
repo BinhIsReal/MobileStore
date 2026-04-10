@@ -75,7 +75,8 @@ $user_id = $_SESSION['user_id'];
                     <tr>
                         <td><b>#<?= $row['id'] ?></b></td>
                         <td><?= date('d/m/Y H:i', strtotime($row['created_at'])) ?></td>
-                        <td class="total-money"><?= number_format($row['total_price'], 0, ',', '.') ?> ₫</td>
+                        <?php $final_history = max(0, $row['total_price'] - $row['discount_amount']); ?>
+                        <td class="total-money"><?= number_format($final_history, 0, ',', '.') ?> ₫</td>
                         <td>
                             <span class="badge-status <?= $status_class ?>">
                                 <?= $status_text ?>

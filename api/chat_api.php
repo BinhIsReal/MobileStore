@@ -4,7 +4,6 @@ ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
 include '../config/db.php';
-include_once '../includes/security.php';
 header('Content-Type: application/json');
 
 $action = $_POST['action'] ?? '';
@@ -45,8 +44,6 @@ function extractPrice($str) {
 // 1. GỬI TIN NHẮN
 // ---------------------------------------------------------
 if ($action == 'send_message') {
-    // SECURITY: Xác thực CSRF Token
-    csrf_verify_or_die();
     $msg = trim($_POST['message'] ?? '');
 
     // CHECK QUYỀN: Chat Shop bắt buộc đăng nhập
@@ -291,10 +288,11 @@ if ($action == 'get_chat_users') {
     }
 
     $sql = "SELECT u.id, u.username,
-            (SELECT COUNT(id) FROM chat_messages WHERE sender_id = u.id AND is_read = 0 AND receiver_id = 0) as unread
+            (SELECT COUNT(id) FROM chat_messages WHERE sender_id = u.id AND is_read = 0 AND receiver_id = 0) as unread,
+            (SELECT MAX(created_at) FROM chat_messages WHERE (sender_id = u.id AND receiver_id = 0) OR (sender_id = 0 AND receiver_id = u.id)) as last_time
             FROM users u
             WHERE u.role = 'user' AND $where
-            ORDER BY unread DESC, u.id DESC";
+            ORDER BY unread DESC, last_time DESC, u.id DESC";
             
     $res = $conn->query($sql);
     $users = [];
@@ -327,8 +325,6 @@ if ($action == 'get_conversation') {
 
 // 3. ADMIN GỬI TIN NHẮN
 if ($action == 'send_msg') {
-    // SECURITY: Xác thực CSRF Token
-    csrf_verify_or_die();
     $message = $_POST['message'] ?? '';
     $receiver_id = intval($_POST['receiver_id'] ?? 0);
     
@@ -360,8 +356,6 @@ if ($action == 'check_notification') {
 
 // 5. ĐÁNH DẤU ĐÃ ĐỌC
 if ($action == 'mark_read') {
-    // SECURITY: Xác thực CSRF Token
-    csrf_verify_or_die();
     $target_id = intval($_POST['target_id'] ?? 0);
     if ($target_id > 0) {
         $conn->query("UPDATE chat_messages SET is_read = 1 WHERE sender_id = $target_id AND receiver_id = 0");
@@ -371,8 +365,6 @@ if ($action == 'mark_read') {
 }
 
 if ($action == 'mark_read_user' && $real_user_id > 0) {
-    // SECURITY: Xác thực CSRF Token
-    csrf_verify_or_die();
     $conn->query("UPDATE chat_messages SET is_read=1 WHERE receiver_id=$real_user_id AND sender_id=0");
     echo json_encode(['status'=>'success']); exit;
 }

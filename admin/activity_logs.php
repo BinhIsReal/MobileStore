@@ -128,6 +128,6 @@ $logs = $conn->query($sql);
         </div>
     </div>
 
-<script src="../assets/js/admin.js"></script>
+<script src="../assets/js/admin_main.js"></script>
 </body>
 </html>

@@ -3172,7 +3172,6 @@ button {
 .btn-like-review.liked {
   color: #00487a;
   font-weight: 600;
-  background-color: #f0f7ff;
   border-color: #00487a;
 }
 .btn-like-review.liked i {

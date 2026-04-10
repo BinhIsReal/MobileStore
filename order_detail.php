@@ -1,6 +1,7 @@
 <?php
 session_start();
 include 'config/db.php';
+include_once 'includes/security.php';
 
 // 1. Kiểm tra ID đơn hàng
 if (!isset($_GET['id']) || !isset($_SESSION['user_id'])) {
@@ -50,6 +51,7 @@ $allow_cancel = ($current_status == 'pending');
 
 <head>
     <title>Chi tiết đơn hàng <?= $order_id ?></title>
+    <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
     <link rel="stylesheet" href="assets/css/style.css?v=<?= time() ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -186,7 +188,8 @@ $allow_cancel = ($current_status == 'pending');
 
                 <div class="sum-row final-total">
                     <span class="sum-label" style="color:#333; margin-right:10px;">Tổng cộng:</span>
-                    <span><?= number_format($order['total_price'], 0, ',', '.') ?> ₫</span>
+                    <?php $final_total = max(0, $order['total_price'] - $order['discount_amount']); ?>
+                    <span style="color:#d70018; font-size:18px; font-weight:bold;"><?= number_format($final_total, 0, ',', '.') ?> ₫</span>
                 </div>
             </div>
 

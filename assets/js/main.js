@@ -684,8 +684,13 @@ function openVoucherList() {
 
   $.post(apiUrl, { action: "get_my_vouchers" }, function (res) {
     try {
-      let cleanRes = res.substring(res.indexOf("{"));
-      let response = JSON.parse(cleanRes);
+      let response;
+      if (typeof res === "object") {
+        response = res;
+      } else {
+        let cleanRes = res.substring(res.indexOf("{"));
+        response = JSON.parse(cleanRes);
+      }
 
       let container = $("#voucher-list-container");
       container.empty();
@@ -972,6 +977,7 @@ function handleCheckout(btn) {
       info: { name: name, phone: phone, address: address },
       items: JSON.stringify(items),
       payment_method: paymentMethod,
+      voucher_id: selectedVoucher ? selectedVoucher.id : 0,
     },
     function (res) {
       btn.prop("disabled", false).text(oldText);
@@ -1329,7 +1335,7 @@ function changePassword() {
     },
     function (res) {
       try {
-        let response = JSON.parse(res);
+        let response = typeof res === "object" ? res : JSON.parse(res);
 
         if (response.status === "success") {
           Swal.fire({
@@ -1337,11 +1343,10 @@ function changePassword() {
             title: "Thành công!",
             text: response.message,
             showConfirmButton: false,
-            timer: 2000,
+            timer: 1500,
+          }).then(() => {
+            window.location.href = "profile.php";
           });
-
-          $("#old-pass").val("");
-          $("#new-pass").val("");
         } else {
           Swal.fire({
             icon: "error",
@@ -1390,9 +1395,20 @@ function confirmCancel(orderId) {
                 title: "Thành công!",
                 text: data.message,
                 showConfirmButton: false,
-                timer: 2000,
-              }).then(() => {
-                window.location.reload();
+                timer: 1500,
+              });
+
+              // Cập nhật DOM trực tiếp không cần tải lại trang
+              $('.btn-cancel-order').fadeOut(300, function() {
+                  $(this).remove();
+              });
+
+              $('.timeline').fadeOut(300, function() {
+                  $(this).replaceWith(`
+                  <div class="alert fade-in" style="background:#ffecec; color:#d70018; padding:15px; border-radius:6px; text-align:center; margin-bottom:30px; font-weight:bold;">
+                      <i class="fa fa-circle-exclamation"></i> Đơn hàng này đã bị hủy.
+                  </div>
+                  `);
               });
             } else {
               Swal.fire({

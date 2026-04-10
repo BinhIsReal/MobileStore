@@ -53,7 +53,7 @@ $(document).ready(function () {
     // Gửi AJAX
     $.post("api/profile_api.php", data, function (res) {
       try {
-        let response = JSON.parse(res);
+        let response = typeof res === 'string' ? JSON.parse(res) : res;
 
         let isSuccess = response.status === "success";
         let title = isSuccess ? "Thành công!" : "Cảnh báo!";

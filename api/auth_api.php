@@ -154,7 +154,7 @@ if (isset($_GET['logout'])) {
     $_SESSION['logout_success_msg'] = "Bạn đã đăng xuất tài khoản thành công!";
 
     // SECURITY: relative redirect an toàn (không dùng header từ input user)
-    header("Location: index.php");
+    header("Location: ../index.php");
     exit;
 }
 

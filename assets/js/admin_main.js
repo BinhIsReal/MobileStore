@@ -185,7 +185,7 @@ $("#assign-voucher-form").submit(function (e) {
 
   $.post("../api/voucher_api.php", formData, function (res) {
     try {
-      let response = JSON.parse(res);
+      let response = typeof res === "object" ? res : JSON.parse(res);
       if (response.status === "success") {
         $("#assignModal").fadeOut();
         Swal.fire("Thành công", response.message, "success");
@@ -248,7 +248,7 @@ $("#create-voucher-form").submit(function (e) {
 
   $.post("../api/voucher_api.php", formData, function (res) {
     try {
-      let response = JSON.parse(res);
+      let response = typeof res === "object" ? res : JSON.parse(res);
       if (response.status === "success") {
         Swal.fire("Thành công!", response.message, "success").then(() => {
           window.location.reload();
@@ -258,7 +258,10 @@ $("#create-voucher-form").submit(function (e) {
       }
     } catch (error) {
       console.error("Lỗi:", error);
+      Swal.fire("Lỗi hệ thống", "Có lỗi xảy ra trong quá trình xử lý.", "error");
     }
+  }).fail(function() {
+      Swal.fire("Lỗi kết nối", "Không thể kết nối với server.", "error");
   });
 });
 

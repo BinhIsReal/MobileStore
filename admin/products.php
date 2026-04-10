@@ -188,8 +188,8 @@ $result = $stmt->get_result();
                                         style="color:#f39c12; font-size:14px; color:white;  "></i>
                                 </a>
 
-                                <a href="products.php?delete_id=<?= $row['id'] ?>"
-                                    onclick="return confirm('Bạn chắc chắn muốn xóa sản phẩm này?');" class="btn-delete"
+                                <a href="javascript:void(0)"
+                                    onclick="confirmDelete(<?= $row['id'] ?>)" class="btn-delete"
                                     title="Xóa">
                                     <i class="fa-solid fa-trash-can"
                                         style="color:#e74c3c; font-size:14px;color:white;"></i>
@@ -213,6 +213,29 @@ $result = $stmt->get_result();
             </div>
         </div>
     </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        function confirmDelete(id) {
+            Swal.fire({
+                title: "Xác nhận xóa?",
+                text: "Bạn chắc chắn muốn xóa sản phẩm này?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#d70018",
+                cancelButtonColor: "#6c757d",
+                confirmButtonText: "Đồng ý",
+                cancelButtonText: "Hủy bỏ",
+                customClass: {
+                    popup: 'confirm-box-swal'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = `products.php?delete_id=${id}`;
+                }
+            });
+        }
+    </script>
 </body>
 
 </html>

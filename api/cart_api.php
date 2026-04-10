@@ -247,10 +247,8 @@ if ($action === 'checkout') {
     // SECURITY: Whitelist payment method
     $allowed_methods  = ['cod', 'banking'];
     $payment_method   = in_array($_POST['payment_method'] ?? '', $allowed_methods) ? $_POST['payment_method'] : 'cod';
-    $discount_amount  = 0;
-    $total            = 0;
-
     // BƯỚC 1: Tính tổng tiền Server-side (an toàn, không tin giá từ client)
+    $total = 0;
     $valid_items = [];
     foreach ($items as $it) {
         $pid = (int)($it['product_id'] ?? 0);
@@ -275,7 +273,45 @@ if ($action === 'checkout') {
         exit;
     }
 
-    // BƯỚC 2: Tạo đơn hàng
+    // BƯỚC 2: Tính toán Voucher
+    $discount_amount = 0;
+    $voucher_id = (int)($_POST['voucher_id'] ?? 0);
+    
+    if ($voucher_id > 0) {
+        // Kiểm tra Voucher xem có còn hợp lệ đối với User không
+        $v_sql = "SELECT v.* FROM user_vouchers uv 
+                  JOIN vouchers v ON uv.voucher_id = v.id 
+                  WHERE uv.user_id = ? AND uv.voucher_id = ? 
+                  AND (v.expiry_date >= CURDATE() OR v.expiry_date = '0000-00-00')
+                  AND uv.usage_limit > uv.used_count";
+                  
+        $v_stmt = $conn->prepare($v_sql);
+        $v_stmt->bind_param("ii", $user_id, $voucher_id);
+        $v_stmt->execute();
+        $v_res = $v_stmt->get_result();
+        
+        if ($v = $v_res->fetch_assoc()) {
+            if ($total >= $v['min_order_value']) {
+                if ($v['type'] == 'percent') {
+                     $cal_discount = $total * ($v['discount_amount'] / 100);
+                     if ($v['max_discount'] > 0 && $cal_discount > $v['max_discount']) {
+                         $cal_discount = $v['max_discount'];
+                     }
+                     $discount_amount = $cal_discount;
+                } else {
+                     $discount_amount = $v['discount_amount'];
+                }
+                
+                if ($discount_amount > $total) $discount_amount = $total;
+                
+                // Trừ lượt dùng của user đó
+                $conn->query("UPDATE user_vouchers SET used_count = used_count + 1 WHERE user_id = $user_id AND voucher_id = $voucher_id");
+            }
+        }
+        $v_stmt->close();
+    }
+
+    // BƯỚC 3: Tạo đơn hàng
     $sql  = "INSERT INTO orders (user_id, name, phone, address, total_price, discount_amount, status, payment_method, payment_status, created_at)
              VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, 'unpaid', NOW())";
     $stmt = $conn->prepare($sql);

@@ -79,7 +79,7 @@ function viewOrderDetail(orderId) {
                 `;
 
                 let dis = parseFloat(o.discount_amount);
-                let final = parseFloat(o.total_price);
+                let final = Math.max(0, parseFloat(o.total_price) - dis);
                 html += `
                 <div class="order-detail-summary">
                     <p class="order-detail-sum-row">Tạm tính: <b>${total.toLocaleString()}đ</b></p>
