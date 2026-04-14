@@ -92,9 +92,18 @@ if ($action == 'send_message') {
 
             // 2. TÍCH HỢP RAG TÌM KIẾM SẢN PHẨM KHỚP Ý ĐỊNH MUA HÀNG
             $categories = ['điện thoại', 'màn hình', 'đồng hồ', 'linh kiện', 'pc', 'loa', 'máy ảnh', 'laptop', 'tai nghe', 'chuột', 'bàn phím', 'phụ kiện', 'smartwatch'];
-            $brands = ['iphone', 'samsung', 'xiaomi', 'oppo', 'vivo', 'asus', 'dell', 'hp', 'macbook', 'apple', 'sony', 'jbl', 'lg'];
-            $action_keywords = ['giá', 'mua', 'bao nhiêu', 'rẻ', 'tư vấn', 'tìm', 'có'];
-            $keywords = array_merge($categories, $brands, $action_keywords);
+            $brands = ['iphone', 'samsung', 'xiaomi', 'oppo', 'vivo', 'asus', 'dell', 'hp', 'macbook', 'apple', 'sony', 'jbl', 'lg', 'realme', 'nokia'];
+            
+            // Tải thêm thương hiệu từ DB để đảm bảo không sót (VD: Realme, Huawei...)
+            $db_brands = $conn->query("SELECT name FROM brands");
+            if ($db_brands) {
+                while($b = $db_brands->fetch_assoc()) {
+                     $brands[] = mb_strtolower(trim($b['name']), 'UTF-8');
+                }
+            }
+            
+            $action_keywords = ['giá', 'mua', 'bao', 'nhiêu', 'rẻ', 'tư', 'vấn', 'tìm', 'có', 'cần', 'xem'];
+            $keywords = array_merge($categories, $brands); // Tạm bỏ action_keywords khỏi $keywords để tránh nhiễu
             
             $msg_lower = mb_strtolower($msg, 'UTF-8');
             $has_intent = false;
@@ -118,16 +127,19 @@ if ($action == 'send_message') {
                 }
                 
                 if (empty($search_term)) {
-                     // Dự phòng tìm kiếm từ khóa bất kỳ nếu chỉ hỏi "tư vấn", "giá",...
-                     preg_match_all('/\b\w+\b/u', mb_strtolower(str_replace($action_keywords, '', $msg), 'UTF-8'), $matches);
+                     // Dự phòng: Lấy các từ khóa sau khi đã loại bỏ stop-words
+                     $stop_words = array_merge($action_keywords, ['điện', 'thoại', 'máy', 'cái', 'tôi', 'mình', 'em', 'anh', 'chị', 'bạn', 'shop', 'ơi', 'à', 'ạ']);
+                     $clean_msg = str_replace($stop_words, '', $msg_lower);
+                     preg_match_all('/\b\w+\b/u', trim($clean_msg), $matches);
                      if (!empty($matches[0])) {
-                         $search_term = implode(' ', array_slice($matches[0], 0, 2));
+                         $search_term = implode(' ', array_slice($matches[0], 0, 3)); 
                      }
                 }
                 
                 $like_term = "%{$search_term}%";
                 if ($search_term == '') $like_term = "%";
-                $search_stmt = $conn->prepare("SELECT id, name, price FROM products WHERE name LIKE ? LIMIT 5");
+                // ĐÃ SỬA: Lấy thêm stock để cung cấp số lượng thực tế cho Chatbot
+                $search_stmt = $conn->prepare("SELECT id, name, price, stock FROM products WHERE name LIKE ? LIMIT 8");
                 $search_stmt->bind_param("s", $like_term);
                 $search_stmt->execute();
                 $search_res = $search_stmt->get_result();
@@ -139,7 +151,8 @@ if ($action == 'send_message') {
                     while ($p = $search_res->fetch_assoc()) {
                         $price_format = number_format($p['price'], 0, ',', '.') . 'đ';
                         $url_product = $base_url . "/product_detail.php?id=" . $p['id']; 
-                        $product_context .= "- {$p['name']} (Giá: {$price_format} - Link: {$url_product})\n";
+                        $status_str = ($p['stock'] > 0) ? "Còn {$p['stock']} SP" : "Hết hàng";
+                        $product_context .= "- {$p['name']} (Giá: {$price_format} - Trạng thái: {$status_str} - Link: {$url_product})\n";
                     }
                 } else {
                     $product_context = "Dạ hiện tại sản phẩm mẫu này bên trong kho đang tạm hết hàng...";

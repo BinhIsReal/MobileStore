@@ -170,7 +170,7 @@ $result = $stmt->get_result();
                             </td>
                             <td>
                                 <div class="product-name-text"><?= $row['name'] ?></div>
-                                <small class="product-stock-text">Kho: 100 (Demo)</small>
+                                <small class="product-stock-text">Kho: <?= isset($row['stock']) ? $row['stock'] : 0 ?></small>
                             </td>
                             <td><?= $row['cat_name'] ?></td>
                             <td><?= $row['brand_name'] ?></td>

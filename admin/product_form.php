@@ -57,6 +57,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // SECURITY: Không dùng htmlspecialchars ở đây vì sẽ mã hóa khi in ra HTML; strip_tags đủ để loại XSS ở field text
     $desc = trim($_POST['description'] ?? '');
     
+    // Xử lý số lượng thực tế
+    $stock = isset($_POST['stock']) ? intval($_POST['stock']) : 0;
+    
     // Xử lý ảnh
     $image = $_POST['image_link'] ?? '';
     if (isset($_FILES['image_file']) && $_FILES['image_file']['error'] === 0) {
@@ -88,13 +91,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     // INSERT / UPDATE
     if ($id > 0) {
-        $sql = "UPDATE products SET name=?, price=?, sale_price=?, image=?, brand_id=?, category_id=?, colors=?, specs=?, description=? WHERE id=?";
+        $sql = "UPDATE products SET name=?, price=?, sale_price=?, image=?, brand_id=?, category_id=?, colors=?, specs=?, description=?, stock=? WHERE id=?";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("sddsiisssi", $name, $price, $sale_price, $image, $brand_id, $category_id, $colors, $specs, $desc, $id);
+        $stmt->bind_param("sddsiisssii", $name, $price, $sale_price, $image, $brand_id, $category_id, $colors, $specs, $desc, $stock, $id);
     } else {
-        $sql = "INSERT INTO products (name, price, sale_price, image, brand_id, category_id, colors, specs, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO products (name, price, sale_price, image, brand_id, category_id, colors, specs, description, stock) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("sddsiisss", $name, $price, $sale_price, $image, $brand_id, $category_id, $colors, $specs, $desc);
+        $stmt->bind_param("sddsiisssi", $name, $price, $sale_price, $image, $brand_id, $category_id, $colors, $specs, $desc, $stock);
     }
 
     if ($stmt->execute()) {
@@ -105,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         include_once '../includes/admin_logger.php';
         $new_data = [
             'name' => $name, 'price' => $price, 'sale_price' => $sale_price, 
-            'brand_id' => $brand_id, 'category_id' => $category_id, 'colors' => $colors
+            'brand_id' => $brand_id, 'category_id' => $category_id, 'colors' => $colors, 'stock' => $stock
         ];
         if ($id > 0) {
             logAdminAction($conn, 'Sửa Sản Phẩm', 'admin/product_form.php', "Cập nhật sản phẩm: $name", $product, $new_data);
@@ -223,6 +226,14 @@ render_form:
                             <input type="text" name="colors" class="form-control"
                                 value="<?= htmlspecialchars($product['colors'] ?? '') ?>">
                         </div>
+                    </div>
+                    <div class="grid-2">
+                        <div>
+                            <label class="form-label">Số lượng trong kho (Stock) (*)</label>
+                            <input type="number" name="stock" class="form-control" required min="0" placeholder="VD: 50"
+                                value="<?= isset($product['stock']) ? $product['stock'] : 0 ?>">
+                        </div>
+                        <div></div>
                     </div>
                 </div>
 
