@@ -24,7 +24,7 @@ include_once __DIR__ . '/includes/security.php';
             <div class="auth-link">
                 Chưa có tài khoản? <a href="register.php">Đăng ký ngay</a>
                 <br>
-                <a href="index.php" style="color:#666; font-weight:normal; margin-top:10px; display:inline-block;">← Về
+                <a href="index.php" style="color:#666; font-weight:bold; margin-top:10px; display:inline-block;">← Về
                     trang chủ</a>
             </div>
             <p id="error-msg" style="color:red; margin-top:10px;"></p>
@@ -64,4 +64,4 @@ include_once __DIR__ . '/includes/security.php';
     </script>
 </body>
 
-</html>
+</html>

@@ -66,7 +66,10 @@ if ($action == 'send_message') {
 
         // --- BOT TRẢ LỜI BẰNG GEMINI API ---
         if ($tab == 'bot') {
-            $apiKey = "AIzaSyBdJWezPzPSaLMN7XMHyFyxa0bUryw1-Vg";
+            $envPath = __DIR__ . '/../.env';
+            $env = file_exists($envPath) ? parse_ini_file($envPath) : [];
+            $apiKey = $env['GEMINI_API_KEY'] ?? '';
+            
             $model = "gemini-2.5-flash"; 
             $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
 
