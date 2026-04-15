@@ -4,226 +4,257 @@
 
 /* --- MODAL CHI TIẾT ĐƠN HÀNG --- */
 #orderDetailModal {
-    display: none;
-    position: fixed;
-    z-index: 9999;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0, 0, 0, 0.5);
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.5);
 }
 
 #orderDetailModal .modal-content {
-    background-color: #fff;
-    margin: 5% auto;
-    border-radius: 8px;
-    overflow: hidden;
-    max-width: 650px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  background-color: #fff;
+  margin: 5% auto;
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 650px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .modal-header-bar {
-    background: #00487a;
-    color: #fff;
-    padding: 15px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  background: #00487a;
+  color: #fff;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .modal-header-bar h3 {
-    margin: 0;
+  margin: 0;
 }
 
 .modal-header-bar .btn-close-modal {
-    color: #fff;
-    font-size: 24px;
-    font-weight: bold;
-    cursor: pointer;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
 }
-
+.modal-header-bar .btn-close-modal:hover {
+  color: #dc3545;
+  font-size: 24px;
+  font-weight: bold;
+}
 .modal-body-pad {
-    padding: 20px 25px;
+  padding: 20px 25px;
 }
 
 .modal-footer-bar {
-    padding: 15px 20px;
-    background: #f5f6fa;
-    text-align: right;
-    border-top: 1px solid #eee;
+  padding: 15px 20px;
+  background: #f5f6fa;
+  text-align: right;
+  border-top: 1px solid #eee;
 }
 
 /* --- NỘI DUNG CHI TIẾT ĐƠN HÀNG --- */
 .order-detail-info-grid {
-    display: flex;
-    gap: 20px;
-    margin-bottom: 20px;
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
 }
 
 .order-detail-info-box {
-    flex: 1;
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 6px;
-    border: 1px solid #eee;
+  flex: 1;
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px solid #eee;
 }
 
 .order-detail-info-title {
-    margin-top: 0;
-    color: #333;
-    font-size: 14px;
+  margin-top: 0;
+  color: #333;
+  font-size: 14px;
 }
 
 .order-detail-info-line {
-    margin: 5px 0 0;
-    font-size: 14px;
+  margin: 5px 0 0;
+  font-size: 14px;
 }
 
 .order-detail-products-title {
-    margin: 0 0 10px 0;
-    color: #333;
-    font-size: 14px;
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 14px;
 }
 
 .order-detail-table-wrap {
-    border: 1px solid #eee;
-    border-radius: 6px;
-    overflow: hidden;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 .order-detail-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
 }
 
 .order-detail-thead-row {
-    background: #f1f2f6;
-    border-bottom: 2px solid #ddd;
-    text-align: left;
+  background: #f1f2f6;
+  border-bottom: 2px solid #ddd;
+  text-align: left;
 }
 
 .order-detail-th {
-    padding: 10px;
+  padding: 10px;
 }
 
 .order-detail-th-center {
-    width: 60px;
-    text-align: center;
+  width: 60px;
+  text-align: center;
 }
 
 .order-detail-th-right {
-    text-align: right;
+  text-align: right;
 }
 
 .order-detail-tbody-row {
-    border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #eee;
 }
 
 .order-detail-td {
-    padding: 10px;
+  padding: 10px;
 }
 
 .order-detail-td-center {
-    text-align: center;
+  text-align: center;
 }
 
 .order-detail-td-right {
-    text-align: right;
+  text-align: right;
 }
 
 .order-detail-product-cell {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .order-detail-product-img {
-    width: 40px;
-    height: 40px;
-    object-fit: contain;
-    border-radius: 4px;
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 4px;
 }
 
 .order-detail-product-name {
-    font-weight: 500;
+  font-weight: 500;
 }
 
 .order-detail-total-cell {
-    font-weight: bold;
-    color: #d70018;
+  font-weight: bold;
+  color: #d70018;
 }
 
 .order-detail-summary {
-    margin-top: 20px;
-    text-align: right;
-    border-top: 2px solid #eee;
-    padding-top: 15px;
+  margin-top: 20px;
+  text-align: right;
+  border-top: 2px solid #eee;
+  padding-top: 15px;
 }
 
 .order-detail-sum-row {
-    margin: 0 0 5px;
-    font-size: 14px;
+  margin: 0 0 5px;
+  font-size: 14px;
 }
 
 .order-detail-discount {
-    color: #27ae60;
+  color: #27ae60;
 }
 
 .order-detail-sum-final {
-    margin: 5px 0 0;
-    font-size: 18px;
+  margin: 5px 0 0;
+  font-size: 18px;
 }
 
 .order-detail-final-price {
-    color: #d70018;
+  color: #d70018;
 }
 
 .order-detail-error {
-    text-align: center;
-    color: red;
-    padding: 20px;
+  text-align: center;
+  color: red;
+  padding: 20px;
 }
 
 /* --- TABLE FILTER --- */
 .adm-order-filter-btn {
-    background: #00487a;
-    color: white;
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    line-height: 1.5;
+  background: #00487a;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  line-height: 1.5;
 }
 
 /* select inline style cho status badge */
 .status-badge-select {
-    padding: 5px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-    color: black;
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  outline: none;
+}
+.status-badge-select option {
+  background-color: white;
+  color: black;
+  font-weight: normal;
+}
+
+.bg-pending {
+  background-color: #f39c12 !important;
+  color: white !important;
+}
+
+.bg-shipping {
+  background-color: #3498db !important;
+  color: white !important;
+}
+
+.bg-completed {
+  background-color: #27ae60 !important;
+  color: white !important;
+}
+
+.bg-cancelled {
+  background-color: #e74c3c !important;
+  color: white !important;
 }
 
 /* Nút Xem chi tiết */
 .btn-view-order {
-    background: #395a8f;
-    color: #fff;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 13px;
+  background: #395a8f;
+  color: #fff;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
 }
 
 /* Tổng tiền trong bảng */
 .order-total-price {
-    color: #d9534f;
-    font-weight: bold;
+  color: #d9534f;
+  font-weight: bold;
 }

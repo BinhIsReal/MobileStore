@@ -62,6 +62,152 @@
   padding-top: 20px;
 }
 
+/* Modal Track Order */
+.track-modal-overlay {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+}
+.track-modal-content {
+  background: #fff;
+  width: 95%;
+  max-width: 650px;
+  border-radius: 8px;
+  position: relative;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.track-modal-header {
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.track-modal-header h3 {
+  margin: 0;
+  color: var(--primary);
+  font-size: 18px;
+}
+.track-modal-close {
+  font-size: 24px;
+  cursor: pointer;
+  color: #888;
+}
+.track-modal-close:hover {
+  color: #d70018;
+  font-weight: bold;
+}
+.track-modal-body {
+  padding: 20px;
+  overflow-y: auto;
+}
+.track-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+.track-info-box-sm {
+  background: #f9f9f9;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #eee;
+}
+.track-info-title {
+  font-size: 13px;
+  color: #666;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+.track-info-line {
+  font-size: 14px;
+  margin-bottom: 5px;
+  color: #333;
+}
+.track-item-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #f0f0f0;
+  padding: 10px 0;
+}
+.track-item-img {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 5px;
+  margin-right: 15px;
+}
+.track-item-detail {
+  flex: 1;
+}
+.track-item-name {
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.track-item-meta {
+  font-size: 13px;
+  color: #666;
+}
+.track-item-price {
+  font-weight: bold;
+  color: #d70018;
+}
+.track-summary {
+  margin-top: 20px;
+  background: #fff9fa;
+  padding: 15px;
+  border-radius: 6px;
+  border: 1px dashed #ffb3b3;
+}
+.track-sum-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+.track-sum-final {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #ddd;
+  font-size: 16px;
+  font-weight: bold;
+  color: #d70018;
+}
+.btn-open-track-modal {
+  display: block;
+  text-align: center;
+  background: #eef5ff;
+  color: var(--primary);
+  padding: 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-top: 20px;
+  border: 1px solid #cce0ff;
+  transition: 0.2s;
+}
+.btn-open-track-modal:hover {
+  background: #dbeaff;
+}
+@media (max-width: 500px) {
+  .track-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* --- 2. HỆ THỐNG CỬA HÀNG (STORE SYSTEM) --- */
 .store-grid {
   display: grid;

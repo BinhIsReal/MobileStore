@@ -121,7 +121,7 @@ if ($action === 'login') {
                 unset($_SESSION['cart']);
             }
 
-            $redirect = ($user['role'] === 'admin') ? 'admin/products.php' : 'index.php';
+            $redirect = ($user['role'] === 'admin') ? 'admin/dashboard.php' : 'index.php';
             echo json_encode(['status' => 'success', 'redirect' => $redirect]);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Sai tài khoản hoặc mật khẩu!']);

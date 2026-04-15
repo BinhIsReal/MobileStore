@@ -90,78 +90,317 @@ if ($action == 'send_message') {
             }
             $history_messages = array_reverse($history_messages); // Đảo ngược thành từ cũ đến mới
 
-            // 2. TÍCH HỢP RAG TÌM KIẾM SẢN PHẨM KHỚP Ý ĐỊNH MUA HÀNG
-            $categories = ['điện thoại', 'màn hình', 'đồng hồ', 'linh kiện', 'pc', 'loa', 'máy ảnh', 'laptop', 'tai nghe', 'chuột', 'bàn phím', 'phụ kiện', 'smartwatch'];
-            $brands = ['iphone', 'samsung', 'xiaomi', 'oppo', 'vivo', 'asus', 'dell', 'hp', 'macbook', 'apple', 'sony', 'jbl', 'lg', 'realme', 'nokia'];
-            
-            // Tải thêm thương hiệu từ DB để đảm bảo không sót (VD: Realme, Huawei...)
-            $db_brands = $conn->query("SELECT name FROM brands");
-            if ($db_brands) {
-                while($b = $db_brands->fetch_assoc()) {
-                     $brands[] = mb_strtolower(trim($b['name']), 'UTF-8');
+            // 2. TÍCH HỢP RAG — TÌM SẢN PHẨM THỰC TẾ TRONG MYSQL
+            $msg_lower = mb_strtolower($msg, 'UTF-8');
+
+            // --- 2a. LẤY TẤT CẢ THƯƠNG HIỆU & DANH MỤC TỪ DB ---
+            $db_brand_map = [];
+            $res_brands = $conn->query("SELECT id, name FROM brands");
+            if ($res_brands) {
+                while ($b = $res_brands->fetch_assoc()) {
+                    $db_brand_map[$b['id']] = mb_strtolower(trim($b['name']), 'UTF-8');
                 }
             }
-            
-            $action_keywords = ['giá', 'mua', 'bao', 'nhiêu', 'rẻ', 'tư', 'vấn', 'tìm', 'có', 'cần', 'xem'];
-            $keywords = array_merge($categories, $brands); // Tạm bỏ action_keywords khỏi $keywords để tránh nhiễu
-            
-            $msg_lower = mb_strtolower($msg, 'UTF-8');
-            $has_intent = false;
-            foreach ($keywords as $kw) {
-                if (strpos($msg_lower, $kw) !== false) {
-                    $has_intent = true;
+
+            $db_cat_map = [];
+            $res_cats = $conn->query("SELECT id, name FROM categories");
+            if ($res_cats) {
+                while ($c = $res_cats->fetch_assoc()) {
+                    $db_cat_map[$c['id']] = mb_strtolower(trim($c['name']), 'UTF-8');
+                }
+            }
+
+            // --- 2b. TRÍCH XUẤT Ý ĐỊNH ---
+            $matched_brand_ids  = [];
+            $matched_cat_ids    = [];
+            $keyword_fragments  = [];
+            $price_min = 0;
+            $price_max = 0;
+
+            // Khớp thương hiệu
+            foreach ($db_brand_map as $bid => $bname) {
+                if (mb_strpos($msg_lower, $bname, 0, 'UTF-8') !== false) {
+                    $matched_brand_ids[] = intval($bid);
+                }
+            }
+
+            // Khớp danh mục
+            foreach ($db_cat_map as $cid => $cname) {
+                if (mb_strpos($msg_lower, $cname, 0, 'UTF-8') !== false) {
+                    $matched_cat_ids[] = intval($cid);
+                }
+            }
+
+            // Lấy khoảng giá từ câu hỏi (VD: "dưới 10 triệu", "từ 5 đến 15 triệu")
+            if (preg_match('/dưới\s*([\d,.]+)\s*(triệu|tr|k|nghìn)?/u', $msg_lower, $pm)) {
+                $price_max = extractPrice($pm[0]);
+            }
+            if (preg_match('/trên\s*([\d,.]+)\s*(triệu|tr|k|nghìn)?/u', $msg_lower, $pm)) {
+                $price_min = extractPrice($pm[0]);
+            }
+            if (preg_match('/từ\s*([\d,.]+)\s*(triệu|tr|k|nghìn)?\s*đến\s*([\d,.]+)\s*(triệu|tr|k|nghìn)?/u', $msg_lower, $pm)) {
+                $price_min = extractPrice($pm[1] . ' ' . ($pm[2] ?? 'triệu'));
+                $price_max = extractPrice($pm[3] . ' ' . ($pm[4] ?? 'triệu'));
+            }
+
+            // Từ khóa tên sản phẩm (model cụ thể, VD: "14 pro", "s24 ultra")
+            $stop_words_rag = ['điện', 'thoại', 'máy', 'cái', 'tôi', 'mình', 'em', 'anh', 'chị', 'bạn',
+                               'shop', 'ơi', 'à', 'ạ', 'giá', 'mua', 'bao', 'nhiêu', 'rẻ', 'tư', 'vấn',
+                               'tìm', 'có', 'cần', 'xem', 'dưới', 'trên', 'từ', 'đến', 'triệu', 'nghìn', 'tr', 'k'];
+            $words = preg_split('/\s+/u', trim($msg_lower));
+            foreach ($words as $w) {
+                $w = trim($w);
+                if (mb_strlen($w, 'UTF-8') >= 2 && !in_array($w, $stop_words_rag)) {
+                    $keyword_fragments[] = $conn->real_escape_string($w);
+                }
+            }
+
+            // Kiểm tra có ý định mua hàng không
+            $intent_keywords = ['giá', 'mua', 'bao nhiêu', 'tư vấn', 'tìm', 'gợi ý', 'rẻ', 'xem', 'có không',
+                                'điện thoại', 'laptop', 'tai nghe', 'đồng hồ', 'smartwatch', 'phụ kiện', 'loa', 'chuột'];
+            $has_intent = !empty($matched_brand_ids) || !empty($matched_cat_ids) || $price_max > 0 || $price_min > 0;
+            if (!$has_intent) {
+                foreach ($intent_keywords as $ik) {
+                    if (mb_strpos($msg_lower, $ik, 0, 'UTF-8') !== false) { $has_intent = true; break; }
+                }
+            }
+
+            // --- 2c. XÂY DỰNG QUERY ĐỘNG DỰA TRÊN Ý ĐỊNH ---
+            $product_context = "";
+            if ($has_intent) {
+                $where_clauses = [];
+                $bind_types    = "";
+                $bind_values   = [];
+
+                // Lọc theo brand
+                if (!empty($matched_brand_ids)) {
+                    $placeholders = implode(',', array_fill(0, count($matched_brand_ids), '?'));
+                    $where_clauses[] = "p.brand_id IN ($placeholders)";
+                    foreach ($matched_brand_ids as $bid) { $bind_types .= "i"; $bind_values[] = $bid; }
+                }
+
+                // Lọc theo category
+                if (!empty($matched_cat_ids)) {
+                    $placeholders = implode(',', array_fill(0, count($matched_cat_ids), '?'));
+                    $where_clauses[] = "p.category_id IN ($placeholders)";
+                    foreach ($matched_cat_ids as $cid) { $bind_types .= "i"; $bind_values[] = $cid; }
+                }
+
+                // Lọc theo khoảng giá
+                if ($price_min > 0) {
+                    $where_clauses[] = "p.price >= ?";
+                    $bind_types .= "d"; $bind_values[] = $price_min;
+                }
+                if ($price_max > 0) {
+                    $where_clauses[] = "p.price <= ?";
+                    $bind_types .= "d"; $bind_values[] = $price_max;
+                }
+
+                // Lọc theo từ khóa tên sản phẩm (dùng OR LIKE cho từng fragment)
+                if (!empty($keyword_fragments) && empty($matched_brand_ids) && empty($matched_cat_ids)) {
+                    $name_clauses = [];
+                    foreach ($keyword_fragments as $frag) {
+                        $like_val = "%{$frag}%";
+                        $name_clauses[] = "p.name LIKE ?";
+                        $bind_types .= "s"; $bind_values[] = $like_val;
+                    }
+                    if (!empty($name_clauses)) {
+                        $where_clauses[] = "(" . implode(" OR ", $name_clauses) . ")";
+                    }
+                }
+
+                $where_sql = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses) : "";
+
+                $query_sql = "SELECT p.id, p.name, p.price, p.stock, b.name AS brand_name, c.name AS cat_name
+                              FROM products p
+                              LEFT JOIN brands b ON p.brand_id = b.id
+                              LEFT JOIN categories c ON p.category_id = c.id
+                              {$where_sql}
+                              ORDER BY p.stock DESC, p.price ASC
+                              LIMIT 10";
+
+                if (!empty($bind_values)) {
+                    $search_stmt = $conn->prepare($query_sql);
+                    $bind_refs = [&$bind_types];
+                    foreach ($bind_values as $k => $v) { $bind_refs[] = &$bind_values[$k]; }
+                    call_user_func_array([$search_stmt, 'bind_param'], $bind_refs);
+                    $search_stmt->execute();
+                    $search_res = $search_stmt->get_result();
+                } else {
+                    // Không có filter cụ thể → trả về sản phẩm nổi bật
+                    $search_res = $conn->query("SELECT p.id, p.name, p.price, p.stock, b.name AS brand_name, c.name AS cat_name
+                                               FROM products p
+                                               LEFT JOIN brands b ON p.brand_id = b.id
+                                               LEFT JOIN categories c ON p.category_id = c.id
+                                               WHERE p.stock > 0
+                                               ORDER BY p.id DESC LIMIT 8");
+                }
+
+                $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'];
+
+                if ($search_res && $search_res->num_rows > 0) {
+                    $product_context = "DANH SÁCH SẢN PHẨM THỰC TẾ TRONG KHO (chỉ tư vấn từ danh sách này):\n";
+                    while ($p = $search_res->fetch_assoc()) {
+                        $price_format = number_format($p['price'], 0, ',', '.') . 'đ';
+                        $url_product  = $base_url . "/product_detail.php?id=" . $p['id'];
+                        $stock_str    = ($p['stock'] > 0) ? "Còn hàng ({$p['stock']} SP)" : "Hết hàng";
+                        $brand_str    = $p['brand_name'] ? "[{$p['brand_name']}]" : "";
+                        $cat_str      = $p['cat_name'] ? "[{$p['cat_name']}]" : "";
+                        $product_context .= "- {$brand_str}{$cat_str} {$p['name']} | Giá: {$price_format} | {$stock_str} | Link: {$url_product}\n";
+                    }
+                } else {
+                    $product_context = "KHÔNG TÌM THẤY sản phẩm phù hợp trong kho. Không được tự bịa sản phẩm.";
+                }
+
+                if (!empty($bind_values) && isset($search_stmt)) { $search_stmt->close(); }
+            }
+
+            // =========================================================
+            // 3. RAG ĐƠN HÀNG — TRA CỨU THỰC TẾ TRONG MYSQL
+            // =========================================================
+            $order_intent_keywords = [
+                'đơn hàng', 'đơn của tôi', 'đơn của em', 'order', 'đặt rồi', 'đặt hàng',
+                'đang giao', 'đang ở đâu', 'bao giờ tới', 'trạng thái', 'theo dõi',
+                'lịch sử mua', 'đã mua', 'mua gì', 'hủy đơn', 'hoàn tiền', 'đổi trả',
+                'thanh toán', 'chưa trả', 'đã thanh toán', 'mã đơn', 'order id'
+            ];
+
+            $has_order_intent = false;
+            foreach ($order_intent_keywords as $ok) {
+                if (mb_strpos($msg_lower, $ok, 0, 'UTF-8') !== false) {
+                    $has_order_intent = true;
                     break;
                 }
             }
-
-            $product_context = "";
-            if ($has_intent) {
-                $search_term = '';
-                
-                // Trích xuất thương hiệu hoặc loại sản phẩm
-                foreach (array_merge($brands, $categories) as $item) {
-                    if (strpos($msg_lower, $item) !== false) {
-                        $search_term = $item;
-                        break;
-                    }
-                }
-                
-                if (empty($search_term)) {
-                     // Dự phòng: Lấy các từ khóa sau khi đã loại bỏ stop-words
-                     $stop_words = array_merge($action_keywords, ['điện', 'thoại', 'máy', 'cái', 'tôi', 'mình', 'em', 'anh', 'chị', 'bạn', 'shop', 'ơi', 'à', 'ạ']);
-                     $clean_msg = str_replace($stop_words, '', $msg_lower);
-                     preg_match_all('/\b\w+\b/u', trim($clean_msg), $matches);
-                     if (!empty($matches[0])) {
-                         $search_term = implode(' ', array_slice($matches[0], 0, 3)); 
-                     }
-                }
-                
-                $like_term = "%{$search_term}%";
-                if ($search_term == '') $like_term = "%";
-                // ĐÃ SỬA: Lấy thêm stock để cung cấp số lượng thực tế cho Chatbot
-                $search_stmt = $conn->prepare("SELECT id, name, price, stock FROM products WHERE name LIKE ? LIMIT 8");
-                $search_stmt->bind_param("s", $like_term);
-                $search_stmt->execute();
-                $search_res = $search_stmt->get_result();
-                
-                if ($search_res->num_rows > 0) {
-                    $product_context = "Hiện tại kho đang có các sản phẩm sau:\n";
-                    $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'];
-                    
-                    while ($p = $search_res->fetch_assoc()) {
-                        $price_format = number_format($p['price'], 0, ',', '.') . 'đ';
-                        $url_product = $base_url . "/product_detail.php?id=" . $p['id']; 
-                        $status_str = ($p['stock'] > 0) ? "Còn {$p['stock']} SP" : "Hết hàng";
-                        $product_context .= "- {$p['name']} (Giá: {$price_format} - Trạng thái: {$status_str} - Link: {$url_product})\n";
-                    }
-                } else {
-                    $product_context = "Dạ hiện tại sản phẩm mẫu này bên trong kho đang tạm hết hàng...";
-                }
-                $search_stmt->close();
+            // Nhận diện mã đơn dạng "#45", "đơn 45", "order 45"
+            $order_id_requested = 0;
+            if (preg_match('/#(\d+)|(?:đơn|order)\s*(?:số|mã)?\s*(\d+)/ui', $msg, $om)) {
+                $order_id_requested = intval($om[1] ?: $om[2]);
+                $has_order_intent = true;
             }
 
-            // 3. TỐI ƯU PERSONA & SYSTEM INSTRUCTIONS
-            $system_prompt = "Bạn là chuyên gia tư vấn công nghệ của cửa hàng MobileStore (bán điện thoại, máy tính, laptop, đồng hồ thông minh, phụ kiện, âm thanh). Xưng hô (Dạ/Thưa, Em/Anh/Chị), câu trả lời ngắn gọn, xuống dòng RÕ RÀNG để không bị đặc chữ, ưu tiên tập trung chốt sale.\nBẮT BUỘC trả về link sản phẩm dưới dạng Markdown [Tên Sản Phẩm](Link).\nDựa vào thông tin kho hàng sau đây để tư vấn:\n" . $product_context;
+            $order_context = "";
+            if ($has_order_intent) {
+                if ($real_user_id <= 0) {
+                    // Khách chưa đăng nhập
+                    $order_context = "THÔNG BÁO HỆ THỐNG: Khách hàng CHƯA ĐĂNG NHẬP nên không thể tra cứu đơn hàng.\n"
+                        . "Hãy lịch sự yêu cầu khách đăng nhập tại trang web để xem thông tin đơn hàng của mình.";
+                } else {
+                    $status_map = [
+                        'pending'   => 'Chờ xác nhận',
+                        'shipping'  => 'Đang giao hàng',
+                        'completed' => 'Đã hoàn thành',
+                        'cancelled' => 'Đã hủy',
+                    ];
+                    $payment_map = [
+                        'unpaid' => 'Chưa thanh toán',
+                        'paid'   => 'Đã thanh toán',
+                    ];
+                    $payment_method_map = [
+                        'cod'     => 'Thu tiền khi giao (COD)',
+                        'banking' => 'Chuyển khoản ngân hàng',
+                    ];
+
+                    $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'];
+
+                    if ($order_id_requested > 0) {
+                        // --- Tra cứu theo mã đơn cụ thể ---
+                        $ord_stmt = $conn->prepare(
+                            "SELECT o.id, o.status, o.total_price, o.payment_method, o.payment_status, o.created_at,
+                                    GROUP_CONCAT(p.name ORDER BY oi.id SEPARATOR ' | ') AS products,
+                                    SUM(oi.quantity) AS total_qty
+                             FROM orders o
+                             JOIN order_items oi ON o.id = oi.order_id
+                             JOIN products p     ON oi.product_id = p.id
+                             WHERE o.id = ? AND o.user_id = ?
+                             GROUP BY o.id"
+                        );
+                        $ord_stmt->bind_param("ii", $order_id_requested, $real_user_id);
+                    } else if (!empty($keyword_fragments) && $has_order_intent) {
+                        // --- Lấy các đơn hàng dựa vào từ khoá tên sản phẩm ---
+                        $name_clauses = [];
+                        $bind_values_order = [$real_user_id];
+                        $bind_types_order = "i";
+
+                        foreach ($keyword_fragments as $frag) {
+                            $like_val = "%{$frag}%";
+                            $name_clauses[] = "p.name LIKE ?";
+                            $bind_types_order .= "s";
+                            $bind_values_order[] = $like_val;
+                        }
+
+                        $product_condition = "";
+                        if (!empty($name_clauses)) {
+                            $product_condition = " AND (" . implode(" OR ", $name_clauses) . ")";
+                        }
+
+                        $sql = "SELECT o.id, o.status, o.total_price, o.payment_method, o.payment_status, o.created_at,
+                                        GROUP_CONCAT(p.name ORDER BY oi.id SEPARATOR ' | ') AS products,
+                                        SUM(oi.quantity) AS total_qty
+                                 FROM orders o
+                                 JOIN order_items oi ON o.id = oi.order_id
+                                 JOIN products p     ON oi.product_id = p.id
+                                 WHERE o.user_id = ? {$product_condition}
+                                 GROUP BY o.id
+                                 ORDER BY o.created_at DESC
+                                 LIMIT 5";
+
+                        $ord_stmt = $conn->prepare($sql);
+                        $bind_refs = [&$bind_types_order];
+                        foreach ($bind_values_order as $key => $val) {
+                            $bind_refs[] = &$bind_values_order[$key];
+                        }
+                        call_user_func_array([$ord_stmt, 'bind_param'], $bind_refs);
+                    } else {
+                        // --- Lấy 5 đơn gần nhất ---
+                        $ord_stmt = $conn->prepare(
+                            "SELECT o.id, o.status, o.total_price, o.payment_method, o.payment_status, o.created_at,
+                                    GROUP_CONCAT(p.name ORDER BY oi.id SEPARATOR ' | ') AS products,
+                                    SUM(oi.quantity) AS total_qty
+                             FROM orders o
+                             JOIN order_items oi ON o.id = oi.order_id
+                             JOIN products p     ON oi.product_id = p.id
+                             WHERE o.user_id = ?
+                             GROUP BY o.id
+                             ORDER BY o.created_at DESC
+                             LIMIT 5"
+                        );
+                        $ord_stmt->bind_param("i", $real_user_id);
+                    }
+
+                    $ord_stmt->execute();
+                    $ord_res = $ord_stmt->get_result();
+
+                    if ($ord_res && $ord_res->num_rows > 0) {
+                        $order_context = "ĐƠN HÀNG CỦA KHÁCH (chỉ trả lời dựa trên dữ liệu thực tế này):\n";
+                        while ($o = $ord_res->fetch_assoc()) {
+                            $status_vi  = $status_map[$o['status']]  ?? $o['status'];
+                            $pay_status = $payment_map[$o['payment_status']] ?? $o['payment_status'];
+                            $pay_method = $payment_method_map[$o['payment_method']] ?? $o['payment_method'];
+                            $total_fmt  = number_format($o['total_price'], 0, ',', '.') . 'đ';
+                            $date_fmt   = date('d/m/Y H:i', strtotime($o['created_at']));
+                            $detail_url = $base_url . "/order_detail.php?id=" . $o['id'];
+                            $can_cancel = ($o['status'] === 'pending') ? "Có thể hủy" : "Không thể hủy";
+                            $order_context .= "- Đơn #{$o['id']} | Sản phẩm: {$o['products']} (x{$o['total_qty']}) | Tổng: {$total_fmt} | Trạng thái: {$status_vi} | Thanh toán: {$pay_method} - {$pay_status} | Ngày đặt: {$date_fmt} | {$can_cancel} | Chi tiết: {$detail_url}\n";
+                        }
+                    } else {
+                        $order_context = "KHÔNG TÌM THẤY đơn hàng nào" . ($order_id_requested > 0 ? " với mã #{$order_id_requested}" : "") . " trong tài khoản này.";
+                    }
+                    $ord_stmt->close();
+                }
+            }
+
+            // 4. SYSTEM PROMPT STRICT — CẤM HALLUCINATE
+            $system_prompt = "Bạn là chuyên gia tư vấn công nghệ của MobileStore. Xưng hô lịch sự (Dạ/Em/Anh/Chị). Trả lời ngắn gọn, rõ ràng, xuống dòng hợp lý.\n"
+                . "QUY TẮC BẮT BUỘC:\n"
+                . "1. CHỈ được tư vấn sản phẩm có trong DANH SÁCH THỰC TẾ bên dưới. TUYỆT ĐỐI không được đề xuất hay đặt tên sản phẩm nào KHÔNG có trong danh sách.\n"
+                . "2. Nếu không có sản phẩm phù hợp, hãy nói thật là kho chưa có và gợi ý khách để lại liên hệ.\n"
+                . "3. Khi liệt kê sản phẩm hoặc đơn hàng, PHẢI dùng Markdown link [Tên](Link) để khách click xem.\n"
+                . "4. Nếu sản phẩm ghi 'Hết hàng', không được gợi ý mua sản phẩm đó.\n"
+                . "5. Về đơn hàng: CHỈ trả lời dựa trên DỮ LIỆU ĐƠN HÀNG bên dưới, không được tự bịa trạng thái hay thông tin đơn.\n"
+                . "6. Nếu khách muốn hủy đơn ở trạng thái 'Có thể hủy', hướng dẫn vào link Chi tiết đơn hàng để thao tác.\n\n"
+                . ($product_context ? $product_context . "\n" : "")
+                . ($order_context   ? $order_context             : "");
 
             $data = [
                 "system_instruction" => [

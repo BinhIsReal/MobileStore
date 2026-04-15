@@ -45,10 +45,19 @@ $(document).ready(function () {
     let el = $(selector);
     let num = parseInt(count) || 0;
 
+    let parentGroup = el.closest(".sb-group");
+    let parentBadge = parentGroup.find(".badge-parent");
+
     if (num > 0) {
-      el.text(num > 99 ? "99+" : num).css("display", "inline-block");
+      let textNum = num > 99 ? "99+" : num;
+      el.text(textNum).css("display", "inline-block");
+      
+      if (parentBadge.length && !parentGroup.hasClass("open")) {
+          parentBadge.text(textNum).css("display", "inline-block");
+      }
     } else {
       el.hide();
+      if (parentBadge.length) parentBadge.hide();
     }
   }
   fetchAdminStats();
@@ -109,6 +118,9 @@ function updateStatus(id, st) {
   const btn = event.target;
   btn.disabled = true;
 
+  // Cập nhật background trực tiếp theo trạng thái vừa được chọn
+  $(btn).removeClass("bg-pending bg-shipping bg-completed bg-cancelled").addClass("bg-" + st);
+
   $.post(
     "../api/admin_api.php",
     {
@@ -137,7 +149,7 @@ function updateStatus(id, st) {
 /* =========================================
   VOUCHER TICKETN
 ========================================= */
-$("#discount-type").change(function () {
+$(document).on("change", "#discount-type", function () {
   if ($(this).val() == "fixed") {
     $("#max-discount-group").hide();
     $('input[name="max_discount"]').val("");
@@ -161,12 +173,12 @@ $(window).click(function (e) {
 });
 
 // Chọn tất cả User
-$("#check-all-users").change(function () {
+$(document).on("change", "#check-all-users", function () {
   $(".user-checkbox").prop("checked", $(this).prop("checked"));
 });
 
 // Xử lý Gán Voucher
-$("#assign-voucher-form").submit(function (e) {
+$(document).on("submit", "#assign-voucher-form", function (e) {
   e.preventDefault();
 
   let assignAll = $("#check-all-users").is(":checked") ? 1 : 0;
@@ -242,7 +254,7 @@ function cancelEdit() {
 }
 
 // Xử lý Gửi Form AJAX (Chung cho cả Tạo Mới và Cập Nhật)
-$("#create-voucher-form").submit(function (e) {
+$(document).on("submit", "#create-voucher-form", function (e) {
   e.preventDefault();
   let formData = $(this).serialize(); // Lấy tất cả input bao gồm cả action (ẩn)
 
@@ -258,10 +270,14 @@ $("#create-voucher-form").submit(function (e) {
       }
     } catch (error) {
       console.error("Lỗi:", error);
-      Swal.fire("Lỗi hệ thống", "Có lỗi xảy ra trong quá trình xử lý.", "error");
+      Swal.fire(
+        "Lỗi hệ thống",
+        "Có lỗi xảy ra trong quá trình xử lý.",
+        "error",
+      );
     }
-  }).fail(function() {
-      Swal.fire("Lỗi kết nối", "Không thể kết nối với server.", "error");
+  }).fail(function () {
+    Swal.fire("Lỗi kết nối", "Không thể kết nối với server.", "error");
   });
 });
 
@@ -392,3 +408,33 @@ function viewLogDetail(log) {
 
   $("#logDetailModal").fadeIn();
 }
+
+// =========================================
+// SIDEBAR DROPDOWN LOGIC
+// =========================================
+$(document).ready(function () {
+  $(".sb-group-title")
+    .off("click")
+    .on("click", function () {
+      let parent = $(this).closest(".sb-group");
+      parent.toggleClass("open");
+
+      let parentBadge = parent.find(".badge-parent");
+      let childBadge = parent.find(".sb-group-content .nav-badge").first();
+      
+      if (parent.hasClass("open")) {
+          parentBadge.hide();
+      } else if (childBadge.length && childBadge.is(":visible")) {
+          parentBadge.text(childBadge.text()).css("display", "inline-block");
+      }
+
+      parent.find(".sb-group-content").stop(true, true).slideToggle(200);
+    });
+
+  // Tự động mở group nào đang chứa menu đang active
+  $(".sb-group-content .sb-link.active").each(function () {
+    let parent = $(this).closest(".sb-group");
+    parent.addClass("open");
+    parent.find(".sb-group-content").show();
+  });
+});

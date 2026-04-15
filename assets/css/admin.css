@@ -1,6 +1,6 @@
 :root {
   --primary: #00487a;
-  --accent: #d70018;
+  --accent: #dc3545;
   --bg-gray: #f4f6f8;
   --white: #ffffff;
   --text: #333;
@@ -18,6 +18,25 @@ body {
   background-color: var(--bg-gray);
   color: var(--text);
   font-size: 14px;
+  animation: pageSmoothLoad 0.25s ease-out forwards;
+}
+
+@keyframes pageSmoothLoad {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.admin-content {
+  transition: opacity 0.3s ease;
+}
+
+.admin-content.pjax-loading {
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 a {
@@ -211,7 +230,7 @@ img {
 }
 
 .admin-table thead {
-  background-color: #00487a;
+  background-color: #264980;
   color: white;
 }
 
@@ -1146,13 +1165,6 @@ img {
   padding: 20px 25px;
 }
 
-.log-modal-footer {
-  padding: 15px 20px;
-  background: #f5f6fa;
-  text-align: right;
-  border-top: 1px solid #eee;
-}
-
 .log-info-table {
   width: 100%;
   border-collapse: collapse;
@@ -1184,6 +1196,205 @@ img {
 
 .log-old-data-title {
   color: #e74c3c;
+}
+
+.log-new-data-title {
+  color: #27ae60;
+}
+
+/* adm-btn */
+.adm-btn {
+  background: #395a8f;
+  color: #fff;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/* activity_logs.php */
+.admin-name-text {
+  color: #00487a;
+}
+
+.btn-view-log {
+  background: #395a8f;
+  color: #fff;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.empty-row {
+  text-align: center;
+  padding: 20px;
+}
+
+.btn-close-modal {
+  color: #fff;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.btn-close-modal:hover {
+  color: #dc3545;
+  font-size: 24px;
+  font-weight: bold;
+}
+/* General utilities */
+.text-center {
+  text-align: center;
+}
+
+.customers-thead-row {
+  background: #f4f6f8;
+  text-align: left;
+}
+
+.customers-th {
+  padding: 12px;
+  border-bottom: 2px solid #ddd;
+}
+
+/* vouchers.php */
+.btn-block-action {
+  margin-bottom: 5px;
+  width: 100%;
+  display: block;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border-radius: 5px;
+  font-size: 13px;
+}
+
+/* =========================================
+   TOAST NOTIFICATION (THÔNG BÁO TỪ TRÊN XUỐNG)
+========================================= */
+#toast-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 15px 20px;
+  min-width: 320px;
+  max-width: 450px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+  margin-bottom: 15px;
+  border-left: 5px solid;
+}
+
+/* Override animation slideInLeft từ main.js thành trượt từ trên xuống */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+.toast--success {
+  border-color: #2ecc71;
+}
+.toast--success .toast__icon {
+  color: #2ecc71;
+}
+.toast--error {
+  border-color: #e74c3c;
+}
+.toast--error .toast__icon {
+  color: #e74c3c;
+}
+.toast--warning {
+  border-color: #f1c40f;
+}
+.toast--warning .toast__icon {
+  color: #f1c40f;
+}
+.toast--info {
+  border-color: #3498db;
+}
+.toast--info .toast__icon {
+  color: #3498db;
+}
+
+.toast__icon {
+  font-size: 24px;
+  margin-right: 15px;
+}
+.toast__body {
+  flex-grow: 1;
+}
+.toast__title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  margin: 0 0 5px 0;
+}
+.toast__msg {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+  line-height: 1.4;
+}
+.toast__close {
+  font-size: 20px;
+  color: #aaa;
+  cursor: pointer;
+  margin-left: 15px;
+  transition: 0.2s;
+}
+.toast__close:hover {
+  color: #333;
+}
+
+/* =========================================
+   SIDEBAR DROPDOWN MENU
+========================================= */
+.sb-group {
+  margin-bottom: 5px;
+}
+.sb-group-title {
+  color: #b0bec5;
+  font-size: 0.85rem;
+  padding: 15px 20px 5px;
+  font-weight: bold;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: 0.2s;
+  border-radius: 6px;
+}
+.sb-group-title:hover {
+  color: #fff;
+}
+.sb-group-title .toggle-icon {
+  font-size: 10px;
 }
 
 .log-new-data-title {
@@ -1353,4 +1564,77 @@ img {
 }
 .toast__close:hover {
   color: #333;
+}
+
+/* =========================================
+   SIDEBAR DROPDOWN MENU
+========================================= */
+.sb-group {
+  margin-bottom: 5px;
+}
+.sb-group-title {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  padding: 12px 15px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: 0.3s ease;
+  border-radius: 6px;
+  background: transparent;
+}
+.sb-group-title:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.sb-group.open .sb-group-title {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-weight: 600;
+}
+.sb-group-title span i {
+  width: 20px;
+  text-align: center;
+  margin-right: 8px;
+  font-size: 14px;
+}
+.sb-group-title .toggle-icon {
+  font-size: 11px;
+  transition: transform 0.3s ease;
+  opacity: 0.7;
+}
+.sb-group.open .toggle-icon {
+  transform: rotate(180deg);
+  opacity: 1;
+}
+.sb-group-content {
+  display: none;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  margin-top: 5px;
+  padding: 5px 0;
+}
+.admin-sidebar .sb-group-content .sb-link {
+  padding: 10px 15px 10px 42px;
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 0;
+  font-weight: 400;
+  transition: 0.2s;
+  background: transparent;
+}
+.admin-sidebar .sb-group-content .sb-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+  padding-left: 40px;
+}
+.admin-sidebar .sb-group-content .sb-link.active {
+  color: #fff;
+  font-weight: 600;
+  background: transparent;
+  border-left: 3px solid #f39c12;
+  padding-left: 39px;
 }

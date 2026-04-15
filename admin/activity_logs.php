@@ -121,10 +121,6 @@ $logs = $conn->query($sql);
                     </div>
                 </div>
             </div>
-            
-            <div class="log-modal-footer">
-                <button onclick="$('#logDetailModal').fadeOut()" class="adm-btn">Đóng</button>
-            </div>
         </div>
     </div>
 

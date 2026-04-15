@@ -187,10 +187,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
             <div id="order-detail-content" class="modal-body-pad">
                 <div style="text-align:center;"><i class="fa fa-spinner fa-spin fa-2x"></i> Đang tải dữ liệu...</div>
             </div>
-            
-            <div class="modal-footer-bar">
-                <button onclick="$('#orderDetailModal').fadeOut()" class="adm-btn" style="background:#6c757d; color:#fff; border:none; padding:8px 15px; border-radius:4px; cursor:pointer;">Đóng</button>
-            </div>
+
         </div>
     </div>
 

@@ -7,7 +7,7 @@ header('Content-Type: application/json');
 $action = $_POST['action'] ?? '';
 $user_id = $_SESSION['user_id'] ?? 0;
 
-if ($user_id == 0) {
+if ($user_id == 0 && $action != 'guest_track_order') {
     echo json_encode(['status' => 'error', 'message' => 'Vui lòng đăng nhập!']);
     exit;
 }
@@ -75,11 +75,35 @@ if ($action == 'guest_track_order') {
         $data = [
             'id' => $row['id'],
             'name' => $row['name'], 
+            'phone' => $row['phone'],
+            'address' => $row['address'],
+            'payment_method' => $row['payment_method'],
+            'payment_status' => $row['payment_status'],
+            'discount_amount' => $row['discount_amount'],
             'created_at' => date('d/m/Y H:i', strtotime($row['created_at'])),
-            'total_price' => number_format($row['total_price'], 0, ',', '.') . ' ₫',
+            'total_price' => $row['total_price'],
+            'total_price_formatted' => number_format($row['total_price'], 0, ',', '.') . ' ₫',
             'status_code' => $row['status'],
-            'status_text' => $status_map[$row['status']] ?? 'Không xác định'
+            'status_text' => $status_map[$row['status']] ?? 'Không xác định',
+            'items' => []
         ];
+
+        $sql_items = "SELECT od.*, p.name, p.image FROM order_details od JOIN products p ON od.product_id = p.id WHERE od.order_id = ?";
+        $stmt_items = $conn->prepare($sql_items);
+        $stmt_items->bind_param("i", $row['id']);
+        $stmt_items->execute();
+        $res_items = $stmt_items->get_result();
+        
+        while($item = $res_items->fetch_assoc()) {
+             $data['items'][] = [
+                 'name' => $item['name'],
+                 'image' => (strpos($item['image'], 'http') === 0) ? $item['image'] : "../assets/img/" . $item['image'],
+                 'price' => $item['price'],
+                 'price_formatted' => number_format($item['price'], 0, ',', '.') . ' ₫',
+                 'quantity' => $item['quantity'],
+                 'total_formatted' => number_format($item['price'] * $item['quantity'], 0, ',', '.') . ' ₫'
+             ];
+        }
 
         echo json_encode(['status' => 'success', 'data' => $data]);
     } else {
