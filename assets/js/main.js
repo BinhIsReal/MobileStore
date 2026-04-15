@@ -1450,3 +1450,134 @@ function confirmCancel(orderId) {
     }
   );
 }
+
+/* =================================================================
+   FLASH SALE LOADER (index.php)
+   Loads products from API, renders cards with discount badges,
+   and drives the countdown timer.
+================================================================= */
+var flashSaleEndTime = null;
+var flashTimerInterval = null;
+
+function loadFlashSale() {
+  if (!$("#flash-sale-section").length) return;
+
+  $.get("api/flash_sale_api.php", { action: "get_flash_sale" }, function (res) {
+    try {
+      var data = typeof res === "object" ? res : JSON.parse(res);
+      if (data.status !== "active" || !data.products || data.products.length === 0) {
+        $("#flash-sale-section").hide();
+        return;
+      }
+
+      // Show section
+      $("#flash-sale-section").show();
+
+      // Title
+      if (data.config && data.config.title) {
+        $("#fs-display-title").text(data.config.title);
+      }
+
+      // Start countdown
+      flashSaleEndTime = new Date(data.config.end_time.replace(" ", "T")).getTime();
+      if (flashTimerInterval) clearInterval(flashTimerInterval);
+      flashTimerInterval = setInterval(updateFlashTimer, 1000);
+      updateFlashTimer();
+
+      // Render products
+      var fmt = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" });
+      var html = "";
+      data.products.forEach(function (p, idx) {
+        var img = p.image && p.image.startsWith("http")
+          ? p.image
+          : "assets/img/" + (p.image || "");
+        var flashPrice = fmt.format(p.flash_price);
+        var origPrice  = fmt.format(p.price);
+        html += `
+          <div class="product-card" style="animation-delay:${idx * 0.07}s">
+            <span class="sale-badge discount-badge">${p.discount_display}</span>
+            <a href="product_detail.php?id=${p.id}">
+              <img src="${img}" alt="${p.name}" onerror="this.src='assets/img/no-image.png'">
+              <h3>${p.name}</h3>
+            </a>
+            <div class="price-wrap">
+              <span class="price-new">${flashPrice}</span>
+              <span class="price-old">${origPrice}</span>
+            </div>
+            <button class="js-add-to-cart btn-add" data-id="${p.id}">THÊM VÀO GIỎ</button>
+          </div>`;
+      });
+      $("#hot-product-list").html(html);
+
+    } catch (e) {
+      console.error("Flash Sale parse error:", e);
+      $("#flash-sale-section").hide();
+    }
+  }).fail(function () {
+    $("#flash-sale-section").hide();
+  });
+}
+
+function updateFlashTimer() {
+  if (!flashSaleEndTime) return;
+  var now  = new Date().getTime();
+  var diff = flashSaleEndTime - now;
+  if (diff <= 0) {
+    clearInterval(flashTimerInterval);
+    $("#flash-sale-section").hide();
+    return;
+  }
+  var days  = Math.floor(diff / (1000 * 60 * 60 * 24));
+  var hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  var mins  = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  var secs  = Math.floor((diff % (1000 * 60)) / 1000);
+  $("#fs-days").text(String(days).padStart(2, "0"));
+  $("#fs-hours").text(String(hours).padStart(2, "0"));
+  $("#fs-mins").text(String(mins).padStart(2, "0"));
+  $("#fs-secs").text(String(secs).padStart(2, "0"));
+}
+
+/* =================================================================
+   HERO SLIDESHOW (index.php — main-banner)
+================================================================= */
+$(document).ready(function () {
+  // Flash Sale
+  if ($("#flash-sale-section").length) {
+    loadFlashSale();
+  }
+
+  // Hero Slider
+  var heroIdx      = 0;
+  var $heroSlides  = $(".hero-slide");
+  var heroTotal    = $heroSlides.length;
+  var heroInterval = null;
+
+  if (heroTotal <= 1) return; // Nothing to slide
+
+  function heroGoTo(n) {
+    heroIdx = ((n % heroTotal) + heroTotal) % heroTotal;
+    $heroSlides.removeClass("active");
+    $heroSlides.eq(heroIdx).addClass("active");
+    $("#hero-dots .hero-dot").removeClass("active").eq(heroIdx).addClass("active");
+  }
+
+  function heroNext() { heroGoTo(heroIdx + 1); }
+
+  function startHeroAuto() {
+    heroInterval = setInterval(heroNext, 4000);
+  }
+
+  function resetHeroAuto() {
+    clearInterval(heroInterval);
+    startHeroAuto();
+  }
+
+  startHeroAuto();
+
+  $(document).on("click", "#hero-next", function () { heroNext(); resetHeroAuto(); });
+  $(document).on("click", "#hero-prev", function () { heroGoTo(heroIdx - 1); resetHeroAuto(); });
+  $(document).on("click", ".hero-dot", function () {
+    heroGoTo($(this).data("idx"));
+    resetHeroAuto();
+  });
+});

@@ -9,6 +9,7 @@
     <?php include_once 'includes/security.php'; ?>
     <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
     <link rel="stylesheet" href="assets/css/style.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="assets/css/index_extra.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
@@ -267,26 +268,95 @@
     }
     ?>
         </ul>
-        <div class="main-banner">
-            <img src="https://genk.mediacdn.vn/139269124445442048/2023/10/29/zfold-5-169850407521135850341-1698554159075-16985541601401247998602.jpg"
-                alt="Banner">
+        <!-- MAIN BANNER SLIDESHOW (DB-driven) -->
+        <?php
+        // Tạo bảng nếu chưa tồn tại
+        try {
+            $conn->query("
+                CREATE TABLE IF NOT EXISTS site_banners (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    section ENUM('main_banner','right_banners') NOT NULL,
+                    image_url VARCHAR(500) NOT NULL,
+                    alt_text VARCHAR(255) DEFAULT '',
+                    sort_order INT DEFAULT 0,
+                    is_active TINYINT(1) DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ");
+            $banner_res = $conn->query("SELECT * FROM site_banners WHERE section='main_banner' AND is_active=1 ORDER BY sort_order ASC");
+            $main_banners_arr = [];
+            if ($banner_res) while ($brow = $banner_res->fetch_assoc()) $main_banners_arr[] = $brow;
+        } catch (Exception $e) {
+            $main_banners_arr = [];
+        }
+        // Fallback nếu chưa có trong DB
+        if (empty($main_banners_arr)) {
+            $main_banners_arr = [
+                ['image_url' => 'https://genk.mediacdn.vn/139269124445442048/2023/10/29/zfold-5-169850407521135850341-1698554159075-16985541601401247998602.jpg', 'alt_text' => 'Banner']
+            ];
+        }
+        ?>
+        <div class="main-banner hero-slider" id="hero-slider">
+            <?php foreach ($main_banners_arr as $idx => $b): ?>
+            <div class="hero-slide <?= $idx === 0 ? 'active' : '' ?>">
+                <img src="<?= htmlspecialchars($b['image_url']) ?>"
+                    alt="<?= htmlspecialchars($b['alt_text'] ?? 'Banner') ?>">
+            </div>
+            <?php endforeach; ?>
+            <?php if (count($main_banners_arr) > 1): ?>
+            <div class="hero-dots" id="hero-dots">
+                <?php foreach ($main_banners_arr as $idx => $b): ?>
+                <span class="hero-dot <?= $idx === 0 ? 'active' : '' ?>" data-idx="<?= $idx ?>"></span>
+                <?php endforeach; ?>
+            </div>
+            <button class="hero-arrow hero-prev" id="hero-prev"><i class="fa-solid fa-chevron-left"></i></button>
+            <button class="hero-arrow hero-next" id="hero-next"><i class="fa-solid fa-chevron-right"></i></button>
+            <?php endif; ?>
         </div>
 
+        <!-- RIGHT BANNERS (DB-driven) -->
+        <?php
+        try {
+            $rb_res = $conn->query("SELECT * FROM site_banners WHERE section='right_banners' AND is_active=1 ORDER BY sort_order ASC LIMIT 3");
+            $right_banners_arr = [];
+            if ($rb_res && $rb_res->num_rows > 0) {
+                while ($rrow = $rb_res->fetch_assoc()) $right_banners_arr[] = $rrow;
+            }
+        } catch (Exception $e) {
+            $right_banners_arr = [];
+        }
+        // Fallback
+        if (empty($right_banners_arr)) {
+            $right_banners_arr = [
+                ['image_url' => 'https://cdn2.cellphones.com.vn/insecure/rs:fill:690:300/q:50/plain/https://dashboard.cellphones.com.vn/storage/galaxy-a17-5g-0126-RIGHT.png', 'alt_text' => 'Ads 1'],
+                ['image_url' => 'https://cdn2.cellphones.com.vn/insecure/rs:fill:690:300/q:90/plain/https://dashboard.cellphones.com.vn/storage/aicopisd.png', 'alt_text' => 'Ads 2'],
+                ['image_url' => 'https://cdn2.cellphones.com.vn/insecure/rs:fill:690:300/q:90/plain/https://dashboard.cellphones.com.vn/storage/ggggedfcwef.jpg', 'alt_text' => 'Ads 3'],
+            ];
+        }
+        ?>
         <div class="right-banners">
-            <img src="https://cdn2.cellphones.com.vn/insecure/rs:fill:690:300/q:50/plain/https://dashboard.cellphones.com.vn/storage/galaxy-a17-5g-0126-RIGHT.png"
-                alt="Ads 1">
-            <img src="https://cdn2.cellphones.com.vn/insecure/rs:fill:690:300/q:90/plain/https://dashboard.cellphones.com.vn/storage/aicopisd.png"
-                alt="Ads 2">
-            <img src="https://cdn2.cellphones.com.vn/insecure/rs:fill:690:300/q:90/plain/https://dashboard.cellphones.com.vn/storage/ggggedfcwef.jpg"
-                alt="Ads 3">
+            <?php foreach ($right_banners_arr as $rb): ?>
+            <img src="<?= htmlspecialchars($rb['image_url']) ?>" alt="<?= htmlspecialchars($rb['alt_text'] ?? '') ?>">
+            <?php endforeach; ?>
         </div>
     </div>
 
-    <div class="container">
+    <div class="container" id="flash-sale-section" style="display:none;">
         <div class="hot-sale-container">
             <div class="hot-header">
-                <h2>🔥 HOT SALE CUỐI TUẦN</h2>
-                <div class="hot-timer">Kết thúc sau: <b>02</b> ngày <b>12</b> giờ</div>
+                <div class="hot-title-wrap">
+                    <h2 id="fs-display-title">
+                        <i class="fa-solid fa-fire" style="-webkit-text-fill-color:#ff6b35; color:#ff6b35;"></i>
+                        <span>HOT SALE CUỐI TUẦN</span>
+                    </h2>
+                </div>
+                <div class="hot-timer" id="hot-timer-display">
+                    Kết thúc sau:
+                    <span class="timer-block"><b id="fs-days">00</b><small>Ngày</small></span>
+                    <span class="timer-block"><b id="fs-hours">00</b><small>Giờ</small></span>
+                    <span class="timer-block"><b id="fs-mins">00</b><small>Phút</small></span>
+                    <span class="timer-block"><b id="fs-secs">00</b><small>Giây</small></span>
+                </div>
             </div>
             <div class="product-grid" id="hot-product-list"></div>
         </div>

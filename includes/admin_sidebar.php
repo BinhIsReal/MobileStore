@@ -44,6 +44,12 @@ if (!function_exists('csrf_token')) {
             <a href="vouchers.php" class="sb-link <?= basename($_SERVER['PHP_SELF'])=='vouchers.php'?'active':'' ?>">
                 <span><i class="fa-solid fa-gift"></i> Quản lý Voucher</span>
             </a>
+            <a href="flash_sale.php" class="sb-link <?= basename($_SERVER['PHP_SELF'])=='flash_sale.php'?'active':'' ?>">
+                <span><i class="fa-solid fa-bolt"></i> Flash Sale</span>
+            </a>
+            <a href="media_manager.php" class="sb-link <?= basename($_SERVER['PHP_SELF'])=='media_manager.php'?'active':'' ?>">
+                <span><i class="fa-solid fa-images"></i> Media / Banner</span>
+            </a>
         </div>
     </div>
 
