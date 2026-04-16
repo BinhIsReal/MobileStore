@@ -14,11 +14,17 @@ $(document).ready(function() {
     $('#btn-register').click(function() {
         let u = $('#reg-user').val();
         let p = $('#reg-pass').val();
+        let pc = $('#reg-pass-confirm').val(); // Thêm xác nhận mật khẩu
         let e = $('#reg-email').val(); 
         let t = $('#reg-phone').val(); 
 
-        if (!u || !p || !e || !t) {
+        if (!u || !p || !pc || !e || !t) {
             $('#reg-msg').css({'display':'block', 'background':'#f8d7da', 'color':'#721c24'}).html('Vui lòng nhập đầy đủ thông tin!');
+            return;
+        }
+
+        if (p !== pc) {
+            $('#reg-msg').css({'display':'block', 'background':'#f8d7da', 'color':'#721c24'}).html('Mật khẩu xác nhận không khớp!');
             return;
         }
 

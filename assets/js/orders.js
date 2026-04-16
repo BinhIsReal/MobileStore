@@ -4,7 +4,7 @@
  */
 
 function viewOrderDetail(orderId) {
-    $('#modal-order-id').text(orderId);
+    $('#modal-order-id').html('<i class="fa fa-spinner fa-spin"></i>');
     $('#orderDetailModal').fadeIn();
     $('#order-detail-content').html('<div style="text-align:center;"><i class="fa fa-spinner fa-spin fa-2x"></i> Đang tải dữ liệu...</div>');
 
@@ -13,6 +13,10 @@ function viewOrderDetail(orderId) {
             let data = typeof res === 'string' ? JSON.parse(res) : res;
             if (data.status === 'success') {
                 let o = data.order;
+                
+                // Cập nhật lại ID hiển thị trên Title (Sử dụng order_code nếu có)
+                $('#modal-order-id').text(o.order_code ? o.order_code : o.id);
+
                 let items = data.items;
                 let html = '';
 

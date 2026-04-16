@@ -201,7 +201,7 @@ if ($result_items) {
                                 <option value="fixed" <?= ($item['discount_type'] ?? '') === 'fixed' ? 'selected' : '' ?>>VNĐ</option>
                             </select>
                             <input type="number" class="fs-discount-value" data-id="<?= $item['product_id'] ?>"
-                                   value="<?= $item['discount_value'] ?? 20 ?>" min="1">
+                                   value="<?= (float)($item['discount_value'] ?? 20) ?>" min="1">
                         </div>
                     </div>
                 </div>
@@ -267,7 +267,7 @@ if ($result_items) {
                                         <option value="fixed" <?= $disc_type === 'fixed' ? 'selected' : '' ?>>VNĐ</option>
                                     </select>
                                     <input type="number" class="fs-discount-value-row" data-id="<?= $prod['id'] ?>"
-                                           value="<?= $disc_val ?>" min="1" placeholder="Mặc định: 20">
+                                           value="<?= (float)$disc_val ?>" min="1" placeholder="Mặc định: 20">
                                 </div>
                             </td>
                         </tr>

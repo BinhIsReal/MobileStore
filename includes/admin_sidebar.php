@@ -6,9 +6,13 @@ if (!function_exists('csrf_token')) {
 ?>
 <!-- CSRF Meta Tag — JS đọc token từ đây để gửi kèm AJAX -->
 <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
-<div class="admin-sidebar">
-    <h3>Admin Panel</h3>
-
+<div class="admin-sidebar" id="adminSidebar">
+    <div class="sidebar-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="margin: 0; white-space: nowrap; overflow: hidden; font-size: 20px;">Admin Panel</h3>
+        <button id="toggleSidebar" style="background: transparent; color: white; border: none; font-size: 22px; cursor: pointer; padding: 0;">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+    </div>
     <a href="../index.php" class="sb-link" style="background: #2c3e50;">
         <span><i class="fa-solid fa-arrow-left"></i> Về trang web</span>
     </a>

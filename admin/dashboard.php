@@ -9,8 +9,29 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
 
 // --- TRUY VẤN DỮ LIỆU THỰC TẾ ---
 $pending_count = $conn->query("SELECT COUNT(*) as t FROM orders WHERE status = 'pending'")->fetch_assoc()['t'];
-$revenue_month = $conn->query("SELECT SUM(total_price) as t FROM orders WHERE status = 'completed' AND MONTH(created_at) = MONTH(NOW())")->fetch_assoc()['t'] ?? 0;
+$revenue_month_res = $conn->query("SELECT SUM(total_price - discount_amount) as t FROM orders WHERE status = 'completed' AND MONTH(created_at) = MONTH(NOW())");
+$revenue_month = $revenue_month_res ? ($revenue_month_res->fetch_assoc()['t'] ?? 0) : 0;
 $user_count = $conn->query("SELECT COUNT(*) as t FROM users WHERE role = 'user'")->fetch_assoc()['t'];
+
+// Dữ liệu Doanh thu chi tiết (Trong tháng) 
+// để show popup modal
+$rev_cod = [];
+$rev_bank = [];
+$rev_detail_res = $conn->query("
+    SELECT id, order_code, created_at, payment_method, (total_price - discount_amount) as final_price, name 
+    FROM orders 
+    WHERE status = 'completed' AND MONTH(created_at) = MONTH(NOW())
+    ORDER BY created_at DESC
+");
+if ($rev_detail_res && $rev_detail_res->num_rows > 0) {
+    while($row = $rev_detail_res->fetch_assoc()) {
+        if ($row['payment_method'] == 'banking') {
+            $rev_bank[] = $row;
+        } else {
+            $rev_cod[] = $row;
+        }
+    }
+}
 
 // Dữ liệu 7 ngày gần nhất
 $days = []; $revenues = [];
@@ -72,25 +93,25 @@ $worst_products = $conn->query("
             <h2 class="dashboard-report-title">Báo cáo kinh doanh</h2>
 
             <div class="dashboard-grid">
-                <div class="stat-card">
+                <div class="stat-card" onclick="window.location.href='orders.php?status=pending'" style="cursor: pointer; transition: 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" title="Xem danh sách đơn chờ xử lý">
                     <div class="stat-icon"><i class="fa fa-clock"></i></div>
                     <div class="stat-info">
                         <h3><?= $pending_count ?></h3>
-                        <p>Chờ xử lý</p>
+                        <p>Chờ xử lý (Xem <i class="fa fa-arrow-right" style="font-size:10px;"></i>)</p>
                     </div>
                 </div>
-                <div class="stat-card stat-card-revenue">
+                <div class="stat-card stat-card-revenue" onclick="$('#revenueDetailModal').fadeIn()" style="cursor: pointer; transition: 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" title="Nhấn để xem chi tiết">
                     <div class="stat-icon"><i class="fa fa-coins"></i></div>
                     <div class="stat-info">
                         <h3><?= number_format($revenue_month / 1000000, 1) ?>M</h3>
-                        <p>Doanh thu tháng</p>
+                        <p>Doanh thu tháng (Chi tiết <i class="fa fa-external-link-alt" style="font-size:10px;"></i>)</p>
                     </div>
                 </div>
-                <div class="stat-card stat-card-customers">
+                <div class="stat-card stat-card-customers" onclick="window.location.href='customers.php'" style="cursor: pointer; transition: 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" title="Quản lý khách hàng">
                     <div class="stat-icon"><i class="fa fa-user-tag"></i></div>
                     <div class="stat-info">
                         <h3><?= $user_count ?></h3>
-                        <p>Khách hàng</p>
+                        <p>Khách hàng (Xem <i class="fa fa-arrow-right" style="font-size:10px;"></i>)</p>
                     </div>
                 </div>
             </div>
@@ -172,6 +193,93 @@ $worst_products = $conn->query("
         </div>
     </div>
 
+    <!-- MODAL DOANH THU CHI TIẾT -->
+    <div id="revenueDetailModal" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+        <div class="modal-content" style="background:#fff; margin:5% auto; width:80%; max-width:900px; border-radius:8px; overflow:hidden; box-shadow:0 5px 15px rgba(0,0,0,0.3);">
+            <div style="background:var(--primary); color:white; padding:15px 20px; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0;"><i class="fa fa-list-alt"></i> Chi tiết Doanh thu tháng</h3>
+                <span style="font-size:24px; cursor:pointer;" onclick="$('#revenueDetailModal').fadeOut()">&times;</span>
+            </div>
+            
+            <div style="padding:20px;">
+                <!-- Tabs Menu -->
+                <div style="display:flex; border-bottom:1px solid #ddd; margin-bottom:20px;">
+                    <button id="btn-tab-cod" onclick="switchRevTab('cod')" style="flex:1; padding:10px; background:white; cursor:pointer; font-weight:bold; color:var(--primary); border:none; border-bottom:3px solid var(--primary); font-size:16px;">
+                        <i class="fa fa-money-bill-wave"></i> Tiền mặt (<?= count($rev_cod) ?>)
+                    </button>
+                    <button id="btn-tab-bank" onclick="switchRevTab('bank')" style="flex:1; padding:10px; background:white; cursor:pointer; font-weight:bold; color:#777; border:none; border-bottom:3px solid transparent; font-size:16px;">
+                        <i class="fa fa-university"></i> Chuyển khoản (<?= count($rev_bank) ?>)
+                    </button>
+                </div>
+
+                <!-- Nội dung Tiền mặt -->
+                <div id="tab-cod" style="display:block;">
+                    <div style="max-height:400px; overflow-y:auto;">
+                        <table class="admin-table">
+                            <thead style="position: sticky; top: 0; background: #f4f6f9;">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Thời gian</th>
+                                    <th>Khách hàng</th>
+                                    <th>Loại tiền</th>
+                                    <th>Số tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if(count($rev_cod) > 0): ?>
+                                    <?php foreach($rev_cod as $r): ?>
+                                        <tr>
+                                            <td>#<?= $r['order_code'] ?? $r['id'] ?></td>
+                                            <td><?= date('d/m/Y H:i', strtotime($r['created_at'])) ?></td>
+                                            <td><?= htmlspecialchars($r['name']) ?></td>
+                                            <td><span style="background:#27ae60; color:white; padding:3px 8px; border-radius:4px; font-size:12px;">Tiền mặt</span></td>
+                                            <td style="font-weight:bold; color:#d70018;"><?= number_format($r['final_price']) ?> đ</td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td colspan="5" style="text-align:center;">Chưa có dữ liệu</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Nội dung Chuyển khoản -->
+                <div id="tab-bank" style="display:none;">
+                    <div style="max-height:400px; overflow-y:auto;">
+                        <table class="admin-table">
+                            <thead style="position: sticky; top: 0; background: #f4f6f9;">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Thời gian</th>
+                                    <th>Khách hàng</th>
+                                    <th>Loại tiền</th>
+                                    <th>Số tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if(count($rev_bank) > 0): ?>
+                                    <?php foreach($rev_bank as $r): ?>
+                                        <tr>
+                                            <td>#<?= $r['order_code'] ?? $r['id'] ?></td>
+                                            <td><?= date('d/m/Y H:i', strtotime($r['created_at'])) ?></td>
+                                            <td><?= htmlspecialchars($r['name']) ?></td>
+                                            <td><span style="background:#2980b9; color:white; padding:3px 8px; border-radius:4px; font-size:12px;">Chuyển khoản</span></td>
+                                            <td style="font-weight:bold; color:#d70018;"><?= number_format($r['final_price']) ?> đ</td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td colspan="5" style="text-align:center;">Chưa có dữ liệu</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
     <script src="../assets/js/admin_main.js"></script>
     <script>
     const revLabels = <?= json_encode($days) ?>;
@@ -182,6 +290,21 @@ $worst_products = $conn->query("
     $(document).ready(function() {
         initDashboardCharts(revLabels, revData, stLabels, stData);
     });
+
+    // Hàm chuyển Tab Doanh thu
+    function switchRevTab(tab) {
+        if(tab === 'cod') {
+            $('#tab-cod').show();
+            $('#tab-bank').hide();
+            $('#btn-tab-cod').css({'color': 'var(--primary)', 'border-bottom': '3px solid var(--primary)'});
+            $('#btn-tab-bank').css({'color': '#777', 'border-bottom': '3px solid transparent'});
+        } else {
+            $('#tab-bank').show();
+            $('#tab-cod').hide();
+            $('#btn-tab-bank').css({'color': 'var(--primary)', 'border-bottom': '3px solid var(--primary)'});
+            $('#btn-tab-cod').css({'color': '#777', 'border-bottom': '3px solid transparent'});
+        }
+    }
     </script>
 </body>
 

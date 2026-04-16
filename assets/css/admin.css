@@ -73,6 +73,57 @@ img {
   flex-direction: column;
   gap: 10px;
   flex-shrink: 0;
+  transition: width 0.3s ease;
+}
+
+/* --- SIDEBAR COLLAPSED LOGIC --- */
+body.sidebar-collapsed .admin-sidebar {
+  width: 80px;
+  padding: 20px 10px;
+}
+body.sidebar-collapsed .admin-sidebar h3 {
+  display: none;
+}
+body.sidebar-collapsed .sidebar-header {
+  justify-content: center !important;
+}
+body.sidebar-collapsed .sb-link > span,
+body.sidebar-collapsed .sb-group-title > span {
+  font-size: 0; /* Ẩn toàn bộ văn bản */
+}
+body.sidebar-collapsed .sb-link > span > i,
+body.sidebar-collapsed .sb-group-title > span > i {
+  font-size: 16px; /* Giữ nguyên kích thước icon */
+  margin: 0;
+  text-align: center;
+}
+body.sidebar-collapsed .sb-link,
+body.sidebar-collapsed .sb-group-title {
+  justify-content: center;
+  padding: 12px 0;
+  border-left: none !important;
+}
+body.sidebar-collapsed .toggle-icon {
+  display: none; /* Ẩn mũi tên trỏ xuống */
+}
+body.sidebar-collapsed .nav-badge,
+body.sidebar-collapsed .badge-parent {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 0;
+  padding: 2px 5px;
+  font-size: 9px;
+  transform: translate(20%, -20%);
+}
+body.sidebar-collapsed .sb-group-content .sb-link {
+  font-size: 0;
+}
+body.sidebar-collapsed .sb-group-content .sb-link span {
+  font-size: 0;
+}
+body.sidebar-collapsed .sb-group-content .sb-link span i {
+  font-size: 16px;
 }
 
 .admin-sidebar a {
@@ -471,11 +522,11 @@ img {
 }
 
 .mini-form button {
-  background: #00487a;
+  background: linear-gradient(135deg, #00487a, #0073c4);
   color: white;
   border: none;
   padding: 0 20px;
-  border-radius: 4px;
+  border-radius: 12px;
   cursor: pointer;
 }
 
@@ -554,9 +605,11 @@ img {
 }
 .btn-filter:hover {
   transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(46, 115, 224, 0.773);
 }
 .btn-reset:hover {
   transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(162, 162, 164, 0.773);
 }
 .action-btns a {
   margin: 0 3px;
@@ -1073,7 +1126,10 @@ img {
   font-size: 13px;
   font-weight: bold;
 }
-
+.btn-chat-customer:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(46, 224, 102, 0.773);
+}
 /* vouchers.php */
 .voucher-title-header {
   color: #00487a;
@@ -1127,12 +1183,13 @@ img {
 
 /* orders.php */
 .adm-order-filter-btn-reset {
-  background: #666;
+  background: linear-gradient(135deg, #777e82, #595d60) !important;
   text-decoration: none;
 }
 
 .adm-order-filter-btn-reset:hover {
-  background: #555;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(103, 104, 104, 0.5) !important;
 }
 
 .text-center-pad {
@@ -1214,17 +1271,6 @@ img {
 
 .log-new-data-title {
   color: #27ae60;
-}
-
-/* adm-btn */
-.adm-btn {
-  background: #395a8f;
-  color: #fff;
-  border: none;
-  padding: 5px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
 }
 
 /* activity_logs.php */
@@ -1416,14 +1462,19 @@ img {
 }
 
 /* adm-btn */
+/* adm-btn */
 .adm-btn {
-  background: #395a8f;
+  background: linear-gradient(135deg, #00487a, #0073c4);
   color: #fff;
   border: none;
   padding: 5px 10px;
-  border-radius: 4px;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 13px;
+}
+.adm-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(46, 115, 224, 0.773);
 }
 
 /* activity_logs.php */
@@ -1611,7 +1662,7 @@ img {
 .sb-group-title span i {
   width: 20px;
   text-align: center;
-  margin-right: 8px;
+  margin-right: 6px;
   font-size: 14px;
 }
 .sb-group-title .toggle-icon {
@@ -1632,7 +1683,6 @@ img {
   padding: 5px 0;
 }
 .admin-sidebar .sb-group-content .sb-link {
-  padding: 10px 15px 10px 42px;
   font-size: 13.5px;
   color: rgba(255, 255, 255, 0.7);
   border-radius: 0;
@@ -1643,12 +1693,18 @@ img {
 .admin-sidebar .sb-group-content .sb-link:hover {
   color: #fff;
   background: rgba(255, 255, 255, 0.05);
-  padding-left: 40px;
+  padding-left: 20px;
 }
 .admin-sidebar .sb-group-content .sb-link.active {
   color: #fff;
   font-weight: 600;
   background: transparent;
   border-left: 3px solid #f39c12;
-  padding-left: 39px;
+}
+.btn-view-log {
+  background: #00487a;
+}
+.btn-view-log:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(46, 115, 224, 0.773);
 }

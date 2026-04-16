@@ -8,11 +8,31 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
+// Lấy bộ lọc ngày và phân trang mặc định là ngày hôm nay
+$start_date = isset($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-d');
+$end_date = isset($_GET['end_date']) ? $_GET['end_date'] : date('Y-m-d');
+$page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+$limit = 10;
+$offset = ($page - 1) * $limit;
+
+// Format ngày SQL
+$start_date_esc = $conn->real_escape_string($start_date);
+$end_date_esc = $conn->real_escape_string($end_date);
+
+$where_clause = "DATE(l.created_at) >= '$start_date_esc' AND DATE(l.created_at) <= '$end_date_esc'";
+
+// Lấy tổng số dòng để tính số trang
+$count_query = "SELECT COUNT(*) as total FROM admin_logs l WHERE $where_clause";
+$count_result = $conn->query($count_query);
+$total_rows = $count_result->fetch_assoc()['total'];
+$total_pages = ceil($total_rows / $limit);
+
 // Truy vấn danh sách lịch sử (JOIN với users để lấy tên Admin)
 $sql = "SELECT l.*, u.username as admin_name 
         FROM admin_logs l 
         LEFT JOIN users u ON l.admin_id = u.id 
-        ORDER BY l.id DESC LIMIT 200";
+        WHERE $where_clause
+        ORDER BY l.id DESC LIMIT $limit OFFSET $offset";
 $logs = $conn->query($sql);
 ?>
 <!DOCTYPE html>
@@ -29,6 +49,19 @@ $logs = $conn->query($sql);
         
         <div class="admin-content">
             <h2 style="margin-bottom:20px;">Lịch sử hoạt động (Activity Logs)</h2>
+            
+            <form method="GET" style="margin-bottom: 20px; display: flex; gap: 15px; align-items: center; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <label style="font-weight: bold;">Từ ngày:</label>
+                    <input type="date" name="start_date" value="<?= htmlspecialchars($start_date) ?>" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;" required>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <label style="font-weight: bold;">Đến ngày:</label>
+                    <input type="date" name="end_date" value="<?= htmlspecialchars($end_date) ?>" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;" required>
+                </div>
+                <button type="submit" class="adm-btn" style="padding: 8px 15px;"><i class="fa fa-filter"></i> Lọc dữ liệu</button>
+            </form>
+
             <table class="admin-table">
                 <thead>
                     <tr>
@@ -62,7 +95,7 @@ $logs = $conn->query($sql);
                         ?>
                         <tr>
                             <td>#<?= $row['id'] ?></td>
-                            <td><?= date('d/m/Y H:i', strtotime($row['created_at'])) ?></td>
+                            <td><?= date('d/m/Y', strtotime($row['created_at'])) ?></td>
                             <td><b class="admin-name-text"><i class="fa fa-user-shield"></i> <?= htmlspecialchars($row['admin_name'] ?? 'Unknown') ?></b></td>
                             <td><span class="badge <?= $action_class ?>"><?= htmlspecialchars($row['action']) ?></span></td>
                             <td><b><?= htmlspecialchars($display_page) ?></b></td>
@@ -79,6 +112,16 @@ $logs = $conn->query($sql);
                     <?php endif; ?>
                 </tbody>
             </table>
+            
+            <?php if ($total_pages > 1): ?>
+            <div style="margin-top: 20px; display: flex; gap: 8px; justify-content: center;">
+                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                    <a href="?start_date=<?= urlencode($start_date) ?>&end_date=<?= urlencode($end_date) ?>&page=<?= $i ?>" style="padding: 6px 12px; text-decoration: none; border-radius: 4px; <?= ($page == $i) ? 'background-color: #3498db; color: #fff; font-weight: bold;' : 'background-color: #fff; color: #333; border: 1px solid #ddd;' ?>">
+                        <?= $i ?>
+                    </a>
+                <?php endfor; ?>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 

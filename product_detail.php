@@ -22,7 +22,15 @@ if ($result->num_rows == 0) {
 $product     = $result->fetch_assoc();
 $gallery     = !empty($product['gallery']) ? json_decode($product['gallery'], true) : [];
 $specs       = !empty($product['specs']) ? json_decode($product['specs'], true) : [];
-$colors      = !empty($product['colors']) ? explode(',', $product['colors']) : [];
+$product_type = $product['product_type'] ?? 'simple';
+$attributes = !empty($product['attributes']) ? json_decode($product['attributes'], true) : [];
+$variations_json = '[]';
+if ($product_type === 'variable') {
+    $res_var = $conn->query("SELECT * FROM product_variations WHERE product_id = $id AND stock > 0");
+    $vars = [];
+    if($res_var) while ($r = $res_var->fetch_assoc()) $vars[] = $r;
+    $variations_json = json_encode($vars, JSON_UNESCAPED_UNICODE);
+}
 $main_img    = strpos($product['image'], 'http') === 0 ? $product['image'] : "assets/img/" . $product['image'];
 $price       = $product['price'];
 $sale_price  = $product['sale_price'];
@@ -76,17 +84,58 @@ $percent     = $is_sale ? round((($price - $sale_price) / $price) * 100) : 0;
                         <?php endif; ?>
                     </div>
 
-                    <?php if (!empty($colors)): ?>
-                    <div class="pd-color-option">
-                        <p style="font-weight:600; margin-bottom:8px;">Chọn màu sắc:</p>
-                        <div>
-                            <?php foreach($colors as $index => $color): ?>
-                            <button class="btn-color <?= $index == 0 ? 'active' : '' ?>">
-                                <?= trim($color) ?>
-                            </button>
-                            <?php endforeach; ?>
-                        </div>
+                    <?php if ($product_type === 'variable' && !empty($attributes)): ?>
+                    <div class="pd-variations">
+                        <?php foreach ($attributes as $attr): ?>
+                            <p style="font-weight:600; margin-bottom:5px; margin-top:10px;">Theo <?= htmlspecialchars($attr['name'] ?? '') ?>:</p>
+                            <select class="form-control attr-select" data-name="<?= htmlspecialchars($attr['name'] ?? '') ?>" style="margin-bottom:10px; padding: 8px; border-radius:4px; max-width: 250px;">
+                                <option value="">-- Chọn <?= htmlspecialchars($attr['name'] ?? '') ?> --</option>
+                                <?php 
+                                if(isset($attr['values'])) {
+                                    $vals = is_array($attr['values']) ? $attr['values'] : explode('|', (string)$attr['values']);
+                                    foreach ($vals as $val): 
+                                        $val = trim($val);
+                                        if ($val !== ''):
+                                ?>
+                                    <option value="<?= htmlspecialchars($val) ?>"><?= htmlspecialchars($val) ?></option>
+                                <?php endif; endforeach; } ?>
+                            </select>
+                        <?php endforeach; ?>
                     </div>
+                    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+                    <script>
+                        const variations = <?= $variations_json ?>;
+                        $('.attr-select').on('change', function() {
+                            let selected = {};
+                            let isDone = true;
+                            $('.attr-select').each(function() {
+                                let val = $(this).val();
+                                if(!val) isDone = false;
+                                selected[$(this).data('name')] = val;
+                            });
+
+                            if(isDone) {
+                                let match = variations.find(v => {
+                                    let vAttrs = JSON.parse(v.attributes);
+                                    for (let k in selected) { if (vAttrs[k] !== selected[k]) return false; }
+                                    return true;
+                                });
+                                if (match) {
+                                    let priceFmt = new Intl.NumberFormat('vi-VN').format(match.price) + ' ₫';
+                                    $('.pd-price-current').text(priceFmt);
+                                    $('.js-add-to-cart').attr('data-variation-id', match.id);
+                                    $('.js-buy-now').attr('data-variation-id', match.id);
+                                } else {
+                                    alert("Hết hàng hoặc tổ hợp này không có sẵn!");
+                                    $('.js-add-to-cart').removeAttr('data-variation-id');
+                                    $('.js-buy-now').removeAttr('data-variation-id');
+                                }
+                            } else {
+                                $('.js-add-to-cart').removeAttr('data-variation-id');
+                                $('.js-buy-now').removeAttr('data-variation-id');
+                            }
+                        });
+                    </script>
                     <?php endif; ?>
 
                     <div class="pd-promo-box">
@@ -99,14 +148,21 @@ $percent     = $is_sale ? round((($price - $sale_price) / $price) * 100) : 0;
                     </div>
 
                     <div class="pd-actions">
-                        <button class="btn-buy-now js-buy-now" data-id="<?= $product['id'] ?>">
+                        <button class="btn-buy-now js-buy-now" data-id="<?= $product['id'] ?>" data-type="<?= $product_type ?>">
                             <strong>MUA NGAY</strong>
                             <span>(Giao tận nơi hoặc lấy tại cửa hàng)</span>
                         </button>
-                        <button class="btn-add-cart-large js-add-to-cart" data-id="<?= $product['id'] ?>">
+                        <button class="btn-add-cart-large js-add-to-cart" data-id="<?= $product['id'] ?>" data-type="<?= $product_type ?>">
                             <i class="fa fa-cart-plus"></i>
                             <span>Thêm vào giỏ</span>
                         </button>
+                        <?php if ($user_id > 0): ?>
+                        <button id="btn-wishlist" class="btn-wishlist-toggle"
+                            data-product-id="<?= $product['id'] ?>"
+                            title="Thêm vào yêu thích">
+                            <i class="fa-regular fa-heart" style="color:#e74c3c;"></i>
+                        </button>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -189,6 +245,14 @@ $percent     = $is_sale ? round((($price - $sale_price) / $price) * 100) : 0;
                     <?php endforeach; ?>
                 </div>
             </div>
+        </div>
+
+        <!-- ===== RECOMMENDATION ENGINE: THƯỜNG MUA CÙNG ===== -->
+        <div id="recommendation-section" style="margin:30px 0; display:none;">
+            <h3 style="margin-bottom:15px; border-left:4px solid #e74c3c; padding-left:12px; color:#333;">
+                <i class="fa fa-bolt" style="color:#e74c3c;"></i> Thường được mua cùng
+            </h3>
+            <div id="recommendation-track" style="display:flex; gap:16px; flex-wrap:wrap;"></div>
         </div>
 
 
@@ -318,6 +382,68 @@ $percent     = $is_sale ? round((($price - $sale_price) / $price) * 100) : 0;
             </div>
         </div>
     </div>
+    <script>
+    // ============================================================
+    // WISHLIST TOGGLE — product_detail.php
+    // ============================================================
+    const PRODUCT_ID = <?= $product['id'] ?>;
+    const IS_LOGGED  = <?= $user_id > 0 ? 'true' : 'false' ?>;
+
+    function setWishlistState(isActive) {
+        const btn = $('#btn-wishlist');
+        if (!btn.length) return;
+        btn.find('i').attr('class', isActive ? 'fa-solid fa-heart' : 'fa-regular fa-heart');
+        btn.attr('title', isActive ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích');
+        btn.toggleClass('active', isActive);
+    }
+
+    if (IS_LOGGED) {
+        $.post('api/wishlist_api.php', { action: 'check', product_id: PRODUCT_ID }, function(res) {
+            if (res && res.in_wishlist) setWishlistState(true);
+        });
+
+        $(document).on('click', '#btn-wishlist', function() {
+            const isActive = $(this).find('i').hasClass('fa-solid');
+            $.post('api/wishlist_api.php', { action: isActive ? 'remove' : 'add', product_id: PRODUCT_ID }, function(res) {
+                if (res && res.status === 'success') {
+                    setWishlistState(!isActive);
+                    // Trigger badge refresh ở navbar (navbar.php tự handle)
+                    if (window._navRefreshBadges) window._navRefreshBadges();
+                }
+            });
+        });
+    }
+
+    // ============================================================
+    // RECOMMENDATION ENGINE — "Thường được mua cùng"
+    // ============================================================
+    $.get('api/recommendation_api.php', { action: 'get_recommendations', product_id: PRODUCT_ID, limit: 4 }, function(res) {
+        if (!res || res.status !== 'success' || !res.data || res.data.length === 0) return;
+        const fmt = new Intl.NumberFormat('vi-VN');
+        let html = '';
+        res.data.forEach(function(p) {
+            html += `
+            <div style="width:160px; border:1px solid #eee; border-radius:8px; overflow:hidden; text-align:center; flex-shrink:0; background:#fff;">
+                <a href="${p.product_url}" style="text-decoration:none; color:#333; display:block;">
+                    <img src="${p.image_url}" style="width:100%; height:120px; object-fit:contain; padding:8px;" onerror="this.style.display='none'">
+                    <div style="padding:6px 8px; font-size:13px; line-height:1.4; height:50px; overflow:hidden;">${p.name}</div>
+                    <div style="padding:0 8px 8px; color:#d70018; font-weight:bold; font-size:14px;">${fmt.format(p.display_price)}₫</div>
+                </a>
+                <div style="padding:0 8px 10px;">
+                    <button class="js-add-to-cart" data-id="${p.id}" data-type="simple"
+                        style="width:100%; padding:7px; background:#d70018; color:#fff; border:none; border-radius:5px; cursor:pointer; font-size:12px; font-weight:600;">
+                        <i class="fa fa-cart-plus"></i> Thêm giỏ
+                    </button>
+                </div>
+            </div>`;
+        });
+        $('#recommendation-track').html(html);
+        $('#recommendation-section').show();
+    });
+    </script>
+
+
+
     <?php include 'includes/footer.php'; ?>
 </body>
 

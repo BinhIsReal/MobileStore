@@ -99,10 +99,12 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
                     $types = "";
                     if (!empty($_GET['q'])) {
                         $q = "%" . $_GET['q'] . "%";
-                        $where[] = "(orders.id = ? OR orders.name LIKE ?)";
+                        $exact_q = $_GET['q'];
+                        $where[] = "(orders.id = ? OR orders.order_code = ? OR orders.name LIKE ?)";
                         $params[] = intval($_GET['q']);
+                        $params[] = $exact_q;
                         $params[] = $q;
-                        $types .= "is";
+                        $types .= "iss";
                     }
                     if (!empty($_GET['date_from'])) {
                         $where[] = "DATE(orders.created_at) >= ?";
@@ -140,7 +142,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
                     if ($res->num_rows > 0):
                         while($row = $res->fetch_assoc()): ?>
                     <tr>
-                        <td>#<?= $row['id'] ?></td>
+                        <td>#<?= $row['order_code'] ?? $row['id'] ?></td>
                         <td><?= $row['username'] ?? 'Khách lẻ' ?></td>
                         <?php $final_admin = max(0, $row['total_price'] - $row['discount_amount']); ?>
                         <td class="order-total-price"><?= number_format($final_admin) ?> đ</td>

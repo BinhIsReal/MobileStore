@@ -220,4 +220,79 @@ if ($action === 'register') {
     }
     exit;
 }
+
+// -----------------------------------------------
+// 4. GOOGLE LOGIN / REGISTER
+// -----------------------------------------------
+if ($action === 'google_login') {
+    csrf_verify_or_die();
+    
+    $token = $_POST['token'] ?? '';
+    if (empty($token)) {
+        echo json_encode(['status' => 'error', 'message' => 'Lỗi xác thực Google! (No token)']);
+        exit;
+    }
+
+    // Call Google to verify token and get payload
+    $ch = curl_init("https://oauth2.googleapis.com/tokeninfo?id_token=" . $token);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $res = curl_exec($ch);
+    curl_close($ch);
+    $payload = json_decode($res, true);
+
+    if (isset($payload['email'])) {
+        $email = $payload['email'];
+        // Sử dụng một phần email làm username mặc định
+        $username_base = explode('@', $email)[0];
+        $username = $username_base;
+
+        // Check if user exists by email
+        $stmt = $conn->prepare("SELECT id, username, role FROM users WHERE email = ?");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $check = $stmt->get_result();
+
+        if ($check->num_rows > 0) {
+            // Đã tồn tại -> Đăng nhập
+            $user = $check->fetch_assoc();
+            session_regenerate_id(true);
+            $_SESSION['user_id']  = (int)$user['id'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['role']     = $user['role'];
+            echo json_encode(['status' => 'success', 'redirect' => 'index.php']);
+        } else {
+            // Chưa tồn tại -> Tạo tài khoản tự động (mật khẩu random để chặn đăng nhập bằng pass nếu k đổi)
+            $random_pass = bin2hex(random_bytes(8));
+            $hashed = password_hash($random_pass, PASSWORD_BCRYPT, ['cost' => 12]);
+            
+            // Đảm bảo username không trùng lặp
+            $stmt_check_user = $conn->prepare("SELECT id FROM users WHERE username = ?");
+            $stmt_check_user->bind_param("s", $username);
+            $stmt_check_user->execute();
+            if ($stmt_check_user->get_result()->num_rows > 0) {
+                $username = $username . rand(1000, 9999);
+            }
+            $stmt_check_user->close();
+
+            $stmt_ins = $conn->prepare("INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, 'user')");
+            $stmt_ins->bind_param("sss", $username, $hashed, $email);
+            
+            if ($stmt_ins->execute()) {
+                $new_id = $stmt_ins->insert_id;
+                session_regenerate_id(true);
+                $_SESSION['user_id']  = $new_id;
+                $_SESSION['username'] = $username;
+                $_SESSION['role']     = 'user';
+                echo json_encode(['status' => 'success', 'redirect' => 'index.php']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Không thể tạo tài khoản từ Google!']);
+            }
+            $stmt_ins->close();
+        }
+        $stmt->close();
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Google Login failed (Không lấy được thông tin email)']);
+    }
+    exit;
+}
 ?>

@@ -17,7 +17,9 @@
   pointer-events: none;
 }
 
-.hero-slide:first-child { position: relative; }
+.hero-slide:first-child {
+  position: relative;
+}
 .hero-slide.active {
   opacity: 1;
   pointer-events: auto;
@@ -45,10 +47,10 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.45);
+  background: rgba(255, 255, 255, 0.45);
   cursor: pointer;
   transition: all 0.35s ease;
-  border: 2px solid rgba(255,255,255,0.6);
+  border: 2px solid rgba(255, 255, 255, 0.6);
 }
 
 .hero-dot.active {
@@ -62,7 +64,7 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(0,0,0,0.4);
+  background: rgba(0, 0, 0, 0.4);
   color: #fff;
   border: none;
   width: 34px;
@@ -77,9 +79,15 @@
   transition: background 0.2s;
 }
 
-.hero-arrow:hover { background: rgba(0,0,0,0.7); }
-.hero-prev { left: 10px; }
-.hero-next { right: 10px; }
+.hero-arrow:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+.hero-prev {
+  left: 10px;
+}
+.hero-next {
+  right: 10px;
+}
 
 /* === FLASH SALE — DYNAMIC TIMER === */
 .hot-header {
@@ -107,8 +115,13 @@
 }
 
 @keyframes title-glow {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.3); }
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.3);
+  }
 }
 
 #hot-timer-display {
@@ -135,7 +148,7 @@
   font-size: 18px;
   font-weight: 900;
   color: #ff6b35;
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   line-height: 1.1;
 }
 
@@ -158,7 +171,7 @@
   padding: 4px 8px;
   border-radius: 6px;
   z-index: 2;
-  box-shadow: 0 2px 6px rgba(231,76,60,0.4);
+  box-shadow: 0 2px 6px rgba(231, 76, 60, 0.4);
 }
 
 .hot-sale-container .product-card {
@@ -166,6 +179,12 @@
 }
 
 @keyframes card-entrance {
-  from { opacity: 0; transform: translateY(15px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

@@ -21,9 +21,11 @@ if ($user_id > 0) {
     }
 
     // 2. LẤY DỮ LIỆU GIỎ HÀNG TỪ DATABASE
-    $sql = "SELECT p.id, p.name, p.image, p.price, p.sale_price, c.quantity 
+    $sql = "SELECT p.id as p_id, p.name as p_name, p.image, p.price as base_price, p.sale_price, c.quantity, c.variation_id, 
+                   COALESCE(pv.price, p.price) as final_price, pv.attributes as var_attrs
             FROM cart c
             JOIN products p ON c.product_id = p.id
+            LEFT JOIN product_variations pv ON c.variation_id = pv.id
             WHERE c.user_id = $user_id";
     $result = $conn->query($sql);
     if ($result) {
@@ -34,15 +36,20 @@ if ($user_id > 0) {
 } else {
     // LẤY DỮ LIỆU GIỎ HÀNG CỦA KHÁCH VÃNG LAI (TỪ SESSION)
     if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
-        $ids = implode(',', array_keys($_SESSION['cart']));
-        if (!empty($ids)) {
-            $sql = "SELECT id, name, image, price, sale_price FROM products WHERE id IN ($ids)";
-            $result = $conn->query($sql);
-            if ($result) {
-                while ($row = $result->fetch_assoc()) {
-                    $row['quantity'] = $_SESSION['cart'][$row['id']];
-                    $cart_data[] = $row;
-                }
+        foreach ($_SESSION['cart'] as $key => $qty) {
+            $parts = explode('_', $key);
+            $pid = (int)$parts[0];
+            $vid = isset($parts[1]) ? (int)$parts[1] : 0;
+            
+            $sql = "SELECT p.id as p_id, p.name as p_name, p.image, p.price as base_price, p.sale_price, COALESCE(pv.price, p.price) as final_price, pv.attributes as var_attrs
+                    FROM products p
+                    LEFT JOIN product_variations pv ON pv.id = $vid
+                    WHERE p.id = $pid";
+            $res = $conn->query($sql);
+            if ($res && $row = $res->fetch_assoc()) {
+                $row['quantity'] = $qty;
+                $row['variation_id'] = $vid;
+                $cart_data[] = $row;
             }
         }
     }
@@ -92,11 +99,25 @@ if ($user_id > 0) {
                 </div>
 
                 <?php foreach ($cart_data as $item): 
-                    $is_sale = isset($item['sale_price']) && $item['sale_price'] > 0;
-                    $final_price = $is_sale ? $item['sale_price'] : $item['price'];
+                    $is_sale = isset($item['sale_price']) && $item['sale_price'] > 0 && empty($item['variation_id']); // Sale chỉ áp dụng product simple ở đây để demo
+                    $item_id = $item['p_id'];
+                    $item_name = $item['p_name'];
+                    
+                    // Tính final price
+                    $calc_price = $is_sale ? $item['sale_price'] : $item['final_price'];
+                    
+                    $display_name = htmlspecialchars($item_name);
+                    if (!empty($item['var_attrs'])) {
+                        $attrs = json_decode($item['var_attrs'], true);
+                        $attr_parts = [];
+                        if ($attrs) {
+                            foreach($attrs as $k => $v) $attr_parts[] = "$k: $v";
+                            $display_name .= " (" . implode(', ', $attr_parts) . ")";
+                        }
+                    }
                 ?>
-                <div class="cart-item" id="item-<?= $item['id'] ?>">
-                    <input type="checkbox" class="pay-check" value="<?= $item['id'] ?>" data-price="<?= $final_price ?>"
+                <div class="cart-item" id="item-<?= $item_id ?>">
+                    <input type="checkbox" class="pay-check" value="<?= $item_id ?>" data-price="<?= $calc_price ?>"
                         data-qty="<?= $item['quantity'] ?>" onchange="calcTotal()"
                         style="width: 18px; height: 18px; margin-right: 15px; cursor: pointer;">
 
@@ -104,41 +125,41 @@ if ($user_id > 0) {
                         $imgCart = (strpos($item['image'], 'http') === 0) ? $item['image'] : "assets/img/" . $item['image'];
                     ?>
 
-                    <a href="product_detail.php?id=<?= $item['id'] ?>" style="display: block; text-decoration: none;">
-                        <img src="<?= $imgCart ?>" alt="<?= htmlspecialchars($item['name']) ?>"
+                    <a href="product_detail.php?id=<?= $item_id ?>" style="display: block; text-decoration: none;">
+                        <img src="<?= $imgCart ?>" alt="<?= htmlspecialchars($item_name) ?>"
                             style="transition: transform 0.2s; cursor: pointer;"
                             onmouseover="this.style.transform='scale(1.05)'"
                             onmouseout="this.style.transform='scale(1)'">
                     </a>
 
                     <div class="cart-info" style="flex: 1;">
-                        <a href="product_detail.php?id=<?= $item['id'] ?>"
+                        <a href="product_detail.php?id=<?= $item_id ?>"
                             style="text-decoration: none; color: inherit;">
                             <h4 style="transition: color 0.2s;" onmouseover="this.style.color='#00487a'"
-                                onmouseout="this.style.color='inherit'"><?= htmlspecialchars($item['name']) ?></h4>
+                                onmouseout="this.style.color='inherit'"><?= $display_name ?></h4>
                         </a>
 
                         <div class="cart-price">
                             <?php if ($is_sale): ?>
                             <span
-                                style="color: #d70018; font-weight: bold;"><?= number_format($final_price, 0, ',', '.') ?>
+                                style="color: #d70018; font-weight: bold;"><?= number_format($calc_price, 0, ',', '.') ?>
                                 ₫</span>
                             <br>
-                            <del style="color: #999; font-size: 13px;"><?= number_format($item['price'], 0, ',', '.') ?>
+                            <del style="color: #999; font-size: 13px;"><?= number_format($item['base_price'], 0, ',', '.') ?>
                                 ₫</del>
                             <?php else: ?>
-                            <?= number_format($item['price'], 0, ',', '.') ?> ₫
+                            <span style="color: #d70018; font-weight: bold;"><?= number_format($calc_price, 0, ',', '.') ?> ₫</span>
                             <?php endif; ?>
                         </div>
                     </div>
 
                     <div class="qty-control">
-                        <button class="qty-btn" data-id="<?= $item['id'] ?>" data-delta="-1">-</button>
-                        <span id="qty-<?= $item['id'] ?>"><?= $item['quantity'] ?></span>
-                        <button class="qty-btn" data-id="<?= $item['id'] ?>" data-delta="1">+</button>
+                        <button class="qty-btn" data-id="<?= $item_id ?>" data-delta="-1">-</button>
+                        <span id="qty-<?= $item_id ?>"><?= $item['quantity'] ?></span>
+                        <button class="qty-btn" data-id="<?= $item_id ?>" data-delta="1">+</button>
                     </div>
 
-                    <button class="btn-remove-item" data-id="<?= $item['id'] ?>"
+                    <button class="btn-remove-item" data-id="<?= $item_id ?>"
                         style="border:none; background:none; cursor:pointer;">
                         <i class="fa-solid fa-trash-can"></i>
                     </button>

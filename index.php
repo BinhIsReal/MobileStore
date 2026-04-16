@@ -346,12 +346,12 @@
             <div class="hot-header">
                 <div class="hot-title-wrap">
                     <h2 id="fs-display-title">
-                        <i class="fa-solid fa-fire" style="-webkit-text-fill-color:#ff6b35; color:#ff6b35;"></i>
+                        <i class="fa-solid fa-bolt" style="-webkit-text-fill-color:#ff6b35; color:#ff6b35;"></i>
                         <span>HOT SALE CUỐI TUẦN</span>
                     </h2>
                 </div>
                 <div class="hot-timer" id="hot-timer-display">
-                    Kết thúc sau:
+                    <span class="text">Kết thúc sau:</span>
                     <span class="timer-block"><b id="fs-days">00</b><small>Ngày</small></span>
                     <span class="timer-block"><b id="fs-hours">00</b><small>Giờ</small></span>
                     <span class="timer-block"><b id="fs-mins">00</b><small>Phút</small></span>

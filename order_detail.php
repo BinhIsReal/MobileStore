@@ -50,7 +50,7 @@ $allow_cancel = ($current_status == 'pending');
 <html lang="vi">
 
 <head>
-    <title>Chi tiết đơn hàng <?= $order_id ?></title>
+    <title>Chi tiết đơn hàng <?= $order['order_code'] ?? $order_id ?></title>
     <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
     <link rel="stylesheet" href="assets/css/style.css?v=<?= time() ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -65,7 +65,7 @@ $allow_cancel = ($current_status == 'pending');
                 <div>
                     <a href="order_history.php" style="color:#666; font-size:13px;"><i class="fa fa-arrow-left"></i>
                         Quay lại</a>
-                    <h2 style="margin:5px 0 0; color:var(--primary);">Đơn hàng <?= $order_id ?></h2>
+                    <h2 style="margin:5px 0 0; color:var(--primary);">Đơn hàng <?= $order['order_code'] ?? $order_id ?></h2>
                     <span style="font-size:13px; color:#888;">Ngày đặt:
                         <?= date('d/m/Y H:i', strtotime($order['created_at'])) ?></span>
                 </div>

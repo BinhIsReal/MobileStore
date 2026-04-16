@@ -437,4 +437,10 @@ $(document).ready(function () {
     parent.addClass("open");
     parent.find(".sb-group-content").show();
   });
+
+  // Toggle Sidebar (Dùng event delegation để tránh lỗi DOM chưa render)
+  $(document).off("click", "#toggleSidebar").on("click", "#toggleSidebar", function(e) {
+    e.preventDefault();
+    $("body").toggleClass("sidebar-collapsed");
+  });
 });

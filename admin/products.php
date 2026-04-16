@@ -69,12 +69,14 @@ if (!empty($_GET['brand_id'])) {
     $types .= "i";
 }
 
-$sql = "SELECT p.*, c.name as cat_name, b.name as brand_name 
+$sql = "SELECT p.*, c.name as cat_name, b.name as brand_name,
+               (SELECT SUM(stock) FROM product_variations WHERE product_id = p.id) as var_total_stock
         FROM products p 
         LEFT JOIN categories c ON p.category_id = c.id 
         LEFT JOIN brands b ON p.brand_id = b.id 
         WHERE " . implode(" AND ", $where_clauses) . " 
         ORDER BY p.id DESC";
+
 
 $stmt = $conn->prepare($sql);
 if (!empty($params)) {
@@ -170,7 +172,13 @@ $result = $stmt->get_result();
                             </td>
                             <td>
                                 <div class="product-name-text"><?= $row['name'] ?></div>
-                                <small class="product-stock-text">Kho: <?= isset($row['stock']) ? $row['stock'] : 0 ?></small>
+                                <?php 
+                                    $display_stock = isset($row['stock']) ? $row['stock'] : 0;
+                                    if (isset($row['product_type']) && $row['product_type'] === 'variable') {
+                                        $display_stock = isset($row['var_total_stock']) ? $row['var_total_stock'] : $display_stock;
+                                    }
+                                ?>
+                                <small class="product-stock-text">Kho: <?= $display_stock ?> <?= (isset($row['product_type']) && $row['product_type'] == 'variable') ? '<span style="color:#d70018; font-size:11px;">(Là tổng các biến thể)</span>' : '' ?></small>
                             </td>
                             <td><?= $row['cat_name'] ?></td>
                             <td><?= $row['brand_name'] ?></td>

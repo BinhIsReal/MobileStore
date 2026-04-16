@@ -144,17 +144,25 @@ endif;
 // =========================================================
 // 2. HIỂN THỊ POPUP KHI CÓ VOUCHER MỚI
 // =========================================================
-// Kiểm tra nếu User đã đăng nhập thì mới check xem có voucher mới không
 if (isset($_SESSION['user_id'])): 
     $uid = $_SESSION['user_id'];
     $check_new = $conn->query("SELECT COUNT(*) as new_count FROM user_vouchers WHERE user_id = $uid AND is_new = 1");
     $new_vouchers = $check_new->fetch_assoc()['new_count'] ?? 0;
     
     if ($new_vouchers > 0):
+        // ✔ Reset is_new = 0 NGAY khi render — tránh hiện lại khi F5 hoặc chuyển trang
+        $conn->query("UPDATE user_vouchers SET is_new = 0 WHERE user_id = $uid AND is_new = 1");
 ?>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(document).ready(function() {
+    // Guard: tránh hiện 2 lần trong cùng 1 session nho trình duyệt
+    var guardKey = 'voucher_popup_shown_<?= $uid ?>_<?= date('YmdH') ?>';
+    if (localStorage.getItem(guardKey)) return;
+    localStorage.setItem(guardKey, '1');
+    // Xóa key sau 1 giờ
+    setTimeout(function() { localStorage.removeItem(guardKey); }, 3600000);
+
     Swal.fire({
         title: '🎉 Quà tặng bất ngờ!',
         html: 'Bạn vừa nhận được <b><?= $new_vouchers ?> mã giảm giá mới</b> từ cửa hàng.<br>Hãy kiểm tra ngay nhé!',
@@ -165,12 +173,12 @@ $(document).ready(function() {
         cancelButtonText: 'Để sau',
         confirmButtonColor: '#00487a',
         cancelButtonColor: '#6c757d',
-        allowOutsideClick: false // Bắt buộc phải bấm chọn
+        allowOutsideClick: true
     }).then((result) => {
         if (result.isConfirmed) {
-            // Chuyển hướng sang trang Kho Voucher
             window.location.href = 'my_vouchers.php';
         }
+        // isConfirmed=false / isDismissed: không làm gì, popup đã được reset phía server
     });
 });
 </script>

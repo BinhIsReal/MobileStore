@@ -1,5 +1,6 @@
 <?php 
-if (session_status() === PHP_SESSION_NONE) session_start(); 
+if (session_status() === PHP_SESSION_NONE) session_start();
+$_is_logged    = isset($_SESSION['user_id']);
 ?>
 
 <nav>
@@ -24,9 +25,9 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 <i class="fa-solid fa-location-dot"></i> Cửa hàng
             </a>
 
+            <!-- ===== CART ===== -->
             <a href="<?= BASE_URL ?>/cart.php" class="menu-item menu-cart-box">
                 <i class="fa-solid fa-cart-shopping menu-cart-icon"></i>
-
                 <?php
                     $cart_qty = 0;
                     if(isset($conn) && isset($_SESSION['user_id'])) {
@@ -37,13 +38,32 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         $cart_qty = isset($_SESSION['cart']) ? array_sum($_SESSION['cart']) : 0;
                     }
                 ?>
-                <span class="menu-cart-badge <?= $cart_qty > 0 ? '' : 'hidden' ?>">
-                    <?= $cart_qty ?>
-                </span>
-
+                <?php if ($cart_qty > 0): ?>
+                <span class="menu-cart-badge"><?= $cart_qty ?></span>
+                <?php endif; ?>
                 <span>Giỏ hàng</span>
             </a>
 
+            <?php if ($_is_logged): ?>
+            <!-- ===== NOTIFICATION BELL (bên phải Cart) ===== -->
+            <div class="menu-item nav-notif-wrap" id="nav-notif-btn" title="Thông báo">
+                <i class="fa-solid fa-bell"></i>
+                <!-- Badge chỉ render khi count > 0 qua JS -->
+                <span id="nav-notif-badge" style="display:none;" class="menu-cart-badge">0</span>
+                <div id="notif-dropdown">
+                    <div class="notif-header">
+                        <b>🔔 Thông báo</b>
+                        <a href="#" id="btn-mark-all-read">Đánh dấu tất cả đã đọc</a>
+                    </div>
+                    <div id="notif-list">
+                        <div class="notif-empty"><i class="fa fa-spinner fa-spin"></i></div>
+                    </div>
+
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- ===== USER DROPDOWN ===== -->
             <div class="menu-item user-dropdown-container">
                 <?php if (isset($_SESSION['user_id'])): ?>
                 <div class="user-box-trigger">
@@ -54,14 +74,13 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
                 <div class="dropdown-content" id="userDropdown">
                     <?php if (isset($_SESSION['role']) && $_SESSION['role'] == 'admin'): ?>
-                    <a href="<?= BASE_URL ?>/admin/products.php"><i class="fa-solid fa-gauge"></i> Quản trị</a>
+                    <a href="<?= BASE_URL ?>/admin/dashboard.php"><i class="fa-solid fa-gauge"></i> Quản trị</a>
                     <?php endif; ?>
                     <a href="<?= BASE_URL ?>/profile.php"><i class="fa-solid fa-file-invoice"></i> Thông tin cá nhân</a>
                     <a href="<?= BASE_URL ?>/order_history.php"><i class="fa-solid fa-file-invoice"></i> Đơn hàng</a>
-                    <a href="<?= BASE_URL ?>/my_vouchers.php"><i class="fa-solid fa-ticket-simple   "></i> Kho
-                        Voucher</a>
-                    <a href="<?= BASE_URL ?>/api/auth_api.php?logout=1" class="logout-link"><i
-                            class="fa-solid fa-right-from-bracket"></i> Đăng xuất</a>
+                    <a href="<?= BASE_URL ?>/my_vouchers.php"><i class="fa-solid fa-ticket-simple"></i> Kho Voucher</a>
+                    <a href="<?= BASE_URL ?>/wishlist.php"><i class="fa-solid fa-heart"></i> Yêu thích</a>
+                    <a href="<?= BASE_URL ?>/api/auth_api.php?logout=1" class="logout-link"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</a>
                 </div>
                 <?php else: ?>
                 <a href="<?= BASE_URL ?>/login.php" class="user-box-trigger">
@@ -69,6 +88,206 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 </a>
                 <?php endif; ?>
             </div>
-        </div>
+
+        </div><!-- /.menu -->
     </div>
 </nav>
+
+<script>
+(function() {
+    const IS_LOGGED = <?= $_is_logged ? 'true' : 'false' ?>;
+
+    /* =========================================================
+       1. NOTIFICATION DROPDOWN + BADGE
+       ========================================================= */
+    if (!IS_LOGGED) return;
+
+    const notifBtn = document.getElementById('nav-notif-btn');
+    const notifDropdown = document.getElementById('notif-dropdown');
+    const notifBadge = document.getElementById('nav-notif-badge');
+    const notifList = document.getElementById('notif-list');
+    const markAllBtn = document.getElementById('btn-mark-all-read');
+
+    // Deep-link theo type
+    const TYPE_ICON = {
+        price_drop: {
+            icon: '🔥',
+            label: 'Giảm giá Wishlist'
+        },
+        reward_voucher: {
+            icon: '🎁',
+            label: 'Voucher thưởng'
+        },
+        order_status: {
+            icon: '📦',
+            label: 'Cập nhật đơn hàng'
+        },
+        system: {
+            icon: 'ℹ️',
+            label: 'Hệ thống'
+        }
+    };
+    const TYPE_LINK = {
+        price_drop: '/wishlist.php',
+        reward_voucher: '/my_vouchers.php',
+        order_status: '/order_history.php',
+        system: '#'
+    };
+
+    // --- Escape HTML ---
+    function escHtml(str) {
+        const d = document.createElement('div');
+        d.textContent = str || '';
+        return d.innerHTML;
+    }
+
+    // --- Render 1 notification item với deep-link ---
+    function renderNotifItem(n) {
+        const meta = TYPE_ICON[n.type] || TYPE_ICON.system;
+        const deepLink = n.link || TYPE_LINK[n.type] || '#';
+        const unread = n.is_read == 0;
+        const timeStr = n.created_at ? n.created_at.substring(0, 16).replace('T', ' ') : '';
+
+        const el = document.createElement('div');
+        el.className = 'notif-item' + (unread ? ' unread' : '');
+        el.setAttribute('role', 'button');
+        el.setAttribute('tabindex', '0');
+        el.innerHTML = `
+            <span class="notif-icon">${meta.icon}</span>
+            <div class="notif-body">
+                <div class="notif-type-label">${meta.label}</div>
+                <div class="notif-title">${escHtml(n.title)}</div>
+                <div class="notif-msg">${escHtml(n.message)}</div>
+                <div class="notif-time">${timeStr}</div>
+            </div>
+            ${unread ? '<span class="notif-dot"></span>' : ''}
+        `;
+
+        // Click: mark_read → redirect
+        el.addEventListener('click', function() {
+            fetch('/api/notification_api.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'action=mark_read&id=' + encodeURIComponent(n.id)
+            }).finally(function() {
+                if (deepLink && deepLink !== '#') {
+                    window.location.href = deepLink;
+                } else {
+                    el.classList.remove('unread');
+                    const dot = el.querySelector('.notif-dot');
+                    if (dot) dot.remove();
+                    refreshBadges();
+                }
+            });
+        });
+        return el;
+    }
+
+    // --- Load + render danh sách ---
+    function loadNotifList() {
+        notifList.innerHTML = '<div class="notif-empty"><i class="fa fa-spinner fa-spin"></i> Đang tải...</div>';
+        fetch('/api/notification_api.php?action=get_notifications&limit=15')
+            .then(r => r.json())
+            .then(function(res) {
+                notifList.innerHTML = '';
+                if (!res.data || res.data.length === 0) {
+                    notifList.innerHTML = '<div class="notif-empty">Không có thông báo nào</div>';
+                    return;
+                }
+                res.data.forEach(function(n) {
+                    notifList.appendChild(renderNotifItem(n));
+                });
+            })
+            .catch(function() {
+                notifList.innerHTML = '<div class="notif-empty">Lỗi tải thông báo</div>';
+            });
+    }
+
+    // --- Refresh badges: CHỈ hiện khi count > 0 ---
+    function refreshBadges() {
+        // Notif badge
+        fetch('/api/notification_api.php?action=count_unread')
+            .then(r => r.json())
+            .then(function(res) {
+                const count = parseInt(res.unread) || 0;
+                if (count > 0) {
+                    notifBadge.textContent = count > 99 ? '99+' : count;
+                    notifBadge.style.display = '';
+                } else {
+                    notifBadge.style.display = 'none';
+                    notifBadge.textContent = '0';
+                }
+            }).catch(function() {
+                notifBadge.style.display = 'none';
+            });
+    }
+
+    // --- Toggle dropdown ---
+    if (notifBtn) {
+        notifBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const isOpen = notifDropdown.classList.contains('open');
+            notifDropdown.classList.toggle('open');
+            if (!isOpen) loadNotifList();
+        });
+    }
+
+    document.addEventListener('click', function(e) {
+        if (notifBtn && !notifBtn.contains(e.target)) {
+            notifDropdown.classList.remove('open');
+        }
+    });
+
+    // --- Mark all read ---
+    if (markAllBtn) {
+        markAllBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            fetch('/api/notification_api.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'action=mark_read'
+            }).then(function() {
+                loadNotifList();
+                refreshBadges();
+            });
+        });
+    }
+
+    // --- Wishlist badge refresh (dùng riêng từ bên ngoài) ---
+    function refreshWishlistBadge() {
+        const wishBadge = document.getElementById('nav-wishlist-count');
+        // wishlist badge đã bị user xóa khỏi DOM, giữ để không lỗi nếu trang khác có
+        if (!wishBadge) return;
+        fetch('/api/wishlist_api.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'action=get_my_wishlist'
+            })
+            .then(r => r.json())
+            .then(function(res) {
+                const count = (res.data || []).length;
+                if (count > 0) {
+                    wishBadge.textContent = count;
+                    wishBadge.style.display = '';
+                } else {
+                    wishBadge.style.display = 'none';
+                }
+            }).catch(function() {});
+    }
+
+    // --- Auto-refresh mỗi 30 giây ---
+    refreshBadges();
+    setInterval(refreshBadges, 30000);
+
+    // Expose toàn bộ refresh ra global
+    window._navRefreshBadges = refreshBadges;
+    window._navRefreshWishlist = refreshWishlistBadge;
+})();
+</script>

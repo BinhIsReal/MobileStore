@@ -262,7 +262,8 @@ if ($action == 'send_message') {
                 'đơn hàng', 'đơn của tôi', 'đơn của em', 'order', 'đặt rồi', 'đặt hàng',
                 'đang giao', 'đang ở đâu', 'bao giờ tới', 'trạng thái', 'theo dõi',
                 'lịch sử mua', 'đã mua', 'mua gì', 'hủy đơn', 'hoàn tiền', 'đổi trả',
-                'thanh toán', 'chưa trả', 'đã thanh toán', 'mã đơn', 'order id'
+                'thanh toán', 'chưa trả', 'đã thanh toán', 'mã đơn', 'order id',
+                'thống kê', 'tổng số', 'bao nhiêu đơn', 'tổng tiền', 'tiêu bao nhiêu', 'mua bao nhiêu'
             ];
 
             $has_order_intent = false;
@@ -272,19 +273,33 @@ if ($action == 'send_message') {
                     break;
                 }
             }
-            // Nhận diện mã đơn dạng "#45", "đơn 45", "order 45"
-            $order_id_requested = 0;
-            if (preg_match('/#(\d+)|(?:đơn|order)\s*(?:số|mã)?\s*(\d+)/ui', $msg, $om)) {
-                $order_id_requested = intval($om[1] ?: $om[2]);
+
+            // A. NHẬN DIỆN MÃ ĐƠN (ID dạng số hoặc order_code dạng chuỗi)
+            $order_id_requested = '';
+            if (preg_match('/#([A-Za-z0-9]{1,10})|(?:đơn|order)\s*(?:số|mã)?\s*([A-Za-z0-9]{1,10})/ui', $msg, $om)) {
+                $order_id_requested = trim($om[1] ?: $om[2]);
+                $has_order_intent = true;
+            }
+
+            // B. NHẬN DIỆN TRẠNG THÁI (STATUS FILTER)
+            $has_status_intent = '';
+            if (preg_match('/đang giao|đang vận chuyển/ui', $msg_lower)) $has_status_intent = 'shipping';
+            if (preg_match('/đã nhận|thành công|hoàn thành/ui', $msg_lower)) $has_status_intent = 'completed';
+            if (preg_match('/đã hủy|hủy/ui', $msg_lower)) $has_status_intent = 'cancelled';
+            if (preg_match('/chờ xác nhận/ui', $msg_lower)) $has_status_intent = 'pending';
+
+            // C. NHẬN DIỆN THỐNG KÊ CHI TIÊU
+            $has_stats_intent = false;
+            if (preg_match('/(thống kê|tổng số|bao nhiêu đơn|tổng tiền|tiêu bao nhiêu|mua bao nhiêu)/ui', $msg_lower)) {
+                $has_stats_intent = true;
                 $has_order_intent = true;
             }
 
             $order_context = "";
             if ($has_order_intent) {
                 if ($real_user_id <= 0) {
-                    // Khách chưa đăng nhập
-                    $order_context = "THÔNG BÁO HỆ THỐNG: Khách hàng CHƯA ĐĂNG NHẬP nên không thể tra cứu đơn hàng.\n"
-                        . "Hãy lịch sự yêu cầu khách đăng nhập tại trang web để xem thông tin đơn hàng của mình.";
+                    $order_context = "THÔNG BÁO HỆ THỐNG: Khách hàng CHƯA ĐĂNG NHẬP nên không thể tra cứu lịch sử mua hàng, đơn hàng.\n"
+                        . "Hãy nhắc khách hàng vui lòng đăng nhập vào tài khoản trên website để có thể xem thông tin đơn hàng cá nhân.";
                 } else {
                     $status_map = [
                         'pending'   => 'Chờ xác nhận',
@@ -303,21 +318,52 @@ if ($action == 'send_message') {
 
                     $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'];
 
-                    if ($order_id_requested > 0) {
-                        // --- Tra cứu theo mã đơn cụ thể ---
+                    // XỬ LÝ RAG - THỐNG KÊ
+                    if ($has_stats_intent) {
+                        $stat_stmt = $conn->prepare("SELECT COUNT(id) as total_orders, SUM(total_price - discount_amount) as total_spent FROM orders WHERE user_id = ? AND status = 'completed'");
+                        $stat_stmt->bind_param("i", $real_user_id);
+                        $stat_stmt->execute();
+                        $stat_res = $stat_stmt->get_result()->fetch_assoc();
+                        
+                        $count = $stat_res['total_orders'] ?? 0;
+                        $spent = number_format($stat_res['total_spent'] ?? 0, 0, ',', '.') . 'đ';
+                        
+                        $order_context .= "THỐNG KÊ CÁ NHÂN CỦA KHÁCH HÀNG:\n";
+                        $order_context .= "- Khách đã mua tổng cộng: {$count} đơn hàng thành công.\n";
+                        $order_context .= "- Tổng chi tiêu tài khoản: {$spent}.\n";
+                        $stat_stmt->close();
+                    }
+
+                    // XỬ LÝ RAG - TRUY VẤN MỤC TIÊU
+                    $ord_stmt = null;
+                    if (!empty($order_id_requested)) {
                         $ord_stmt = $conn->prepare(
-                            "SELECT o.id, o.status, o.total_price, o.payment_method, o.payment_status, o.created_at,
-                                    GROUP_CONCAT(p.name ORDER BY oi.id SEPARATOR ' | ') AS products,
-                                    SUM(oi.quantity) AS total_qty
+                            "SELECT o.id, o.order_code, o.status, o.total_price, o.discount_amount, o.payment_method, o.payment_status, o.created_at,
+                                    GROUP_CONCAT(p.name ORDER BY od.id SEPARATOR ' | ') AS products,
+                                    SUM(od.quantity) AS total_qty
                              FROM orders o
-                             JOIN order_items oi ON o.id = oi.order_id
-                             JOIN products p     ON oi.product_id = p.id
-                             WHERE o.id = ? AND o.user_id = ?
+                             JOIN order_details od ON o.id = od.order_id
+                             JOIN products p     ON od.product_id = p.id
+                             WHERE (o.id = ? OR o.order_code = ?) AND o.user_id = ?
                              GROUP BY o.id"
                         );
-                        $ord_stmt->bind_param("ii", $order_id_requested, $real_user_id);
-                    } else if (!empty($keyword_fragments) && $has_order_intent) {
-                        // --- Lấy các đơn hàng dựa vào từ khoá tên sản phẩm ---
+                        $ord_id_int = intval($order_id_requested);
+                        $ord_stmt->bind_param("isi", $ord_id_int, $order_id_requested, $real_user_id);
+                    } else if (!empty($has_status_intent)) {
+                        $ord_stmt = $conn->prepare(
+                            "SELECT o.id, o.order_code, o.status, o.total_price, o.discount_amount, o.payment_method, o.payment_status, o.created_at,
+                                    GROUP_CONCAT(p.name ORDER BY od.id SEPARATOR ' | ') AS products,
+                                    SUM(od.quantity) AS total_qty
+                             FROM orders o
+                             JOIN order_details od ON o.id = od.order_id
+                             JOIN products p     ON od.product_id = p.id
+                             WHERE o.user_id = ? AND o.status = ?
+                             GROUP BY o.id
+                             ORDER BY o.created_at DESC
+                             LIMIT 5"
+                        );
+                        $ord_stmt->bind_param("is", $real_user_id, $has_status_intent);
+                    } else if (!empty($keyword_fragments)) {
                         $name_clauses = [];
                         $bind_values_order = [$real_user_id];
                         $bind_types_order = "i";
@@ -329,17 +375,14 @@ if ($action == 'send_message') {
                             $bind_values_order[] = $like_val;
                         }
 
-                        $product_condition = "";
-                        if (!empty($name_clauses)) {
-                            $product_condition = " AND (" . implode(" OR ", $name_clauses) . ")";
-                        }
+                        $product_condition = !empty($name_clauses) ? " AND (" . implode(" OR ", $name_clauses) . ")" : "";
 
-                        $sql = "SELECT o.id, o.status, o.total_price, o.payment_method, o.payment_status, o.created_at,
-                                        GROUP_CONCAT(p.name ORDER BY oi.id SEPARATOR ' | ') AS products,
-                                        SUM(oi.quantity) AS total_qty
+                        $sql = "SELECT o.id, o.order_code, o.status, o.total_price, o.discount_amount, o.payment_method, o.payment_status, o.created_at,
+                                        GROUP_CONCAT(p.name ORDER BY od.id SEPARATOR ' | ') AS products,
+                                        SUM(od.quantity) AS total_qty
                                  FROM orders o
-                                 JOIN order_items oi ON o.id = oi.order_id
-                                 JOIN products p     ON oi.product_id = p.id
+                                 JOIN order_details od ON o.id = od.order_id
+                                 JOIN products p     ON od.product_id = p.id
                                  WHERE o.user_id = ? {$product_condition}
                                  GROUP BY o.id
                                  ORDER BY o.created_at DESC
@@ -351,15 +394,14 @@ if ($action == 'send_message') {
                             $bind_refs[] = &$bind_values_order[$key];
                         }
                         call_user_func_array([$ord_stmt, 'bind_param'], $bind_refs);
-                    } else {
-                        // --- Lấy 5 đơn gần nhất ---
+                    } else if (!$has_stats_intent) {
                         $ord_stmt = $conn->prepare(
-                            "SELECT o.id, o.status, o.total_price, o.payment_method, o.payment_status, o.created_at,
-                                    GROUP_CONCAT(p.name ORDER BY oi.id SEPARATOR ' | ') AS products,
-                                    SUM(oi.quantity) AS total_qty
+                            "SELECT o.id, o.order_code, o.status, o.total_price, o.discount_amount, o.payment_method, o.payment_status, o.created_at,
+                                    GROUP_CONCAT(p.name ORDER BY od.id SEPARATOR ' | ') AS products,
+                                    SUM(od.quantity) AS total_qty
                              FROM orders o
-                             JOIN order_items oi ON o.id = oi.order_id
-                             JOIN products p     ON oi.product_id = p.id
+                             JOIN order_details od ON o.id = od.order_id
+                             JOIN products p     ON od.product_id = p.id
                              WHERE o.user_id = ?
                              GROUP BY o.id
                              ORDER BY o.created_at DESC
@@ -368,25 +410,29 @@ if ($action == 'send_message') {
                         $ord_stmt->bind_param("i", $real_user_id);
                     }
 
-                    $ord_stmt->execute();
-                    $ord_res = $ord_stmt->get_result();
+                    if ($ord_stmt !== null) {
+                        $ord_stmt->execute();
+                        $ord_res = $ord_stmt->get_result();
 
-                    if ($ord_res && $ord_res->num_rows > 0) {
-                        $order_context = "ĐƠN HÀNG CỦA KHÁCH (chỉ trả lời dựa trên dữ liệu thực tế này):\n";
-                        while ($o = $ord_res->fetch_assoc()) {
-                            $status_vi  = $status_map[$o['status']]  ?? $o['status'];
-                            $pay_status = $payment_map[$o['payment_status']] ?? $o['payment_status'];
-                            $pay_method = $payment_method_map[$o['payment_method']] ?? $o['payment_method'];
-                            $total_fmt  = number_format($o['total_price'], 0, ',', '.') . 'đ';
-                            $date_fmt   = date('d/m/Y H:i', strtotime($o['created_at']));
-                            $detail_url = $base_url . "/order_detail.php?id=" . $o['id'];
-                            $can_cancel = ($o['status'] === 'pending') ? "Có thể hủy" : "Không thể hủy";
-                            $order_context .= "- Đơn #{$o['id']} | Sản phẩm: {$o['products']} (x{$o['total_qty']}) | Tổng: {$total_fmt} | Trạng thái: {$status_vi} | Thanh toán: {$pay_method} - {$pay_status} | Ngày đặt: {$date_fmt} | {$can_cancel} | Chi tiết: {$detail_url}\n";
+                        if ($ord_res && $ord_res->num_rows > 0) {
+                            if (empty($order_context)) $order_context = "ĐƠN HÀNG CỦA KHÁCH DỰA THEO YÊU CẦU: \n";
+                            while ($o = $ord_res->fetch_assoc()) {
+                                $status_vi  = $status_map[$o['status']]  ?? $o['status'];
+                                $pay_status = $payment_map[$o['payment_status']] ?? $o['payment_status'];
+                                $pay_method = $payment_method_map[$o['payment_method']] ?? $o['payment_method'];
+                                $final_price = number_format(($o['total_price'] - $o['discount_amount']), 0, ',', '.') . 'đ';
+                                $date_fmt   = date('d/m/Y H:i', strtotime($o['created_at']));
+                                $detail_url = $base_url . "/order_detail.php?id=" . $o['id'];
+                                $can_cancel = ($o['status'] === 'pending') ? "Có thể hủy" : "Không thể hủy";
+                                $disp_code  = $o['order_code'] ?? $o['id'];
+                                
+                                $order_context .= "- Mã Đơn #{$disp_code} | Sản phẩm: {$o['products']} (x{$o['total_qty']}) | Tổng trả: {$final_price} | Trạng thái: {$status_vi} | Thanh toán: {$pay_method} - {$pay_status} | Đặt lúc: {$date_fmt} | {$can_cancel} | Chi tiết: {$detail_url}\n";
+                            }
+                        } else {
+                            if (empty($has_stats_intent)) $order_context = "KHÔNG TÌM THẤY đơn hàng nào" . (!empty($order_id_requested) ? " với mã #{$order_id_requested}" : "") . " trong tài khoản này phù hợp với yêu cầu.";
                         }
-                    } else {
-                        $order_context = "KHÔNG TÌM THẤY đơn hàng nào" . ($order_id_requested > 0 ? " với mã #{$order_id_requested}" : "") . " trong tài khoản này.";
+                        $ord_stmt->close();
                     }
-                    $ord_stmt->close();
                 }
             }
 

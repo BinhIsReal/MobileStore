@@ -120,8 +120,11 @@ $(document).ready(function () {
   }
 
   updateCartCount();
-  checkUserNotifications();
-  setInterval(checkUserNotifications, 5000);
+  // checkUserNotifications được định nghĩa ở dưới, gọi qua window
+  if (typeof checkUserNotifications === 'function') {
+    checkUserNotifications();
+    setInterval(checkUserNotifications, 30000);
+  }
 
   /* --- SỰ KIỆN GIỎ HÀNG (CART) --- */
   $(document).on("change", ".pay-check", function () {
@@ -932,9 +935,21 @@ function updateCartCount() {
   $.post("api/cart_api.php", { action: "count" }, function (data) {
     try {
       let res = typeof data === "object" ? data : JSON.parse(data);
-      if (res.count > 0)
-        $(".menu-cart-badge").text(res.count).removeClass("hidden");
-      else $(".menu-cart-badge").addClass("hidden");
+      const count = parseInt(res.count) || 0;
+      // Tìm badge trong .menu-cart-box (chỉ badge cart, không phải notif/wishlist)
+      const $cartBadge = $(".menu-cart-box .menu-cart-badge");
+      if (count > 0) {
+        if ($cartBadge.length) {
+          $cartBadge.text(count).removeClass("hidden").css("display", "");
+        } else {
+          // Badge chưa có trong DOM (cart_qty=0 khi load) → tạo mới
+          $(".menu-cart-box .menu-cart-icon").after(
+            $('<span class="menu-cart-badge">').text(count)
+          );
+        }
+      } else {
+        $cartBadge.addClass("hidden").css("display", "none");
+      }
     } catch (e) {}
   });
 }
@@ -1106,6 +1121,15 @@ function handleAddToCart(e, btn, isBuyNow) {
   e.preventDefault();
   e.stopImmediatePropagation();
   if (btn.data("loading")) return;
+
+  let type = btn.attr("data-type");
+  let vid = btn.attr("data-variation-id");
+
+  if (type === "variable" && (!vid || vid === "")) {
+      showToast({ title: "Nhắc nhở", message: "Vui lòng chọn đầy đủ thuộc tính sản phẩm!", type: "warning" });
+      return;
+  }
+
   btn.data("loading", true);
 
   let pid = btn.data("id");
@@ -1118,10 +1142,10 @@ function handleAddToCart(e, btn, isBuyNow) {
 
   $.post(
     "api/cart_api.php",
-    { action: "add", product_id: pid, quantity: 1 },
+    { action: "add", product_id: pid, quantity: 1, variation_id: vid || "" },
     function () {
       if (isBuyNow) {
-        window.location.href = "cart.php?buy_now=" + pid;
+        window.location.href = "cart.php?buy_now=" + pid + "&vid=" + (vid || "");
       } else {
         showToast({
           title: "Thành công",
@@ -1148,9 +1172,39 @@ function handleAddToCart(e, btn, isBuyNow) {
   });
 }
 
-// --- CHAT FUNCTIONS ---
-checkUserNotifications();
-setInterval(checkUserNotifications, 3000);
+// --- NOTIFICATION FUNCTIONS ---
+
+/**
+ * checkUserNotifications: Fetch từ DB và render 3 loại thông báo vào
+ * dropdown navbar. Đồng bộ badge count.
+ */
+function checkUserNotifications() {
+  const notifList  = document.getElementById('notif-list');
+  const notifBadge = document.getElementById('nav-notif-badge');
+  if (!notifList || !notifBadge) return; // Chưa đăng nhập / không có DOM
+
+  fetch('/api/notification_api.php?action=get_notifications&limit=15')
+    .then(r => r.json())
+    .then(function(res) {
+      // Cập nhật badge
+      const unread = parseInt(res.unread) || 0;
+      if (unread > 0) {
+        notifBadge.textContent = unread > 99 ? '99+' : unread;
+        notifBadge.style.display = '';
+      } else {
+        notifBadge.style.display = 'none';
+        notifBadge.textContent = '0';
+      }
+
+      // Đồng bộ với navbar.php refreshBadges nếu dropdown chưa open
+      if (window._navRefreshBadges &&
+          !document.getElementById('notif-dropdown').classList.contains('open')) {
+        // Không render lại list khi đang mở, chỉ cập nhật badge
+        return;
+      }
+    })
+    .catch(function(){});
+}
 
 setTimeout(() => {
   if (!$("#chat-box").hasClass("open")) {

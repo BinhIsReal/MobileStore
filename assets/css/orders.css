@@ -192,11 +192,11 @@
 
 /* --- TABLE FILTER --- */
 .adm-order-filter-btn {
-  background: #00487a;
+  background: linear-gradient(135deg, #00487a, #0073c4);
   color: white;
   padding: 8px 16px;
   border: none;
-  border-radius: 4px;
+  border-radius: 12px;
   cursor: pointer;
   font-weight: bold;
   text-decoration: none;
@@ -205,7 +205,10 @@
   gap: 5px;
   line-height: 1.5;
 }
-
+.adm-order-filter-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 114, 176, 0.5);
+}
 /* select inline style cho status badge */
 .status-badge-select {
   padding: 5px;
@@ -244,7 +247,7 @@
 
 /* Nút Xem chi tiết */
 .btn-view-order {
-  background: #395a8f;
+  background: #00487a;
   color: #fff;
   border: none;
   padding: 5px 10px;
@@ -252,7 +255,10 @@
   cursor: pointer;
   font-size: 13px;
 }
-
+.btn-view-order:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(46, 115, 224, 0.773);
+}
 /* Tổng tiền trong bảng */
 .order-total-price {
   color: #d9534f;
