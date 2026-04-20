@@ -6,7 +6,7 @@ $_is_logged    = isset($_SESSION['user_id']);
 <nav>
     <div class="container nav-content">
         <a href="<?= BASE_URL ?>/index.php" class="logo">
-            <i class="fa-solid fa-mobile-screen-button"></i> MobileStore
+            <i class="fa-solid fa-mobile-screen-button"></i> TechMate
         </a>
 
         <form action="search.php" method="GET" class="search-box search-form-wrap">

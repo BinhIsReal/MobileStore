@@ -473,6 +473,11 @@ if ($action == 'send_message') {
             $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
             
+            // Log lỗi nếu API không thành công để dễ debug
+            if ($http_code != 200) {
+                error_log("Gemini API Error. HTTP Code: {$http_code}. Response: {$response}");
+            }
+            
             // Xử lý lỗi & Timeout (Error Handling)
             $bot_reply = "Dạ hiện tại hệ thống AI đang bảo trì, anh/chị vui lòng để lại lời nhắn, nhân viên thật của Shop sẽ hỗ trợ anh/chị ngay ạ!";
             

@@ -57,6 +57,8 @@ function viewOrderDetail(orderId) {
                         <tbody>
                 `;
 
+                let fmt = new Intl.NumberFormat('vi-VN');
+                
                 let total = 0;
                 items.forEach(item => {
                     let imgUrl = item.image.startsWith('http') ? item.image : '../assets/img/' + item.image;
@@ -70,8 +72,8 @@ function viewOrderDetail(orderId) {
                                 <span class="order-detail-product-name">${item.name}</span>
                             </td>
                             <td class="order-detail-td order-detail-td-center">${item.quantity}</td>
-                            <td class="order-detail-td order-detail-td-right">${Number(item.price).toLocaleString()}đ</td>
-                            <td class="order-detail-td order-detail-td-right order-detail-total-cell">${lineTotal.toLocaleString()}đ</td>
+                            <td class="order-detail-td order-detail-td-right">${fmt.format(item.price)} ₫</td>
+                            <td class="order-detail-td order-detail-td-right order-detail-total-cell">${fmt.format(lineTotal)} ₫</td>
                         </tr>
                     `;
                 });
@@ -86,13 +88,13 @@ function viewOrderDetail(orderId) {
                 let final = Math.max(0, parseFloat(o.total_price) - dis);
                 html += `
                 <div class="order-detail-summary">
-                    <p class="order-detail-sum-row">Tạm tính: <b>${total.toLocaleString()}đ</b></p>
+                    <p class="order-detail-sum-row">Tạm tính: <b>${fmt.format(total)} ₫</b></p>
                 `;
                 if (dis > 0) {
-                    html += `<p class="order-detail-sum-row order-detail-discount">Giảm giá: <b>- ${dis.toLocaleString()}đ</b></p>`;
+                    html += `<p class="order-detail-sum-row order-detail-discount">Giảm giá: <b>- ${fmt.format(dis)} ₫</b></p>`;
                 }
                 html += `
-                    <p class="order-detail-sum-final">Tổng thanh toán: <b class="order-detail-final-price">${final.toLocaleString()}đ</b></p>
+                    <p class="order-detail-sum-final">Tổng thanh toán: <b class="order-detail-final-price">${fmt.format(final)} ₫</b></p>
                 </div>
                 `;
 

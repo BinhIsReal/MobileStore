@@ -464,6 +464,28 @@ nav .menu-item:hover {
 /* =========================================
    5. PRODUCT DETAIL PAGE
 ========================================= */
+.attr-select {
+  width: 100%;
+  max-width: 250px;
+  padding: 10px 15px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background-color: #f9f9f9;
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.attr-select:focus,
+.attr-select:hover {
+  border-color: var(--primary);
+  background-color: #fff;
+  box-shadow: 0 0 0 3px rgba(0, 72, 122, 0.1);
+}
+
 .product-detail-page {
   max-width: 1200px !important;
   margin-top: 30px;
@@ -2017,12 +2039,17 @@ nav .menu-item:hover {
   gap: 10px;
 }
 .btn-yes {
-  background: var(--accent);
+  background: linear-gradient(to right, #e6394c, #f94c4c);
   color: white;
   border: none;
   padding: 10px 25px;
   border-radius: 4px;
   cursor: pointer;
+}
+.btn-yes:hover {
+  background: linear-gradient(to right, #e6394c, #f94c4c);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(207, 56, 56, 0.5);
 }
 .btn-no {
   background: #eee;
@@ -2031,6 +2058,10 @@ nav .menu-item:hover {
   padding: 10px 25px;
   border-radius: 4px;
   cursor: pointer;
+}
+.btn-no:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(197, 196, 196, 0.5);
 }
 @keyframes popIn {
   from {
@@ -3410,7 +3441,7 @@ button {
 .voucher-ticket {
   display: flex;
   background: #fff;
-  border-radius: 12px;
+  border-radius: 0 12px 12px 0;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
   margin-bottom: 20px;
   overflow: hidden;
@@ -3419,7 +3450,7 @@ button {
 }
 
 .voucher-left {
-  width: 120px;
+  width: 200px;
   background: linear-gradient(135deg, #00487a, #0077c2);
   display: flex;
   flex-direction: column;
@@ -3444,16 +3475,16 @@ button {
 .voucher-left::after {
   content: "";
   position: absolute;
-  right: -6px;
-  top: 0;
+  left: 0;
+  top: 6px;
   bottom: 0;
-  width: 12px;
+  width: 6px;
   background-image: radial-gradient(
-    circle at 6px 6px,
-    transparent 6px,
-    #fff 7px
+    circle at 0px 7px,
+    #fff 6px,
+    transparent 6.5px
   );
-  background-size: 12px 14px;
+  background-size: 6px 20px;
   background-repeat: repeat-y;
   z-index: 10;
 }
@@ -3464,7 +3495,6 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-left: 2px dashed #eee;
 }
 
 .voucher-info h3 {
@@ -3499,15 +3529,42 @@ button {
 }
 
 .voucher-action {
+  position: relative;
+  padding-left: 40px;
+  margin-right: 20px;
+  align-self: stretch;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 10px;
-  min-width: 100px;
+  justify-content: center;
+  align-items: center;
+}
+
+.voucher-action::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: -20px;
+  bottom: -20px;
+  border-left: 2px dashed #ccc;
+  z-index: 1;
+}
+
+.voucher-action::after {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: -20px;
+  bottom: -20px;
+  width: 14px;
+  background-image:
+    radial-gradient(circle at 50% 0, #eff1f3 6px, transparent 6.5px),
+    radial-gradient(circle at 50% 100%, #e8eaec 6px, transparent 6.5px);
+  background-repeat: no-repeat;
+  z-index: 2;
 }
 
 .btn-use {
-  background: #00487a;
+  background: linear-gradient(135deg, #00487a, #0077c2);
   color: white;
   border: none;
   padding: 8px 16px;
@@ -3521,10 +3578,12 @@ button {
 }
 
 .btn-use:hover {
-  background: #00335a;
+  background: linear-gradient(135deg, #015591, #0184d6);
+  transform: translateY(-2px);
 }
 
 .usage-count {
+  margin-top: 4px;
   font-size: 12px;
   color: #888;
 }
@@ -3545,6 +3604,7 @@ button {
   background: #dc3545;
   color: white;
 }
+
 /* Custom Payment Method Options */
 .payment-option {
   position: relative;
@@ -3811,6 +3871,7 @@ button {
    ORDER CANCEL BUTTON STYLES
 ========================================= */
 .btn-cancel-order {
+  width: 150px;
   background: #fff;
   border: 1px solid var(--accent);
   color: var(--accent);

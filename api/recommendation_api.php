@@ -25,7 +25,33 @@ if ($action === 'get_recommendations') {
 
     $limit = min(8, (int)($_GET['limit'] ?? 4));
 
-    // Lấy các sản phẩm được mua cùng nhiều nhất
+    $limit = min(8, (int)($_GET['limit'] ?? 4));
+
+    // Xác định category của sản phẩm gốc để quyết định tập gợi ý phụ kiện
+    $cat_stmt = $conn->prepare("SELECT category_id FROM products WHERE id = ?");
+    $cat_stmt->bind_param("i", $product_id);
+    $cat_stmt->execute();
+    $cat_res = $cat_stmt->get_result()->fetch_assoc();
+    $cat_stmt->close();
+    
+    $source_cat_id = $cat_res['category_id'] ?? 0;
+
+    // Xây dựng điều kiện lọc phụ kiện tương ứng
+    if (in_array($source_cat_id, [1, 3, 5])) { 
+        // Điện thoại, Máy tính bảng, Đồng hồ: Gợi ý sạc, cáp, tai nghe... (Loại trừ chuột, phím, đế, bảng vẽ)
+        $filter_sql = "(p.category_id IN (15, 20) AND p.name NOT LIKE '%chuột%' AND p.name NOT LIKE '%phím%' AND p.name NOT LIKE '%đế%' AND p.name NOT LIKE '%bảng vẽ%')";
+    } elseif (in_array($source_cat_id, [2, 7, 10, 13])) { 
+        // Laptop, PC, Màn hình: Gợi ý chuột, phím, lót chuột, đế... (Loại trừ củ sạc, pin sạc đt)
+        $filter_sql = "(p.category_id IN (13, 15, 20) AND p.name NOT LIKE '%pin sạc dự phòng%' AND p.name NOT LIKE '%củ sạc%' AND p.name NOT LIKE '%cáp sạc%')";
+    } elseif ($source_cat_id == 17) {
+        // Camera: Phụ kiện hoặc thiết bị liên quan
+        $filter_sql = "(p.category_id = 20)";
+    } else {
+        // Mặc định
+        $filter_sql = "(p.category_id = 20 OR p.category_id = $source_cat_id)";
+    }
+
+    // 1. Ưu tiên lấy các phụ kiện được mua cùng nhiều nhất từ product_associations (Có filter)
     $stmt = $conn->prepare("
         SELECT 
             p.id, p.name, p.image, p.price, p.sale_price, p.stock,
@@ -40,6 +66,7 @@ if ($action === 'get_recommendations') {
         WHERE (pa.product_a = ? OR pa.product_b = ?)
           AND p.id != ?
           AND p.stock > 0
+          AND $filter_sql
         ORDER BY pa.co_count DESC
         LIMIT ?
     ");
@@ -58,26 +85,27 @@ if ($action === 'get_recommendations') {
         $recommendations[] = $row;
     }
 
-    // Fallback: Nếu không đủ gợi ý từ association, bổ sung theo cùng danh mục
+    // 2. Fallback: Nếu không đủ gợi ý từ association, bổ sung dựa trên filter quy định (Phụ kiện tương thích)
     if (count($recommendations) < $limit) {
+        $fill_limit = $limit - count($recommendations);
+        $existing_ids = count($recommendations) > 0 ? implode(',', array_column($recommendations, 'id')) : '0';
+        
         $cat_stmt = $conn->prepare("
             SELECT p.id, p.name, p.image, p.price, p.sale_price, p.stock
             FROM products p
-            WHERE p.category_id = (SELECT category_id FROM products WHERE id = ?)
-              AND p.id != ?
+            WHERE p.id != ?
+              AND p.id NOT IN ($existing_ids)
               AND p.stock > 0
+              AND $filter_sql
             ORDER BY p.id DESC
             LIMIT ?
         ");
-        $fill_count = $limit - count($recommendations);
-        $existing_ids = array_column($recommendations, 'id');
-        $cat_stmt->bind_param("iii", $product_id, $product_id, $limit);
+        $cat_stmt->bind_param("ii", $product_id, $fill_limit);
         $cat_stmt->execute();
         $cat_res = $cat_stmt->get_result();
         $cat_stmt->close();
 
         while ($row = $cat_res->fetch_assoc()) {
-            if (in_array($row['id'], $existing_ids)) continue;
             $row['display_price'] = ($row['sale_price'] > 0) ? $row['sale_price'] : $row['price'];
             $row['image_url'] = (strpos($row['image'], 'http') === 0)
                 ? $row['image']
@@ -85,7 +113,6 @@ if ($action === 'get_recommendations') {
             $row['product_url'] = '/product_detail.php?id=' . $row['id'];
             $row['co_count']    = 0; // fallback, không phải từ association
             $recommendations[]  = $row;
-            if (count($recommendations) >= $limit) break;
         }
     }
 
@@ -94,7 +121,6 @@ if ($action === 'get_recommendations') {
 }
 
 // -----------------------------------------------
-// 2. REBUILD: Tái tính ma trận Association Rules từ lịch sử
 // Chạy sau khi có thêm đơn hàng mới (Admin only)
 // -----------------------------------------------
 if ($action === 'rebuild_associations') {

@@ -443,4 +443,15 @@ $(document).ready(function () {
     e.preventDefault();
     $("body").toggleClass("sidebar-collapsed");
   });
+
+  // Hiển thị popup thành công nếu trên URL có tham số msg
+  let urlParams = new URLSearchParams(window.location.search);
+  let msg = urlParams.get('msg');
+  if (msg) {
+    if (msg === 'add_success') Swal.fire('Thành công!', 'Thêm mới dữ liệu thành công.', 'success');
+    if (msg === 'del_success') Swal.fire('Thành công!', 'Đã xóa dữ liệu thành công.', 'success');
+    if (msg === 'update_success') Swal.fire('Thành công!', 'Cập nhật dữ liệu thành công.', 'success');
+    // Xóa tham số msg khỏi URL sau khi hiển thị để tránh bị lặp lại khi F5
+    window.history.replaceState(null, null, window.location.pathname);
+  }
 });

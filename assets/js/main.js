@@ -1,6 +1,5 @@
 // =========================================
-// SECURITY: Tự động đính kèm CSRF token vào
-// mọi AJAX POST request từ frontend
+
 // =========================================
 $(document).ajaxSend(function (event, jqXHR, settings) {
   if (settings.type === "POST" || settings.type === "post") {
@@ -121,7 +120,7 @@ $(document).ready(function () {
 
   updateCartCount();
   // checkUserNotifications được định nghĩa ở dưới, gọi qua window
-  if (typeof checkUserNotifications === 'function') {
+  if (typeof checkUserNotifications === "function") {
     checkUserNotifications();
     setInterval(checkUserNotifications, 30000);
   }
@@ -130,9 +129,103 @@ $(document).ready(function () {
   $(document).on("change", ".pay-check", function () {
     calcTotal();
     toggleDeleteSelectedBtn();
-    if (!$(this).prop("checked")) $("#check-all").prop("checked", false);
-    else if ($(".pay-check:checked").length === $(".pay-check").length)
-      $("#check-all").prop("checked", true);
+
+    let pid = $(this).val();
+    let $cartItem = $(this).closest(".cart-item");
+
+    if (!$(this).prop("checked")) {
+      $("#check-all").prop("checked", false);
+      let $recBlock = $("#rec-item-" + pid);
+      if ($recBlock.length > 0) {
+        $recBlock.find(".pay-check").prop("checked", false);
+        calcTotal();
+        $recBlock.slideUp(300, function () {
+          $(this).remove();
+        });
+      }
+    } else {
+      if ($(".pay-check:checked").length === $(".pay-check").length)
+        $("#check-all").prop("checked", true);
+
+      if ($("#rec-item-" + pid).length === 0) {
+        $.get(
+          "api/recommendation_api.php",
+          { action: "get_recommendations", product_id: pid, limit: 1 },
+          function (res) {
+            if (
+              res &&
+              res.status === "success" &&
+              res.data &&
+              res.data.length > 0
+            ) {
+              let p = res.data[0];
+              let fmt = new Intl.NumberFormat("vi-VN");
+              let html = `
+            <div class="cart-item" id="rec-item-${pid}" style="background-color:#fef9f9; border:1px dashed #d70018; margin-top:5px; margin-bottom:15px; margin-left:35px; padding:10px; display:none; border-radius:8px; position:relative;">
+              <div style="position:absolute; top:-10px; left:15px; background:#d70018; color:#fff; font-size:10px; padding:2px 8px; border-radius:10px; font-weight:bold;">Gợi ý cho bạn</div>
+              <a href="${p.product_url}" style="display:block; text-decoration:none;">
+                <img src="${p.image_url}" alt="${p.name}" style="width:60px; height:60px; object-fit:contain;" onerror="this.style.display='none'">
+              </a>
+              <div class="cart-info" style="flex:1; margin-left:15px;">
+                <a href="${p.product_url}" style="text-decoration:none; color:inherit;">
+                  <h4 style="font-size:14px; margin:0 0 5px 0;">${p.name}</h4>
+                </a>
+                <div class="cart-price">
+                  <span style="color:#d70018; font-weight:bold; font-size:14px;">${fmt.format(p.display_price)} ₫</span>
+                </div>
+              </div>
+              <button type="button" class="js-add-rec-item" data-id="${p.id}" data-price="${p.display_price}" data-type="simple" style="width: 80px;padding:6px 15px; background: linear-gradient(to right, #e6394c, #f94c4c); color:#fff; border:none; border-radius:4px; font-size:12px; font-weight:600; cursor:pointer;">
+                <i class="fa fa-cart-plus"></i> Thêm
+              </button>
+            </div>`;
+              $cartItem.after(html);
+              $("#rec-item-" + pid).slideDown(300);
+            }
+          },
+        );
+      }
+    }
+  });
+
+  $(document).on("click", ".js-add-rec-item", function(e) {
+    e.preventDefault();
+    let btn = $(this);
+    if(btn.data('loading')) return;
+    btn.data('loading', true);
+    
+    let pid = btn.data("id");
+    let price = parseFloat(btn.data("price")) || 0;
+    
+    let oldHtml = btn.html();
+    btn.html('<i class="fa fa-spinner fa-spin"></i>');
+    
+    $.post("api/cart_api.php", { action: "add", product_id: pid, quantity: 1, variation_id: "" }, function() {
+        btn.data('loading', false);
+        updateCartCount();
+        // ============================================
+        // FIX CHECKOUT: Phải tạo checkbox ẩn để logic checkout 
+        // ở main.js có thể nhặt được sản phẩm này vào mảng `items`.
+        // Đồng thời gọi `calcTotal()` để re-sync tổng tiền.
+        // ============================================
+        let checkHtml = `<input type="checkbox" class="pay-check" value="${pid}" data-qty="1" data-price="${price}" checked style="display:none;">`;
+        btn.closest(".cart-item").append(checkHtml);
+        
+        if (typeof calcTotal === "function") {
+            calcTotal();
+        }
+        
+        // Đổi thành nút Xóa
+        btn.removeClass("js-add-rec-item").addClass("btn-remove-item");
+        btn.html('<i class="fa fa-trash-can"></i> Xóa');
+        btn.css({
+            "background": "none", 
+            "border": "1px solid #d70018", 
+            "color": "#d70018"
+        });
+    }).fail(function() {
+        btn.data('loading', false);
+        btn.html(oldHtml);
+    });
   });
 
   $(document).on("change", "#check-all", function () {
@@ -944,7 +1037,7 @@ function updateCartCount() {
         } else {
           // Badge chưa có trong DOM (cart_qty=0 khi load) → tạo mới
           $(".menu-cart-box .menu-cart-icon").after(
-            $('<span class="menu-cart-badge">').text(count)
+            $('<span class="menu-cart-badge">').text(count),
           );
         }
       } else {
@@ -1126,8 +1219,12 @@ function handleAddToCart(e, btn, isBuyNow) {
   let vid = btn.attr("data-variation-id");
 
   if (type === "variable" && (!vid || vid === "")) {
-      showToast({ title: "Nhắc nhở", message: "Vui lòng chọn đầy đủ thuộc tính sản phẩm!", type: "warning" });
-      return;
+    showToast({
+      title: "Nhắc nhở",
+      message: "Vui lòng chọn đầy đủ thuộc tính sản phẩm!",
+      type: "warning",
+    });
+    return;
   }
 
   btn.data("loading", true);
@@ -1145,7 +1242,8 @@ function handleAddToCart(e, btn, isBuyNow) {
     { action: "add", product_id: pid, quantity: 1, variation_id: vid || "" },
     function () {
       if (isBuyNow) {
-        window.location.href = "cart.php?buy_now=" + pid + "&vid=" + (vid || "");
+        window.location.href =
+          "cart.php?buy_now=" + pid + "&vid=" + (vid || "");
       } else {
         showToast({
           title: "Thành công",
@@ -1179,31 +1277,33 @@ function handleAddToCart(e, btn, isBuyNow) {
  * dropdown navbar. Đồng bộ badge count.
  */
 function checkUserNotifications() {
-  const notifList  = document.getElementById('notif-list');
-  const notifBadge = document.getElementById('nav-notif-badge');
+  const notifList = document.getElementById("notif-list");
+  const notifBadge = document.getElementById("nav-notif-badge");
   if (!notifList || !notifBadge) return; // Chưa đăng nhập / không có DOM
 
-  fetch('/api/notification_api.php?action=get_notifications&limit=15')
-    .then(r => r.json())
-    .then(function(res) {
+  fetch("/api/notification_api.php?action=get_notifications&limit=15")
+    .then((r) => r.json())
+    .then(function (res) {
       // Cập nhật badge
       const unread = parseInt(res.unread) || 0;
       if (unread > 0) {
-        notifBadge.textContent = unread > 99 ? '99+' : unread;
-        notifBadge.style.display = '';
+        notifBadge.textContent = unread > 99 ? "99+" : unread;
+        notifBadge.style.display = "";
       } else {
-        notifBadge.style.display = 'none';
-        notifBadge.textContent = '0';
+        notifBadge.style.display = "none";
+        notifBadge.textContent = "0";
       }
 
       // Đồng bộ với navbar.php refreshBadges nếu dropdown chưa open
-      if (window._navRefreshBadges &&
-          !document.getElementById('notif-dropdown').classList.contains('open')) {
+      if (
+        window._navRefreshBadges &&
+        !document.getElementById("notif-dropdown").classList.contains("open")
+      ) {
         // Không render lại list khi đang mở, chỉ cập nhật badge
         return;
       }
     })
-    .catch(function(){});
+    .catch(function () {});
 }
 
 setTimeout(() => {
@@ -1328,16 +1428,18 @@ function sendMessage() {
   if (!msg || isSending) return;
   isSending = true;
   $(".chat-footer button").css("opacity", "0.5");
-  
+
   // 1. Hiện tin nhắn user
   $("#chat-input").val("");
   let safeMsg = msg.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  $("#chat-content").append(`<div class="msg user"><div class="msg-text">${safeMsg}</div></div>`);
+  $("#chat-content").append(
+    `<div class="msg user"><div class="msg-text">${safeMsg}</div></div>`,
+  );
   scrollToBottom();
-  
+
   // 2. Bật hoạt ảnh: Ngay khi user vừa gửi tin và AJAX bắt đầu
-  if (currentChatTab === 'bot') {
-      showBotTyping();
+  if (currentChatTab === "bot") {
+    showBotTyping();
   }
 
   // 3. Gọi AJAX
@@ -1348,7 +1450,7 @@ function sendMessage() {
       // Ẩn hoạt ảnh: Khi Server trả về và trước khi in câu trả lời thật (sẽ load qua loadMessages)
       hideBotTyping();
       loadMessages(true);
-      
+
       isSending = false;
       $(".chat-footer button").css("opacity", "1");
     },
@@ -1453,12 +1555,12 @@ function confirmCancel(orderId) {
               });
 
               // Cập nhật DOM trực tiếp không cần tải lại trang
-              $('.btn-cancel-order').fadeOut(300, function() {
-                  $(this).remove();
+              $(".btn-cancel-order").fadeOut(300, function () {
+                $(this).remove();
               });
 
-              $('.timeline').fadeOut(300, function() {
-                  $(this).replaceWith(`
+              $(".timeline").fadeOut(300, function () {
+                $(this).replaceWith(`
                   <div class="alert fade-in" style="background:#ffecec; color:#d70018; padding:15px; border-radius:6px; text-align:center; margin-bottom:30px; font-weight:bold;">
                       <i class="fa fa-circle-exclamation"></i> Đơn hàng này đã bị hủy.
                   </div>
@@ -1488,7 +1590,7 @@ function confirmCancel(orderId) {
               btn.innerHTML = '<i class="fa fa-trash"></i> Hủy đơn hàng';
             }
           }
-        }
+        },
       ).fail(function () {
         Swal.fire({
           icon: "error",
@@ -1501,7 +1603,7 @@ function confirmCancel(orderId) {
           btn.innerHTML = '<i class="fa fa-trash"></i> Hủy đơn hàng';
         }
       });
-    }
+    },
   );
 }
 
@@ -1519,7 +1621,11 @@ function loadFlashSale() {
   $.get("api/flash_sale_api.php", { action: "get_flash_sale" }, function (res) {
     try {
       var data = typeof res === "object" ? res : JSON.parse(res);
-      if (data.status !== "active" || !data.products || data.products.length === 0) {
+      if (
+        data.status !== "active" ||
+        !data.products ||
+        data.products.length === 0
+      ) {
         $("#flash-sale-section").hide();
         return;
       }
@@ -1533,20 +1639,26 @@ function loadFlashSale() {
       }
 
       // Start countdown
-      flashSaleEndTime = new Date(data.config.end_time.replace(" ", "T")).getTime();
+      flashSaleEndTime = new Date(
+        data.config.end_time.replace(" ", "T"),
+      ).getTime();
       if (flashTimerInterval) clearInterval(flashTimerInterval);
       flashTimerInterval = setInterval(updateFlashTimer, 1000);
       updateFlashTimer();
 
       // Render products
-      var fmt = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" });
+      var fmt = new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: "VND",
+      });
       var html = "";
       data.products.forEach(function (p, idx) {
-        var img = p.image && p.image.startsWith("http")
-          ? p.image
-          : "assets/img/" + (p.image || "");
+        var img =
+          p.image && p.image.startsWith("http")
+            ? p.image
+            : "assets/img/" + (p.image || "");
         var flashPrice = fmt.format(p.flash_price);
-        var origPrice  = fmt.format(p.price);
+        var origPrice = fmt.format(p.price);
         html += `
           <div class="product-card" style="animation-delay:${idx * 0.07}s">
             <span class="sale-badge discount-badge">${p.discount_display}</span>
@@ -1562,7 +1674,6 @@ function loadFlashSale() {
           </div>`;
       });
       $("#hot-product-list").html(html);
-
     } catch (e) {
       console.error("Flash Sale parse error:", e);
       $("#flash-sale-section").hide();
@@ -1574,17 +1685,17 @@ function loadFlashSale() {
 
 function updateFlashTimer() {
   if (!flashSaleEndTime) return;
-  var now  = new Date().getTime();
+  var now = new Date().getTime();
   var diff = flashSaleEndTime - now;
   if (diff <= 0) {
     clearInterval(flashTimerInterval);
     $("#flash-sale-section").hide();
     return;
   }
-  var days  = Math.floor(diff / (1000 * 60 * 60 * 24));
+  var days = Math.floor(diff / (1000 * 60 * 60 * 24));
   var hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  var mins  = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  var secs  = Math.floor((diff % (1000 * 60)) / 1000);
+  var mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  var secs = Math.floor((diff % (1000 * 60)) / 1000);
   $("#fs-days").text(String(days).padStart(2, "0"));
   $("#fs-hours").text(String(hours).padStart(2, "0"));
   $("#fs-mins").text(String(mins).padStart(2, "0"));
@@ -1601,9 +1712,9 @@ $(document).ready(function () {
   }
 
   // Hero Slider
-  var heroIdx      = 0;
-  var $heroSlides  = $(".hero-slide");
-  var heroTotal    = $heroSlides.length;
+  var heroIdx = 0;
+  var $heroSlides = $(".hero-slide");
+  var heroTotal = $heroSlides.length;
   var heroInterval = null;
 
   if (heroTotal <= 1) return; // Nothing to slide
@@ -1612,10 +1723,15 @@ $(document).ready(function () {
     heroIdx = ((n % heroTotal) + heroTotal) % heroTotal;
     $heroSlides.removeClass("active");
     $heroSlides.eq(heroIdx).addClass("active");
-    $("#hero-dots .hero-dot").removeClass("active").eq(heroIdx).addClass("active");
+    $("#hero-dots .hero-dot")
+      .removeClass("active")
+      .eq(heroIdx)
+      .addClass("active");
   }
 
-  function heroNext() { heroGoTo(heroIdx + 1); }
+  function heroNext() {
+    heroGoTo(heroIdx + 1);
+  }
 
   function startHeroAuto() {
     heroInterval = setInterval(heroNext, 4000);
@@ -1628,8 +1744,14 @@ $(document).ready(function () {
 
   startHeroAuto();
 
-  $(document).on("click", "#hero-next", function () { heroNext(); resetHeroAuto(); });
-  $(document).on("click", "#hero-prev", function () { heroGoTo(heroIdx - 1); resetHeroAuto(); });
+  $(document).on("click", "#hero-next", function () {
+    heroNext();
+    resetHeroAuto();
+  });
+  $(document).on("click", "#hero-prev", function () {
+    heroGoTo(heroIdx - 1);
+    resetHeroAuto();
+  });
   $(document).on("click", ".hero-dot", function () {
     heroGoTo($(this).data("idx"));
     resetHeroAuto();

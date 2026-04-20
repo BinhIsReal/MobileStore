@@ -305,7 +305,7 @@ render_form:
                     </div>
                     <div class="grid-2">
                         <div>
-                            <label class="form-label">Số lượng trong kho (Stock)</label>
+                            <label class="form-label">Số lượng trong kho</label>
                             <input type="number" name="stock" class="form-control" min="0" placeholder="VD: 50"
                                 value="<?= isset($product['stock']) ? $product['stock'] : '' ?>">
                         </div>

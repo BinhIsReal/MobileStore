@@ -9,7 +9,7 @@ if (!isset($_SESSION['user_id'])) {
 <html lang="vi">
 
 <head>
-    <title><?= __('nav.wishlist', 'Danh sách Yêu thích') ?> - MobileStore</title>
+    <title>Danh sách Yêu thích - MobileStore</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="assets/css/style.css?v=<?= time() ?>">
@@ -21,13 +21,13 @@ if (!isset($_SESSION['user_id'])) {
 
     <div class="wishlist-wrapper">
         <div class="wishlist-header">
-            <h2><i class="fa-solid fa-heart"></i> <?= __('nav.wishlist', 'Sản phẩm Yêu thích') ?></h2>
-            <a href="index.php" class="btn-view-detail"><i class="fa fa-arrow-left"></i> <?= __('nav.continue_shopping', 'Tiếp tục mua sắm') ?></a>
+            <h2><i class="fa-solid fa-heart"></i> Sản phẩm Yêu thích</h2>
+            <a href="index.php" class="btn-view-detail"><i class="fa fa-arrow-left"></i> Tiếp tục mua sắm</a>
         </div>
 
         <div id="wishlist-grid-container">
             <div style="text-align:center; padding:40px; color:#999;">
-                <i class="fa fa-spinner fa-spin fa-2x"></i><br><?= __('loading', 'Đang tải...') ?>
+                <i class="fa fa-spinner fa-spin fa-2x"></i><br>Đang tải...
             </div>
         </div>
     </div>
@@ -45,8 +45,8 @@ if (!isset($_SESSION['user_id'])) {
                 container.html(`
                     <div class="wishlist-empty">
                         <i class="fa-regular fa-heart"></i>
-                        <p style="font-size:16px; margin-bottom:15px;"><?= __('wishlist.empty', 'Chưa có sản phẩm yêu thích nào') ?></p>
-                        <a href="index.php" class="btn-view-detail"><?= __('wishlist.explore', 'Khám phá sản phẩm') ?></a>
+                        <p style="font-size:16px; margin-bottom:15px;">Chưa có sản phẩm yêu thích nào</p>
+                        <a href="index.php" class="btn-view-detail">Khám phá sản phẩm</a>
                     </div>`);
                 return;
             }
@@ -58,7 +58,7 @@ if (!isset($_SESSION['user_id'])) {
                 const dropBadge = item.price_drop ?
                     `<span class="wishlist-drop-badge">-${fmt.format(item.drop_amount)}đ</span>` : '';
                 const alertBadge = item.price_drop ?
-                    `<span class="alert-badge">🔥 <?= __('wishlist.discount', 'Giảm giá!') ?></span>` : '';
+                    `<span class="alert-badge">🔥 Giảm giá!</span>` : '';
                 const oldPrice = item.price_drop ?
                     `<span class="wishlist-old-price">${fmt.format(item.price_at_add)}đ</span>` : '';
 
@@ -76,7 +76,7 @@ if (!isset($_SESSION['user_id'])) {
                         </div>
                         <div class="wishlist-actions">
                         <button class="btn-add-wish-cart js-add-to-cart" data-id="${item.product_id}" data-type="simple">
-                                <i class="fa fa-cart-plus"></i> <?= __('wishlist.add_to_cart', 'Thêm giỏ') ?>
+                                <i class="fa fa-cart-plus"></i> Thêm giỏ
                             </button>
                             <button class="btn-remove-wish" onclick="removeFromWishlist(${item.product_id})">
                                 <i class="fa fa-trash"></i>

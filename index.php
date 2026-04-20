@@ -43,13 +43,14 @@
                     ]
                 ],
                 [
-                    'title' => 'Sản phẩm Hot',
-                    'type' => 'search',
+                    'title' => 'Phụ kiện điện thoại',
+                    'type' => 'product',
                     'items' => [
-                        'iPhone 15 Pro Max' => 'iphone 15 pro max',
-                        'Samsung S24 Ultra' => 'samsung s24 ultra',
-                        'Redmi Note 13' => 'redmi note 13',
-                        'OPPO Reno 10' => 'oppo reno 10'
+                        'Phụ kiện ' => 'search.php?cat_id=20',
+                        'Cáp sạc nhanh Type-C ' => '92',
+                        'Củ sạc nhanh 4 cổng USB' => '91',
+                        'Sạc dự phòng 25000mAh' => '90',
+                        'Sạc dự phòng 10000mAh' => '89'
                     ]
                 ]
             ]
@@ -217,7 +218,7 @@
     ];
 
     // LẤY DANH MỤC TỪ DATABASE ĐỂ HIỂN THỊ
-    $sql_cat = "SELECT * FROM categories ORDER BY id ASC";
+    $sql_cat = "SELECT * FROM categories WHERE id != 20 ORDER BY id ASC";
     $res_cat = $conn->query($sql_cat);
 
     if ($res_cat && $res_cat->num_rows > 0) {
@@ -249,6 +250,13 @@
                                 $brandName = is_numeric($label) ? $val : $val; 
                                 $href = "search.php?cat_id=$cid&brand=" . urlencode($brandName);
                                 $text = $brandName;
+                            } elseif ($col['type'] == 'product') {
+                                $text = $label;
+                                if (strpos($val, 'search.php') === 0) {
+                                    $href = $val;
+                                } else {
+                                    $href = "product_detail.php?id=" . urlencode($val);
+                                }
                             } else {
                                 $keyword = $val;
                                 $text = $label;

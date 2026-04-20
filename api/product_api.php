@@ -193,7 +193,7 @@ if ($sort == 'asc') $sql .= " ORDER BY price ASC";
 elseif ($sort == 'desc') $sql .= " ORDER BY price DESC";
 else $sql .= " ORDER BY id DESC";
 
-$sql .= " LIMIT 20"; // Giới hạn hiển thị
+$sql .= " LIMIT 24"; // Giới hạn hiển thị: 4 cho hot, 20 cho product-list
 
 $res = $conn->query($sql);
 $products = [];

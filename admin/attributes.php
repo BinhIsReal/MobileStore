@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             logAdminAction($conn, $log_action, 'admin/attributes.php', "Thêm mới $type: $name", null, ['name' => $name]);
         }
     }
-    header("Location: attributes.php"); exit();
+    header("Location: attributes.php?msg=add_success"); exit();
 }
 
 // Xử lý Xóa
@@ -35,7 +35,7 @@ if (isset($_GET['del_type']) && isset($_GET['id'])) {
         $type_text = ($_GET['del_type'] == 'brand') ? 'Hãng' : 'Danh mục';
         logAdminAction($conn, $log_action, 'admin/attributes.php', "Xóa $type_text: " . $old_data['name'], $old_data, null);
     }
-    header("Location: attributes.php"); exit();
+    header("Location: attributes.php?msg=del_success"); exit();
 }
 
 $brands = $conn->query("SELECT * FROM brands");
@@ -49,7 +49,7 @@ $cats = $conn->query("SELECT * FROM categories");
     <title>Quản lý Thuộc tính</title>
     <link rel="stylesheet" href="../assets/css/admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body>

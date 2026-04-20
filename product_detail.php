@@ -88,7 +88,7 @@ $percent     = $is_sale ? round((($price - $sale_price) / $price) * 100) : 0;
                     <div class="pd-variations">
                         <?php foreach ($attributes as $attr): ?>
                             <p style="font-weight:600; margin-bottom:5px; margin-top:10px;">Theo <?= htmlspecialchars($attr['name'] ?? '') ?>:</p>
-                            <select class="form-control attr-select" data-name="<?= htmlspecialchars($attr['name'] ?? '') ?>" style="margin-bottom:10px; padding: 8px; border-radius:4px; max-width: 250px;">
+                            <select class="form-control attr-select" data-name="<?= htmlspecialchars($attr['name'] ?? '') ?>">
                                 <option value="">-- Chọn <?= htmlspecialchars($attr['name'] ?? '') ?> --</option>
                                 <?php 
                                 if(isset($attr['values'])) {
