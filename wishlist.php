@@ -55,12 +55,22 @@ if (!isset($_SESSION['user_id'])) {
             res.data.forEach(function(item) {
                 const imgSrc = item.image && item.image.startsWith('http') ? item.image :
                     'assets/img/' + item.image;
-                const dropBadge = item.price_drop ?
-                    `<span class="wishlist-drop-badge">-${fmt.format(item.drop_amount)}đ</span>` : '';
-                const alertBadge = item.price_drop ?
-                    `<span class="alert-badge">🔥 Giảm giá!</span>` : '';
-                const oldPrice = item.price_drop ?
-                    `<span class="wishlist-old-price">${fmt.format(item.price_at_add)}đ</span>` : '';
+
+                // Badge Flash Sale ưu tiên, sau là giảm giá thường
+                let alertBadge = '';
+                let discountInfo = '';
+                let oldPriceHtml = '';
+
+                if (item.is_flash_sale) {
+                    alertBadge  = `<span class="alert-badge" style="background:#ff6b35;">&#x26A1; FLASH SALE</span>`;
+                    discountInfo = item.discount_label
+                        ? `<span style="background:#ff6b35;color:#fff;font-size:11px;padding:2px 7px;border-radius:4px;margin-left:5px;">${item.discount_label}</span>` : '';
+                    oldPriceHtml = `<span class="wishlist-old-price">${fmt.format(item.price)}đ</span>`;
+                } else if (item.price_drop) {
+                    alertBadge  = `<span class="alert-badge">🔥 Giảm giá!</span>`;
+                    discountInfo = `<span class="wishlist-drop-badge">-${fmt.format(item.drop_amount)}đ</span>`;
+                    oldPriceHtml = `<span class="wishlist-old-price">${fmt.format(item.price_at_add)}đ</span>`;
+                }
 
                 html += `
                 <div class="wishlist-card">
@@ -72,7 +82,7 @@ if (!isset($_SESSION['user_id'])) {
                         <a href="product_detail.php?id=${item.product_id}">${item.name}</a>
                         <div>
                             <span class="wishlist-price">${fmt.format(item.current_price)}đ</span>
-                            ${oldPrice} ${dropBadge}
+                            ${oldPriceHtml} ${discountInfo}
                         </div>
                         <div class="wishlist-actions">
                         <button class="btn-add-wish-cart js-add-to-cart" data-id="${item.product_id}" data-type="simple">

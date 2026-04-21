@@ -2,6 +2,7 @@
 session_start();
 include '../config/db.php';
 include_once '../includes/security.php';
+include_once '../includes/flash_sale_helper.php';
 header('Content-Type: application/json');
 
 // =============================================
@@ -274,7 +275,9 @@ if ($action === 'checkout') {
         $stmt->close();
 
         if ($p) {
-            $unit_price     = ($p['sale_price'] > 0) ? (float)$p['sale_price'] : (float)$p['price'];
+            // Luôn tính qua helper: ưu tiên Flash Sale > sale_price > price
+            $price_info = get_effective_price($conn, $pid, $p['price'], $p['sale_price']);
+            $unit_price     = $price_info['effective_price'];
             $total         += $unit_price * $qty;
             $valid_items[]  = ['pid' => $pid, 'qty' => $qty, 'price' => $unit_price];
         }

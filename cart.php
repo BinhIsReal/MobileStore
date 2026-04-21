@@ -1,6 +1,7 @@
 <?php
 session_start();
 include 'config/db.php';
+include_once 'includes/flash_sale_helper.php';
 include 'includes/header.php';
 $user_id = $_SESSION['user_id'] ?? 0;
 $cart_data = [];
@@ -54,6 +55,10 @@ if ($user_id > 0) {
         }
     }
 }
+
+// Batch lấy giá Flash Sale cho toàn bộ product trong giỏ (1 query duy nhất)
+$cart_product_ids   = array_column($cart_data, 'p_id');
+$flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
 ?>
 
 <!DOCTYPE html>
@@ -98,14 +103,28 @@ if ($user_id > 0) {
                     </div>
                 </div>
 
-                <?php foreach ($cart_data as $item): 
-                    $is_sale = isset($item['sale_price']) && $item['sale_price'] > 0 && empty($item['variation_id']); // Sale chỉ áp dụng product simple ở đây để demo
-                    $item_id = $item['p_id'];
+                <?php foreach ($cart_data as $item):
+                    $item_id   = $item['p_id'];
                     $item_name = $item['p_name'];
-                    
-                    // Tính final price
-                    $calc_price = $is_sale ? $item['sale_price'] : $item['final_price'];
-                    
+
+                    // Ưu tiên Flash Sale, sau đó sale_price, cuối cùng là giá gốc
+                    if (isset($flash_price_map[$item_id])) {
+                        $calc_price = $flash_price_map[$item_id]['flash_price'];
+                        $show_original = $flash_price_map[$item_id]['original_price'];
+                        $is_sale    = true;
+                        $is_flash   = true;
+                    } elseif (isset($item['sale_price']) && $item['sale_price'] > 0 && empty($item['variation_id'])) {
+                        $calc_price    = (float)$item['sale_price'];
+                        $show_original = (float)$item['base_price'];
+                        $is_sale       = true;
+                        $is_flash      = false;
+                    } else {
+                        $calc_price    = (float)$item['final_price'];
+                        $show_original = (float)$item['base_price'];
+                        $is_sale       = false;
+                        $is_flash      = false;
+                    }
+
                     $display_name = htmlspecialchars($item_name);
                     if (!empty($item['var_attrs'])) {
                         $attrs = json_decode($item['var_attrs'], true);
@@ -141,12 +160,14 @@ if ($user_id > 0) {
 
                         <div class="cart-price">
                             <?php if ($is_sale): ?>
-                            <span
-                                style="color: #d70018; font-weight: bold;"><?= number_format($calc_price, 0, ',', '.') ?>
-                                ₫</span>
+                            <span style="color: #d70018; font-weight: bold;">
+                                <?= number_format($calc_price, 0, ',', '.') ?> ₫
+                            </span>
+                            <?php if ($is_flash): ?>
+                            <span style="background:#ff6b35;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:4px;">FLASH SALE</span>
+                            <?php endif; ?>
                             <br>
-                            <del style="color: #999; font-size: 13px;"><?= number_format($item['base_price'], 0, ',', '.') ?>
-                                ₫</del>
+                            <del style="color: #999; font-size: 13px;"><?= number_format($show_original, 0, ',', '.') ?> ₫</del>
                             <?php else: ?>
                             <span style="color: #d70018; font-weight: bold;"><?= number_format($calc_price, 0, ',', '.') ?> ₫</span>
                             <?php endif; ?>

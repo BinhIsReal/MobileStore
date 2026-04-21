@@ -2506,13 +2506,16 @@ footer {
 }
 
 .ft-col ul li {
-  margin-bottom: 8px;
+  margin-bottom: 0;
 }
 
 .ft-col ul li a {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.9);
   text-decoration: none;
   transition: 0.2s;
+  /* Tăng touch target mobile — ídínhất 44px */
+  display: block;
+  padding: 8px 0;
 }
 
 .ft-col ul li a:hover {

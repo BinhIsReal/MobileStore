@@ -1,4 +1,4 @@
-<div id="toast-container"></div>
+    <div id="toast-container"></div>
 
 <div id="custom-confirm" class="confirm-overlay">
     <div class="confirm-box">
@@ -77,23 +77,27 @@
         </div>
 
         <div class="footer-bottom">
-            <p>© 2025 CÔNG TY CỔ PHẦN MOBILE STORE VIỆT NAM. MST: 0101234567.</p>
+            <p>&copy; 2025 CÔNG TY CỔ PHẦN MOBILE STORE VIỆT NAM. MST: 0101234567.</p>
             <p>Địa chỉ: Số 89 Đường Tam Trinh, Phường Vĩnh Tuy, Quận Hai Bà Trưng, Thành Phố Hà Nội, Việt Nam.</p>
             <p>Điện thoại: 024.7300.xxxx - Email: cskh@mobilestore.com.vn</p>
             <div class="footer-dmca">
-                <img src="https://images.dmca.com/Badges/dmca_protected_sml_120n.png" alt="DMCA">
+                <img src="https://images.dmca.com/Badges/dmca_protected_sml_120n.png"
+                     alt="DMCA Protected - MobileStore"
+                     width="120" height="38"
+                     loading="lazy">
             </div>
         </div>
     </div>
 </footer>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- SweetAlert2 (defer) -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
 <script>
 const BASE_URL = "<?= BASE_URL ?>";
 </script>
 
-<script src="<?= BASE_URL ?>/assets/js/main.js?v=<?php echo time(); ?>"></script>
+<!-- Main JS (defer) -->
+<script src="<?= BASE_URL ?>/assets/js/main.js?v=<?php echo filemtime(dirname(__DIR__).'/assets/js/main.js'); ?>" defer></script>
 <?php 
 // =========================================================
 // 1. HIỂN THỊ THÔNG BÁO CHÀO MỪNG SAU KHI ĐĂNG NHẬP

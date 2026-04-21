@@ -4,19 +4,39 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Mobile Store - Hệ thống bán lẻ di động</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Store - Hệ thống bán lẻ di động hàng đầu Việt Nam</title>
+    <meta name="description" content="MobileStore - Hệ thống bán lẻ điện thoại, laptop, máy tính bảng chính hãng. Giá tốt, giao nhanh, bảo hành uy tín toàn quốc.">
     <!-- CSRF Meta Tag -->
     <?php include_once 'includes/security.php'; ?>
     <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
-    <link rel="stylesheet" href="assets/css/style.css?v=<?php echo time(); ?>">
-    <link rel="stylesheet" href="assets/css/index_extra.css?v=<?php echo time(); ?>">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Preconnect CDNs để giảm latency -->
+    <link rel="preconnect" href="https://cdn.tgdd.vn">
+    <link rel="preconnect" href="https://cdnv2.tgdd.vn">
+    <link rel="preconnect" href="https://cdn2.cellphones.com.vn">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://code.jquery.com">
+
+    <!-- CSS Critical (đồng bộ) -->
+    <link rel="stylesheet" href="assets/css/style.css?v=<?php echo filemtime('assets/css/style.css'); ?>">
+
+    <!-- CSS Non-critical (async) -->
+    <link rel="preload" href="assets/css/index_extra.css?v=<?php echo filemtime('assets/css/index_extra.css'); ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="assets/css/index_extra.css"></noscript>
+
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"></noscript>
+
+    <!-- jQuery defer -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" defer></script>
 </head>
 
 <body data-user-id="<?= isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0 ?>">
 
     <?php require_once "includes/navbar.php"; ?>
+
+    <main>
 
     <div class="container hero-section">
         <ul class="sidebar-menu">
@@ -308,7 +328,9 @@
             <?php foreach ($main_banners_arr as $idx => $b): ?>
             <div class="hero-slide <?= $idx === 0 ? 'active' : '' ?>">
                 <img src="<?= htmlspecialchars($b['image_url']) ?>"
-                    alt="<?= htmlspecialchars($b['alt_text'] ?? 'Banner') ?>">
+                    alt="<?= htmlspecialchars($b['alt_text'] ?? 'Banner quảng cáo MobileStore') ?>"
+                    width="758" height="380"
+                    <?= $idx === 0 ? 'fetchpriority="high" loading="eager"' : 'loading="lazy"' ?>>
             </div>
             <?php endforeach; ?>
             <?php if (count($main_banners_arr) > 1): ?>
@@ -343,8 +365,11 @@
         }
         ?>
         <div class="right-banners">
-            <?php foreach ($right_banners_arr as $rb): ?>
-            <img src="<?= htmlspecialchars($rb['image_url']) ?>" alt="<?= htmlspecialchars($rb['alt_text'] ?? '') ?>">
+            <?php foreach ($right_banners_arr as $idx => $rb): ?>
+            <img src="<?= htmlspecialchars($rb['image_url']) ?>"
+                 alt="<?= htmlspecialchars($rb['alt_text'] ?? 'Quảng cáo MobileStore') ?>"
+                 width="265" height="120"
+                 loading="lazy">
             <?php endforeach; ?>
         </div>
     </div>
@@ -409,6 +434,8 @@
             <button id="btn-send-msg"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
     </div>
+    </main>
+
     <footer>
         <?php require_once "includes/footer.php"; ?>
     </footer>

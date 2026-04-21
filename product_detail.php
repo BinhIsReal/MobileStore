@@ -1,6 +1,7 @@
 <?php
 session_start();
 include 'config/db.php';
+include_once 'includes/flash_sale_helper.php';
 include 'includes/header.php';
 
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -32,11 +33,16 @@ if ($product_type === 'variable') {
     $variations_json = json_encode($vars, JSON_UNESCAPED_UNICODE);
 }
 $main_img    = strpos($product['image'], 'http') === 0 ? $product['image'] : "assets/img/" . $product['image'];
-$price       = $product['price'];
-$sale_price  = $product['sale_price'];
-$is_sale     = ($sale_price > 0);
-$final_price = $is_sale ? $sale_price : $price;
-$percent     = $is_sale ? round((($price - $sale_price) / $price) * 100) : 0;
+$price       = (float)$product['price'];
+$sale_price  = (float)$product['sale_price'];
+
+// Ưu tiên Flash Sale > sale_price > price
+$price_info  = get_effective_price($conn, $id, $price, $sale_price);
+$final_price = $price_info['effective_price'];
+$is_sale     = ($final_price < $price);
+$is_flash    = $price_info['is_flash_sale'];
+$percent     = $is_sale ? round((($price - $final_price) / $price) * 100) : 0;
+$discount_label = $price_info['discount_label'];
 ?>
 
 <!DOCTYPE html>
@@ -77,9 +83,12 @@ $percent     = $is_sale ? round((($price - $sale_price) / $price) * 100) : 0;
                     <h1 class="pd-title"><?= $product['name'] ?></h1>
 
                     <div class="pd-price-box">
-                        <span class="pd-price-current"><?= number_format($final_price, 0, ',', '.') ?> ₫</span>
-                        <?php if ($is_sale): ?>
-                        <span class="pd-price-old"><?= number_format($price, 0, ',', '.') ?> ₫</span>
+                        <span class="pd-price-current"><?= number_format($final_price, 0, ',', '.') ?> &#x20ab;</span>
+                        <?php if ($is_flash): ?>
+                        <span class="pd-label-sale" style="background:#ff6b35;">FLASH SALE <?= $discount_label ?></span>
+                        <span class="pd-price-old"><?= number_format($price, 0, ',', '.') ?> &#x20ab;</span>
+                        <?php elseif ($is_sale): ?>
+                        <span class="pd-price-old"><?= number_format($price, 0, ',', '.') ?> &#x20ab;</span>
                         <span class="pd-label-sale">Giảm <?= $percent ?>%</span>
                         <?php endif; ?>
                     </div>
@@ -228,15 +237,34 @@ $percent     = $is_sale ? round((($price - $sale_price) / $price) * 100) : 0;
                 <?php endif; ?>
 
                 <div class="related-track" id="related-track">
+        <?php 
+        // Batch lấy giá Flash Sale cho sản phẩm liên quan
+        $related_ids = array_column($related_products, 'id');
+        $rel_flash_map = get_flash_prices_bulk($conn, $related_ids);
+        ?>
                     <?php foreach ($related_products as $rel): 
                         $r_img = strpos($rel['image'], 'http') === 0 ? $rel['image'] : "assets/img/" . $rel['image'];
-                        $r_price = $rel['sale_price'] > 0 ? $rel['sale_price'] : $rel['price'];
+                        $rid   = (int)$rel['id'];
+                        if (isset($rel_flash_map[$rid])) {
+                            $r_price      = $rel_flash_map[$rid]['flash_price'];
+                            $r_orig_price = $rel_flash_map[$rid]['original_price'];
+                            $r_is_flash   = true;
+                        } else {
+                            $r_price      = $rel['sale_price'] > 0 ? (float)$rel['sale_price'] : (float)$rel['price'];
+                            $r_orig_price = (float)$rel['price'];
+                            $r_is_flash   = false;
+                        }
                     ?>
                     <div class="related-card">
                         <a href="product_detail.php?id=<?= $rel['id'] ?>" style="text-decoration:none;">
                             <img src="<?= $r_img ?>" alt="<?= $rel['name'] ?>">
                             <h3><?= $rel['name'] ?></h3>
-                            <div class="price"><?= number_format($r_price, 0, ',', '.') ?> ₫</div>
+                            <div class="price" style="color:#d70018; font-weight:bold;"><?= number_format($r_price, 0, ',', '.') ?> &#x20ab;</div>
+                            <?php if ($r_is_flash): ?>
+                            <span style="background:#ff6b35;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;">FLASH SALE</span>
+                            <?php elseif ($r_orig_price > $r_price): ?>
+                            <del style="color:#999; font-size:12px;"><?= number_format($r_orig_price, 0, ',', '.') ?> &#x20ab;</del>
+                            <?php endif; ?>
                         </a>
                         <div style="text-align:center; padding-bottom:10px;">
                             <a href="compare.php?ids=<?= $current_id ?>,<?= $rel['id'] ?>" class="btn-compare-add">+ so sánh</a>
@@ -422,12 +450,16 @@ $percent     = $is_sale ? round((($price - $sale_price) / $price) * 100) : 0;
         const fmt = new Intl.NumberFormat('vi-VN');
         let html = '';
         res.data.forEach(function(p) {
+            const flashBadge = p.is_flash_sale
+                ? `<span style="background:#ff6b35;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;margin-bottom:4px;display:inline-block;">&#x26A1; ${p.discount_label}</span>`
+                : '';
             html += `
             <div style="width:160px; border:1px solid #eee; border-radius:8px; overflow:hidden; text-align:center; flex-shrink:0; background:#fff;">
                 <a href="${p.product_url}" style="text-decoration:none; color:#333; display:block;">
                     <img src="${p.image_url}" style="width:100%; height:120px; object-fit:contain; padding:8px;" onerror="this.style.display='none'">
                     <div style="padding:6px 8px; font-size:13px; line-height:1.4; height:50px; overflow:hidden;">${p.name}</div>
-                    <div style="padding:0 8px 8px; color:#d70018; font-weight:bold; font-size:14px;">${fmt.format(p.display_price)}₫</div>
+                    ${flashBadge}
+                    <div style="padding:0 8px 8px; color:#d70018; font-weight:bold; font-size:14px;">${fmt.format(p.display_price)}&#x20ab;</div>
                 </a>
                 <div style="padding:0 8px 10px;">
                     <button class="js-add-to-cart" data-id="${p.id}" data-type="simple"

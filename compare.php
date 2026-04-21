@@ -1,6 +1,7 @@
 <?php
 session_start();
 include 'config/db.php';
+include_once 'includes/flash_sale_helper.php';
 include 'includes/header.php';
 
 // Xử lý ID từ tham số
@@ -36,15 +37,28 @@ $res = $conn->query($sql);
 $products = [];
 if ($res) {
     while ($row = $res->fetch_assoc()) {
-        $row['specs_data'] = !empty($row['specs']) ? json_decode($row['specs'], true) : [];
-        // Lấy đường dẫn ảnh
+        $row['specs_data']  = !empty($row['specs']) ? json_decode($row['specs'], true) : [];
         $row['final_image'] = strpos($row['image'], 'http') === 0 ? $row['image'] : "assets/img/" . $row['image'];
-        // Lấy giá
-        $row['final_price'] = $row['sale_price'] > 0 ? $row['sale_price'] : $row['price'];
-        
+        // Giá tạm thời (sẽ override bằng Flash Sale bên dưới)
+        $row['final_price'] = $row['sale_price'] > 0 ? (float)$row['sale_price'] : (float)$row['price'];
         $products[$row['id']] = $row;
     }
 }
+
+// Batch lấy giá Flash Sale cho toàn bộ sản phẩm so sánh
+$cmp_ids       = array_keys($products);
+$cmp_flash_map = get_flash_prices_bulk($conn, $cmp_ids);
+foreach ($products as $pid => &$prod_row) {
+    if (isset($cmp_flash_map[$pid])) {
+        $prod_row['final_price']   = $cmp_flash_map[$pid]['flash_price'];
+        $prod_row['is_flash_sale'] = true;
+        $prod_row['flash_label']   = $cmp_flash_map[$pid]['discount_label'];
+    } else {
+        $prod_row['is_flash_sale'] = false;
+        $prod_row['flash_label']   = '';
+    }
+}
+unset($prod_row);
 
 // Sắp xếp lại theo đúng trình tự trên URL
 $ordered_products = [];
@@ -116,9 +130,12 @@ $page_title = "So sánh " . implode(' và ', $titles);
                                 <img src="<?= $p['final_image'] ?>" alt="<?= htmlspecialchars($p['name']) ?>">
                                 <div class="pd-name"><?= $p['name'] ?></div>
                                 <div class="pd-price-row">
-                                    <span class="pd-current-money"><?= number_format($p['final_price'], 0, ',', '.') ?> ₫</span>
-                                    <?php if ($p['sale_price'] > 0): ?>
-                                        <span class="pd-old-money"><?= number_format($p['price'], 0, ',', '.') ?> ₫</span>
+                                    <span class="pd-current-money"><?= number_format($p['final_price'], 0, ',', '.') ?> &#x20ab;</span>
+                                    <?php if ($p['is_flash_sale']): ?>
+                                        <span style="background:#ff6b35;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:4px;">&#x26A1; FLASH SALE <?= $p['flash_label'] ?></span>
+                                        <span class="pd-old-money"><?= number_format($p['price'], 0, ',', '.') ?> &#x20ab;</span>
+                                    <?php elseif ($p['sale_price'] > 0): ?>
+                                        <span class="pd-old-money"><?= number_format($p['price'], 0, ',', '.') ?> &#x20ab;</span>
                                     <?php endif; ?>
                                 </div>
                                 <p class="pd-vat">Giá đã bao gồm 10% VAT</p>

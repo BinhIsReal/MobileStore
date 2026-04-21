@@ -1180,13 +1180,21 @@ function loadProducts(brandInput) {
         let priceDisplay = "",
           badgeHtml = "";
 
-        if (parseFloat(p.sale_price) > 0) {
+        if (p.is_flash_sale && p.flash_price !== null) {
+          // ƯU TIÊN 1: Flash Sale đang active
+          let flashPrice = fmt.format(p.flash_price);
+          let origPrice  = fmt.format(p.price);
+          priceDisplay = `<div class="price-wrap"><span class="price-new">${flashPrice}</span><span class="price-old">${origPrice}</span></div>`;
+          badgeHtml    = `<span class="sale-badge discount-badge">${p.flash_discount_label}</span>`;
+        } else if (parseFloat(p.sale_price) > 0) {
+          // ƯU TIÊN 2: sale_price thường
           let oldPrice = fmt.format(p.price);
           let newPrice = fmt.format(p.sale_price);
-          let percent = Math.round(((p.price - p.sale_price) / p.price) * 100);
+          let percent  = Math.round(((p.price - p.sale_price) / p.price) * 100);
           priceDisplay = `<div class="price-wrap"><span class="price-new">${newPrice}</span><span class="price-old">${oldPrice}</span></div>`;
-          badgeHtml = `<span class="sale-badge">-${percent}%</span>`;
+          badgeHtml    = `<span class="sale-badge">-${percent}%</span>`;
         } else {
+          // Giá gốc
           priceDisplay = `<p class="price">${fmt.format(p.price)}</p>`;
         }
 

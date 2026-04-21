@@ -3,6 +3,7 @@
 session_start();
 include '../config/db.php';
 include_once '../includes/security.php';
+include_once '../includes/flash_sale_helper.php';
 header('Content-Type: application/json');
 
 // Lấy ID từ Session PHP (Server) - Cái này đáng tin cậy nhất
@@ -200,5 +201,26 @@ $products = [];
 if ($res) {
     while ($row = $res->fetch_assoc()) $products[] = $row;
 }
+
+// Batch-inject giá Flash Sale (1 query duy nhất, không N+1)
+if (!empty($products)) {
+    $pids      = array_column($products, 'id');
+    $flash_map = get_flash_prices_bulk($conn, $pids);
+
+    foreach ($products as &$prod) {
+        $pid = (int)$prod['id'];
+        if (isset($flash_map[$pid])) {
+            $prod['flash_price']          = $flash_map[$pid]['flash_price'];
+            $prod['is_flash_sale']        = true;
+            $prod['flash_discount_label'] = $flash_map[$pid]['discount_label'];
+        } else {
+            $prod['flash_price']          = null;
+            $prod['is_flash_sale']        = false;
+            $prod['flash_discount_label'] = '';
+        }
+    }
+    unset($prod);
+}
+
 echo json_encode($products);
 ?>

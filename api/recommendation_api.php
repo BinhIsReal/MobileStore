@@ -8,6 +8,7 @@
  */
 session_start();
 include '../config/db.php';
+include_once '../includes/flash_sale_helper.php';
 header('Content-Type: application/json');
 ini_set('display_errors', 0);
 
@@ -77,7 +78,11 @@ if ($action === 'get_recommendations') {
 
     $recommendations = [];
     while ($row = $res->fetch_assoc()) {
-        $row['display_price'] = ($row['sale_price'] > 0) ? $row['sale_price'] : $row['price'];
+        // Ưu tiên Flash Sale > sale_price > price
+        $price_info = get_effective_price($conn, (int)$row['id'], $row['price'], $row['sale_price']);
+        $row['display_price']   = $price_info['effective_price'];
+        $row['is_flash_sale']   = $price_info['is_flash_sale'];
+        $row['discount_label']  = $price_info['discount_label'];
         $row['image_url'] = (strpos($row['image'], 'http') === 0)
             ? $row['image']
             : '/assets/img/' . $row['image'];
@@ -106,12 +111,15 @@ if ($action === 'get_recommendations') {
         $cat_stmt->close();
 
         while ($row = $cat_res->fetch_assoc()) {
-            $row['display_price'] = ($row['sale_price'] > 0) ? $row['sale_price'] : $row['price'];
+            $price_info = get_effective_price($conn, (int)$row['id'], $row['price'], $row['sale_price']);
+            $row['display_price']   = $price_info['effective_price'];
+            $row['is_flash_sale']   = $price_info['is_flash_sale'];
+            $row['discount_label']  = $price_info['discount_label'];
             $row['image_url'] = (strpos($row['image'], 'http') === 0)
                 ? $row['image']
                 : '/assets/img/' . $row['image'];
             $row['product_url'] = '/product_detail.php?id=' . $row['id'];
-            $row['co_count']    = 0; // fallback, không phải từ association
+            $row['co_count']    = 0;
             $recommendations[]  = $row;
         }
     }

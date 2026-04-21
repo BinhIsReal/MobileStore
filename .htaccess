@@ -17,6 +17,50 @@ Options -Indexes
     # Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 </IfModule>
 
+# ============================================================
+# STATIC ASSET CACHE (30 ngày)
+# ============================================================
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # Hình ảnh
+    ExpiresByType image/jpeg         "access plus 30 days"
+    ExpiresByType image/png          "access plus 30 days"
+    ExpiresByType image/webp         "access plus 30 days"
+    ExpiresByType image/gif          "access plus 30 days"
+    ExpiresByType image/svg+xml      "access plus 30 days"
+    ExpiresByType image/x-icon       "access plus 30 days"
+
+    # CSS & JS
+    ExpiresByType text/css           "access plus 30 days"
+    ExpiresByType application/javascript "access plus 30 days"
+    ExpiresByType text/javascript    "access plus 30 days"
+
+    # Fonts
+    ExpiresByType font/woff          "access plus 30 days"
+    ExpiresByType font/woff2         "access plus 30 days"
+    ExpiresByType application/font-woff  "access plus 30 days"
+    ExpiresByType application/font-woff2 "access plus 30 days"
+</IfModule>
+
+<IfModule mod_headers.c>
+    # Cache-Control cho static files
+    <FilesMatch "\.(jpg|jpeg|png|webp|gif|svg|ico|css|js|woff|woff2|ttf|eot)$">
+        Header set Cache-Control "public, max-age=2592000, immutable"
+    </FilesMatch>
+</IfModule>
+
+# ============================================================
+# Nén GZIP
+# ============================================================
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css
+    AddOutputFilterByType DEFLATE application/javascript text/javascript
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE image/svg+xml
+    AddOutputFilterByType DEFLATE font/woff font/woff2
+</IfModule>
+
 # Chặn truy cập vào các file nhạy cảm
 <FilesMatch "\.(env|log|sql|bak|sh|py|rb|htpasswd|git)$">
     Order Allow,Deny

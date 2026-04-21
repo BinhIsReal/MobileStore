@@ -7,6 +7,7 @@
 session_start();
 include '../config/db.php';
 include_once '../includes/security.php';
+include_once '../includes/flash_sale_helper.php';
 header('Content-Type: application/json');
 ini_set('display_errors', 0);
 
@@ -28,7 +29,7 @@ if ($action === 'add') {
         exit;
     }
 
-    // Lấy giá hiện tại
+    // Lấy giá hiệu lực: Flash Sale > sale_price > price
     $price_stmt = $conn->prepare("SELECT price, sale_price FROM products WHERE id = ?");
     $price_stmt->bind_param("i", $product_id);
     $price_stmt->execute();
@@ -40,7 +41,8 @@ if ($action === 'add') {
         exit;
     }
 
-    $current_price = ($p['sale_price'] > 0) ? $p['sale_price'] : $p['price'];
+    $price_info    = get_effective_price($conn, $product_id, $p['price'], $p['sale_price']);
+    $current_price = $price_info['effective_price'];
 
     $stmt = $conn->prepare(
         "INSERT INTO wishlists (user_id, product_id, price_at_add, alert_enabled)
@@ -107,8 +109,28 @@ if ($action === 'get_my_wishlist') {
     $stmt->close();
 
     $items = [];
+    $product_ids = [];
+    $rows = [];
     while ($row = $res->fetch_assoc()) {
-        $row['price_drop'] = ($row['current_price'] < $row['price_at_add']);
+        $rows[]        = $row;
+        $product_ids[] = (int)$row['product_id'];
+    }
+
+    // Batch lấy giá Flash Sale cho toàn bộ wishlist (1 query)
+    $flash_map = get_flash_prices_bulk($conn, $product_ids);
+
+    foreach ($rows as $row) {
+        $pid = (int)$row['product_id'];
+        // Ưu tiên Flash Sale
+        if (isset($flash_map[$pid])) {
+            $row['current_price']   = $flash_map[$pid]['flash_price'];
+            $row['is_flash_sale']   = true;
+            $row['discount_label']  = $flash_map[$pid]['discount_label'];
+        } else {
+            $row['is_flash_sale']  = false;
+            $row['discount_label'] = '';
+        }
+        $row['price_drop']  = ($row['current_price'] < $row['price_at_add']);
         $row['drop_amount'] = max(0, $row['price_at_add'] - $row['current_price']);
         $items[] = $row;
     }
