@@ -29,7 +29,7 @@ include_once __DIR__ . '/includes/security.php';
             </div>
             
             <div id="g_id_onload"
-                 data-client_id="618376677754-q63c9e8fuogge7rh29hcbmuf58sk65c6.apps.googleusercontent.com"
+                 data-client_id="302593077362-5g9tdnjsh85r3bmqgptef626gpq2ku8t.apps.googleusercontent.com"
                  data-context="signin"
                  data-ux_mode="popup"
                  data-callback="handleGoogleLogin"
