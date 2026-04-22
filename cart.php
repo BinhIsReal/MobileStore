@@ -68,6 +68,7 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
     <meta charset="UTF-8">
     <title>Giỏ hàng của bạn</title>
     <link rel="stylesheet" href="assets/css/style.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="assets/css/mobile.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
@@ -86,14 +87,13 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
         <?php else: ?>
         <div class="cart-wrapper">
             <div class="cart-list">
-                <div class="cart-header">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <input type="checkbox" id="check-all" style="width: 18px; height: 18px; cursor: pointer;">
-                        <h3 style="margin: 0; font-size: 18px;">Chọn tất cả (<?= count($cart_data) ?> sản phẩm)</h3>
+                <div class="cart-header" id="cart-header">
+                    <div class="select-all-wrapper">
+                        <input type="checkbox" id="check-all" class="header-check" style="width: 18px; height: 18px; cursor: pointer;">
+                        <h3 class="select-all" style="margin: 0; font-size: 16px;">Chọn tất cả (<?= count($cart_data) ?> sản phẩm)</h3>
                     </div>
 
-                    <div class="cart-actions"
-                        style="margin-bottom: 10px; display: flex; gap: 10px; justify-content: flex-end;">
+                    <div class="delete-actions">
                         <button id="btn-delete-selected" class="btn-delete-selected" style="display:none;">
                             <i class="fa fa-trash-can"></i> Xóa đã chọn
                         </button>
@@ -107,7 +107,6 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
                     $item_id   = $item['p_id'];
                     $item_name = $item['p_name'];
 
-                    // Ưu tiên Flash Sale, sau đó sale_price, cuối cùng là giá gốc
                     if (isset($flash_price_map[$item_id])) {
                         $calc_price = $flash_price_map[$item_id]['flash_price'];
                         $show_original = $flash_price_map[$item_id]['original_price'];
@@ -126,66 +125,71 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
                     }
 
                     $display_name = htmlspecialchars($item_name);
+                    $variant_display = "";
                     if (!empty($item['var_attrs'])) {
                         $attrs = json_decode($item['var_attrs'], true);
                         $attr_parts = [];
                         if ($attrs) {
-                            foreach($attrs as $k => $v) $attr_parts[] = "$k: $v";
+                            foreach($attrs as $k => $v) $attr_parts[] = "$v"; 
+                            $variant_display = implode(', ', $attr_parts);
+                            // Dành cho desktop
                             $display_name .= " (" . implode(', ', $attr_parts) . ")";
                         }
                     }
                 ?>
                 <div class="cart-item" id="item-<?= $item_id ?>">
                     <input type="checkbox" class="pay-check" value="<?= $item_id ?>" data-price="<?= $calc_price ?>"
-                        data-qty="<?= $item['quantity'] ?>" onchange="calcTotal()"
-                        style="width: 18px; height: 18px; margin-right: 15px; cursor: pointer;">
+                        data-qty="<?= $item['quantity'] ?>" onchange="calcTotal()">
 
                     <?php 
                         $imgCart = (strpos($item['image'], 'http') === 0) ? $item['image'] : "assets/img/" . $item['image'];
                     ?>
 
-                    <a href="product_detail.php?id=<?= $item_id ?>" style="display: block; text-decoration: none;">
-                        <img src="<?= $imgCart ?>" alt="<?= htmlspecialchars($item_name) ?>"
-                            style="transition: transform 0.2s; cursor: pointer;"
-                            onmouseover="this.style.transform='scale(1.05)'"
-                            onmouseout="this.style.transform='scale(1)'">
+                    <a href="product_detail.php?id=<?= $item_id ?>" class="cart-item-img-link" style="text-decoration: none;">
+                        <img src="<?= $imgCart ?>" alt="<?= htmlspecialchars($item_name) ?>">
                     </a>
 
-                    <div class="cart-info" style="flex: 1;">
-                        <a href="product_detail.php?id=<?= $item_id ?>"
-                            style="text-decoration: none; color: inherit;">
-                            <h4 style="transition: color 0.2s;" onmouseover="this.style.color='#00487a'"
-                                onmouseout="this.style.color='inherit'"><?= $display_name ?></h4>
-                        </a>
+                    <div class="cart-item-info">
+                        <div class="item-name-group">
+                            <a href="product_detail.php?id=<?= $item_id ?>" class="cart-item-title-link" style="text-decoration: none; color: inherit;">
+                                <h4 class="cart-item-title"><?= $display_name ?></h4>
+                            </a>
+                            
+                            <div class="cart-item-price">
+                                <?php if ($is_sale): ?>
+                                    <?php if ($is_flash): ?>
+                                        <span class="flash-badge">FLASH SALE</span>
+                                    <?php else: ?>
+                                        <span class="flash-badge" style="background:#ddd; color:#333;">KHUYẾN MÃI</span>
+                                    <?php endif; ?>
+                                    <br class="br-mobile">
+                                    <span class="current-price"><?= number_format($calc_price, 0, ',', '.') ?> ₫</span>
+                                    <del class="old-price"><?= number_format($show_original, 0, ',', '.') ?> ₫</del>
+                                <?php else: ?>
+                                    <span class="current-price"><?= number_format($calc_price, 0, ',', '.') ?> ₫</span>
+                                <?php endif; ?>
+                            </div>
 
-                        <div class="cart-price">
-                            <?php if ($is_sale): ?>
-                            <span style="color: #d70018; font-weight: bold;">
-                                <?= number_format($calc_price, 0, ',', '.') ?> ₫
-                            </span>
-                            <?php if ($is_flash): ?>
-                            <span style="background:#ff6b35;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:4px;">FLASH SALE</span>
-                            <?php endif; ?>
-                            <br>
-                            <del style="color: #999; font-size: 13px;"><?= number_format($show_original, 0, ',', '.') ?> ₫</del>
-                            <?php else: ?>
-                            <span style="color: #d70018; font-weight: bold;"><?= number_format($calc_price, 0, ',', '.') ?> ₫</span>
-                            <?php endif; ?>
+                            <div class="cart-variant-box" <?php if(empty($variant_display)){ echo 'style="display:none;"'; } ?>>
+                                <span class="variant-text"><?= $variant_display ?></span>
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="qty-control">
-                        <button class="qty-btn" data-id="<?= $item_id ?>" data-delta="-1">-</button>
-                        <span id="qty-<?= $item_id ?>"><?= $item['quantity'] ?></span>
-                        <button class="qty-btn" data-id="<?= $item_id ?>" data-delta="1">+</button>
-                    </div>
-
-                    <button class="btn-remove-item" data-id="<?= $item_id ?>"
-                        style="border:none; background:none; cursor:pointer;">
+                        
+                        <div class="qty-control">
+                            <button class="qty-btn" data-id="<?= $item_id ?>" data-delta="-1">-</button>
+                            <span id="qty-<?= $item_id ?>"><?= $item['quantity'] ?></span>
+                            <button class="qty-btn" data-id="<?= $item_id ?>" data-delta="1">+</button>
+                        </div>
+                         <button class="btn-remove-item" data-id="<?= $item_id ?>">
                         <i class="fa-solid fa-trash-can"></i>
                     </button>
+                    </div>
+
+                   
                 </div>
                 <?php endforeach; ?>
+
             </div>
 
             <div class="checkout-bar">
@@ -201,7 +205,7 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
             <div id="checkout-modal" class="modal">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h2><i class="fa-solid fa-file-invoice-dollar"></i>  Xác Nhận Đặt Hàng</h2>
+                        <h2><i class="fa-solid fa-file-invoice-dollar"></i> Xác Nhận Đặt Hàng</h2>
                         <span class="close-modal" onclick="$('#checkout-modal').fadeOut()">&times;</span>
                     </div>
 

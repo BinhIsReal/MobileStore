@@ -6,11 +6,14 @@ include_once __DIR__ . '/includes/security.php';
 <html lang="vi">
 
 <head>
-    <title>Đăng nhập - MobileStore</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập - TechMate</title>
     <!-- CSRF Meta Tag -->
     <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/mobile.css?v=<?php echo filemtime('assets/css/mobile.css'); ?>">
 </head>
 
 <body>

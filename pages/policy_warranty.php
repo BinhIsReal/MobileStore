@@ -4,9 +4,11 @@ include '../config/db.php'; ?>
 <html lang="vi">
 
 <head>
-    <title>Chính sách bảo hành - MobileStore</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chính sách bảo hành - TechMate</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/pages.css">
+    <link rel="stylesheet" href="../assets/css/mobile.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
@@ -20,7 +22,7 @@ include '../config/db.php'; ?>
                 <ul>
                     <li><strong>30 ngày đầu:</strong> 1 đổi 1 nếu có lỗi phần cứng từ nhà sản xuất.</li>
                     <li><strong>Điều kiện:</strong> Máy không trầy xước, móp méo, còn đầy đủ hộp và phụ kiện.</li>
-                    <li>Nếu không đủ điều kiện đổi mới (máy trầy, mất hộp...), MobileStore sẽ thu phí theo quy định
+                    <li>Nếu không đủ điều kiện đổi mới (máy trầy, mất hộp...), TechMate sẽ thu phí theo quy định
                         (10-20%).</li>
                 </ul>
 
@@ -33,7 +35,7 @@ include '../config/db.php'; ?>
                 </ul>
 
                 <h3>3. Địa điểm bảo hành</h3>
-                <p>Quý khách có thể mang máy đến bất kỳ cửa hàng nào của MobileStore trên toàn quốc hoặc đến trực tiếp
+                <p>Quý khách có thể mang máy đến bất kỳ cửa hàng nào của TechMate trên toàn quốc hoặc đến trực tiếp
                     Trung tâm bảo hành chính hãng của hãng (Apple, Samsung...).</p>
             </div>
         </div>

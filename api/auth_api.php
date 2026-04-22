@@ -85,7 +85,7 @@ if ($action === 'login') {
 
             if ($user['role'] !== 'admin') {
                 // SECURITY: Escape tên user trước khi lưu vào session message
-                $_SESSION['login_success_msg'] = 'Chào mừng <b>' . htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8') . '</b> đến với MobileStore!';
+                $_SESSION['login_success_msg'] = 'Chào mừng <b>' . htmlspecialchars($user['username'], ENT_QUOTES, 'UTF-8') . '</b> đến với TechMate!';
             }
 
             // LOGIC GỘP GIỎ HÀNG (Auto Merge) - dùng Prepared Statement

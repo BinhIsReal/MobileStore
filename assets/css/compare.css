@@ -56,6 +56,13 @@
 
 .compare-product-cell {
   text-align: center !important;
+  vertical-align: top !important;
+}
+.compare-product-cell > .cell-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 220px;
 }
 
 .compare-product-cell img {
@@ -66,18 +73,25 @@
 }
 
 .btn-remove-compare {
-  position: absolute;
-  bottom: 66px;
-  right: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: auto;
+  padding: 6px 16px;
   background: none;
-  border: none;
+  border: 1px solid #ff4d4f;
+  border-radius: 6px;
   color: #ff4d4f;
-  font-size: 24px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
   transition: 0.2s;
+  gap: 6px;
+  align-self: center;
 }
 .btn-remove-compare:hover {
-  transform: scale(1.1);
+  background: #ff4d4f;
+  color: #fff;
 }
 
 .pd-name {
@@ -120,7 +134,6 @@
   vertical-align: middle !important;
   background: #fcfcfc !important;
 }
-
 .compare-search-wrap {
   position: relative;
   max-width: 80%;

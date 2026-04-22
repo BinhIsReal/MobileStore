@@ -4,9 +4,11 @@ include '../config/db.php';?>
 <html lang="vi">
 
 <head>
-    <title>Hệ thống 124 Cửa hàng - MobileStore</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống 124 Cửa hàng - TechMate</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/pages.css">
+    <link rel="stylesheet" href="../assets/css/mobile.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
@@ -20,7 +22,7 @@ include '../config/db.php';?>
             <div class="store-grid">
                 <?php for($i=1; $i<=6; $i++): ?>
                 <div class="store-card">
-                    <span class="store-name">MobileStore Chi nhánh Hà Nội <?= $i ?></span>
+                    <span class="store-name">TechMate Chi nhánh Hà Nội <?= $i ?></span>
                     <div class="store-address">
                         <i class="fa fa-map-marker-alt"></i>
                         <span><?= $i*10 ?> Cầu Giấy, Phường Quan Hoa, Quận Cầu Giấy, Hà Nội</span>
@@ -34,7 +36,7 @@ include '../config/db.php';?>
 
                 <?php for($i=1; $i<=4; $i++): ?>
                 <div class="store-card">
-                    <span class="store-name">MobileStore Chi nhánh TP.HCM <?= $i ?></span>
+                    <span class="store-name">TechMate Chi nhánh TP.HCM <?= $i ?></span>
                     <div class="store-address">
                         <i class="fa fa-map-marker-alt"></i>
                         <span><?= $i*15 ?> Nguyễn Trãi, Quận 1, TP. Hồ Chí Minh</span>

@@ -24,6 +24,8 @@
 
     <!-- CSS Critical (đồng bộ) -->
     <link rel="stylesheet" href="assets/css/style.css">
+    <!-- Mobile Responsive -->
+    <link rel="stylesheet" href="<?= defined('BASE_URL') ? BASE_URL : '' ?>/assets/css/mobile.css?v=<?= time() ?>">
 
     <!-- FontAwesome non-critical (async) -->
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">

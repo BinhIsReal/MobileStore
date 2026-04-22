@@ -4,9 +4,11 @@ include '../config/db.php'; ?>
 <html lang="vi">
 
 <head>
-    <title>Chính sách vận chuyển - MobileStore</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chính sách vận chuyển - TechMate</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/pages.css">
+    <link rel="stylesheet" href="../assets/css/mobile.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
@@ -32,7 +34,7 @@ include '../config/db.php'; ?>
                 </ul>
 
                 <h3>3. Kiểm tra hàng (Đồng kiểm)</h3>
-                <p>MobileStore khuyến khích quý khách <strong>MỞ HỘP KIỂM TRA</strong> ngoại quan (không bật nguồn)
+                <p>TechMate khuyến khích quý khách <strong>MỞ HỘP KIỂM TRA</strong> ngoại quan (không bật nguồn)
                     trước mặt nhân viên giao hàng. Nếu sản phẩm bị móp méo, vỡ, sai mẫu mã, vui lòng từ chối nhận hàng
                     và gọi ngay hotline 1900.2091.</p>
             </div>

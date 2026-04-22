@@ -35,6 +35,7 @@ $vouchers = $stmt->get_result();
     <meta charset="UTF-8">
     <title>Kho Voucher Của Tôi</title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/mobile.css?v=<?= time() ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
@@ -76,7 +77,7 @@ $vouchers = $stmt->get_result();
             <div class="voucher-ticket">
                 <div class="voucher-left">
                     <i class="fa-solid fa-gift"></i>
-                    <span>MobileStore<br>Voucher</span>
+                    <span>TechMate<br>Voucher</span>
                 </div>
 
                 <div class="voucher-right">

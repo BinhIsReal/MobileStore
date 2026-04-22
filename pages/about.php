@@ -5,9 +5,11 @@ include '../config/db.php';
 <html lang="vi">
 
 <head>
-    <title>Giới thiệu - MobileStore</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giới thiệu - TechMate</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/pages.css">
+    <link rel="stylesheet" href="../assets/css/mobile.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
@@ -15,9 +17,9 @@ include '../config/db.php';
     <?php include '../includes/navbar.php'; ?>
     <div class="container">
         <div class="page-wrapper">
-            <h2 class="page-title">Về MobileStore</h2>
+            <h2 class="page-title">Về TechMate</h2>
             <div class="page-content">
-                <p><strong>MobileStore</strong> được thành lập từ năm 2015, là một trong những nhà bán lẻ điện thoại di
+                <p><strong>TechMate</strong> được thành lập từ năm 2004, là một trong những nhà bán lẻ điện thoại di
                     động, máy tính bảng và phụ kiện công nghệ uy tín hàng đầu tại Việt Nam.</p>
                 <p>Với triết lý kinh doanh "Khách hàng là trọng tâm", chúng tôi cam kết mang đến những sản phẩm chính
                     hãng với mức giá tốt nhất thị trường.</p>
@@ -34,7 +36,7 @@ include '../config/db.php';
                 <p>Trung thực - Tận tâm - Chuyên nghiệp.</p>
 
                 <h3>Chứng nhận</h3>
-                <p>MobileStore tự hào là Đại lý ủy quyền chính thức (Authorized Reseller) của Apple, Samsung, Xiaomi,
+                <p>TechMate tự hào là Đại lý ủy quyền chính thức (Authorized Reseller) của Apple, Samsung, Xiaomi,
                     OPPO tại Việt Nam.</p>
             </div>
         </div>

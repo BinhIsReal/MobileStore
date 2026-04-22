@@ -50,9 +50,12 @@ $allow_cancel = ($current_status == 'pending');
 <html lang="vi">
 
 <head>
-    <title>Chi tiết đơn hàng <?= $order['order_code'] ?? $order_id ?></title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi tiết đơn hàng <?= $order['order_code'] ?? $order_id ?> - TechMate</title>
     <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
     <link rel="stylesheet" href="assets/css/style.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="assets/css/mobile.css?v=<?= filemtime('assets/css/mobile.css') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 

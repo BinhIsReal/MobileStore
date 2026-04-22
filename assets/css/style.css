@@ -40,9 +40,11 @@ img {
   margin: 0 auto;
   padding: 0 10px;
 }
+
 /* =========================================
    2. HEADER & NAVBAR 
 ========================================= */
+
 nav {
   background: var(--primary);
   height: 64px;
@@ -528,12 +530,6 @@ nav .menu-item:hover {
   color: var(--accent);
 }
 
-.pd-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
-}
-
 .btn-buy-now:hover {
   transform: scale(1.02);
   box-shadow: 0 6px 15px rgba(215, 0, 24, 0.4);
@@ -605,19 +601,34 @@ nav .menu-item:hover {
   align-items: center;
   gap: 15px;
 }
+.select-all-wrapper {
+  display: flex;
+  gap: 10px;
+}
+.select-all {
+  transform: translateY(6px);
+}
+.delete-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 #btn-delete-all {
   background: linear-gradient(to right, #e6394c, #f94c4c);
   color: white;
   border: none;
-  padding: 12px 15px !important;
+  padding: 8px 15px !important;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
 }
 #btn-delete-selected {
   background: #ffecec;
   color: #e82e44;
   border: 1px solid #ffb3b3;
-  padding: 20px 12px;
+  padding: 8px 15px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 13px;
@@ -626,7 +637,6 @@ nav .menu-item:hover {
   display: flex;
   align-items: center;
   gap: 5px;
-  height: 32px;
 }
 
 #btn-delete-selected:hover {
@@ -661,28 +671,86 @@ nav .menu-item:hover {
   border-radius: 5px;
 }
 
-/* 3. Ô Tên sản phẩm */
+/* 3. Ô Tên sản phẩm, Giá, Số Lượng (Bao bọc chung để đáp ứng Mobile Grid) */
 .cart-item-info {
   flex: 1;
-  min-width: 150px;
-}
-.cart-item-info h4 {
-  margin: 0 0 5px 0;
-  font-size: 15px;
-  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
 }
 
-/* 4. Ô Giá tiền */
+.item-name-group {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-start;
+}
+
+.cart-item-title-link {
+  max-width: 100%;
+}
+
+.item-name-group .cart-item-title {
+  margin: 0;
+  font-size: 15px;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.cart-variant-box {
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #555;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+/* 4. Ô Giá tiền (Được đặt dưới Tên sản phẩm) */
 .cart-item-price {
-  flex: 0 0 120px;
+  text-align: left;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.cart-item-price .flash-badge {
+  display: inline-block;
+  background: #ff6b35;
+  color: #fff;
+  font-size: 10px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  font-weight: bold;
+}
+
+.cart-item-price .current-price {
   font-weight: bold;
   color: #d70018;
-  text-align: right;
+  font-size: 15px;
+}
+
+.cart-item-price .old-price {
+  color: #999;
+  font-size: 13px;
+  text-decoration: line-through;
+  margin-top: 2px;
 }
 
 /* 5. Ô Chỉnh Số lượng */
 .qty-control {
-  flex: 0 0 100px;
+  flex: 0 0 110px;
   display: flex;
   align-items: center;
   border: 1px solid #ddd;
@@ -727,13 +795,13 @@ nav .menu-item:hover {
 
 /* 6. Ô Nút Xóa Từng Sản Phẩm */
 .btn-remove-item {
-  flex: 0 0 40px;
+  flex: 0 0 30px;
   text-align: right;
   color: #999;
   cursor: pointer;
   background: none;
   border: none;
-  font-size: 18px;
+  font-size: 20px;
   transition: 0.2s;
 }
 
@@ -1767,13 +1835,6 @@ nav .menu-item:hover {
   color: #555;
 }
 
-/* Nút bấm hành động */
-.pd-actions {
-  display: flex;
-  gap: 15px;
-  margin-top: 20px;
-}
-
 .btn-add-cart-pd {
   flex: 1;
   background: white;
@@ -2143,6 +2204,168 @@ nav .menu-item:hover {
   display: none;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   margin-left: 10px;
+}
+/* =============================================
+   NOTIFICATION DROPDOWN (Navbar)
+   ============================================= */
+#nav-notif-btn {
+  position: relative;
+}
+#notif-dropdown {
+  display: none;
+  position: absolute;
+  right: -8px;
+  top: calc(100% + 12px);
+  width: 340px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.14);
+  z-index: 9998;
+  overflow: hidden;
+}
+#notif-dropdown.open {
+  display: block;
+}
+.notif-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fafafa;
+}
+.notif-header b {
+  font-size: 14px;
+  color: #222;
+}
+.notif-header a {
+  font-size: 12px;
+  color: var(--primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+#notif-list {
+  max-height: 360px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+#notif-list::-webkit-scrollbar {
+  width: 4px;
+}
+#notif-list::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 2px;
+}
+.notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 14px;
+  border-bottom: 1px solid #f2f2f2;
+  text-decoration: none;
+  color: #333;
+  transition: background 0.12s;
+  cursor: pointer;
+}
+.notif-item:last-child {
+  border-bottom: none;
+}
+.notif-item:hover {
+  background: #f8f9fb;
+}
+.notif-item.unread {
+  background: #f0f7ff;
+}
+.notif-item.unread:hover {
+  background: #e6f1fc;
+}
+.notif-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.notif-body {
+  flex: 1;
+  min-width: 0;
+}
+.notif-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.notif-msg {
+  font-size: 12px;
+  color: #666;
+  margin-top: 2px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.notif-time {
+  font-size: 11px;
+  color: #aaa;
+  margin-top: 4px;
+}
+.notif-dot {
+  width: 8px;
+  height: 8px;
+  background: #e74c3c;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.notif-empty {
+  text-align: center;
+  padding: 30px 20px;
+  color: #bbb;
+  font-size: 13px;
+}
+.notif-footer {
+  text-align: center;
+  padding: 10px;
+  border-top: 1px solid #eee;
+  background: #fafafa;
+  font-size: 12px;
+}
+.notif-footer a {
+  color: var(--primary);
+  text-decoration: none;
+}
+.notif-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Badge chung cho notif + wishlist */
+#nav-notif-badge,
+#nav-wishlist-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* Notif type-label (Order Status, Wishlist Price Alert...) */
+.notif-type-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--primary);
+  opacity: 0.75;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+/* Nav Notif Wrap */
+.nav-notif-wrap {
+  margin-left: 2px;
 }
 /* =========================================
    10. ORDER HISTORY PAGE 
@@ -2840,11 +3063,6 @@ footer {
   margin-top: 3px;
 }
 
-/* Nút Mua */
-.pd-actions {
-  display: flex;
-  gap: 15px;
-}
 .btn-buy-now {
   flex: 2;
   background: #eb3e51;
@@ -2932,11 +3150,31 @@ footer {
   transform: translateY(-2px);
   border-color: var(--primary);
 }
-.related-card img {
+.related-img-wrap {
+  position: relative;
+  width: 100%;
+}
+.related-img-wrap img {
   width: 100%;
   height: 160px;
   object-fit: contain;
   margin-bottom: 10px;
+  display: block;
+}
+.related-flash-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: #ff6b35;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+  z-index: 2;
+  line-height: 1.4;
+  pointer-events: none;
 }
 .related-card h3 {
   font-size: 14px;
@@ -3732,6 +3970,14 @@ button {
   .pd-header {
     grid-template-columns: 1fr;
   }
+  .price-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin: 5px 0;
+    flex-direction: column;
+  }
   .pd-actions {
     position: fixed;
     bottom: 0;
@@ -3776,9 +4022,7 @@ button {
   nav .search-box {
     max-width: 150px;
   }
-  nav .logo {
-    font-size: 18px;
-  }
+
   .hero-section {
     margin-top: 10px;
   }
@@ -4048,173 +4292,6 @@ button {
   line-height: 1;
 }
 
-/* =============================================
-   NOTIFICATION DROPDOWN (Navbar)
-   ============================================= */
-#nav-notif-btn {
-  position: relative;
-}
-#notif-dropdown {
-  display: none;
-  position: absolute;
-  right: -8px;
-  top: calc(100% + 12px);
-  width: 340px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.14);
-  z-index: 9998;
-  overflow: hidden;
-}
-#notif-dropdown.open {
-  display: block;
-}
-.notif-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid #eee;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #fafafa;
-}
-.notif-header b {
-  font-size: 14px;
-  color: #222;
-}
-.notif-header a {
-  font-size: 12px;
-  color: var(--primary);
-  text-decoration: none;
-  white-space: nowrap;
-}
-#notif-list {
-  max-height: 360px;
-  overflow-y: auto;
-  scroll-behavior: smooth;
-}
-#notif-list::-webkit-scrollbar {
-  width: 4px;
-}
-#notif-list::-webkit-scrollbar-thumb {
-  background: #ddd;
-  border-radius: 2px;
-}
-.notif-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 11px 14px;
-  border-bottom: 1px solid #f2f2f2;
-  text-decoration: none;
-  color: #333;
-  transition: background 0.12s;
-  cursor: pointer;
-}
-.notif-item:last-child {
-  border-bottom: none;
-}
-.notif-item:hover {
-  background: #f8f9fb;
-}
-.notif-item.unread {
-  background: #f0f7ff;
-}
-.notif-item.unread:hover {
-  background: #e6f1fc;
-}
-.notif-icon {
-  font-size: 22px;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-.notif-body {
-  flex: 1;
-  min-width: 0;
-}
-.notif-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #222;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.notif-msg {
-  font-size: 12px;
-  color: #666;
-  margin-top: 2px;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.notif-time {
-  font-size: 11px;
-  color: #aaa;
-  margin-top: 4px;
-}
-.notif-dot {
-  width: 8px;
-  height: 8px;
-  background: #e74c3c;
-  border-radius: 50%;
-  margin-top: 6px;
-  flex-shrink: 0;
-}
-.notif-empty {
-  text-align: center;
-  padding: 30px 20px;
-  color: #bbb;
-  font-size: 13px;
-}
-.notif-footer {
-  text-align: center;
-  padding: 10px;
-  border-top: 1px solid #eee;
-  background: #fafafa;
-  font-size: 12px;
-}
-.notif-footer a {
-  color: var(--primary);
-  text-decoration: none;
-}
-.notif-footer a:hover {
-  text-decoration: underline;
-}
-
-/* Badge chung cho notif + wishlist */
-#nav-notif-badge,
-#nav-wishlist-count {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  font-size: 10px;
-  line-height: 18px;
-  text-align: center;
-}
-
-/* Notif type-label (Order Status, Wishlist Price Alert...) */
-.notif-type-label {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--primary);
-  opacity: 0.75;
-  letter-spacing: 0.04em;
-  margin-bottom: 2px;
-}
-
-/* Nav Notif Wrap: spacer sau Cart */
-.nav-notif-wrap {
-  margin-left: 2px;
-}
-
-/* Lang dropdown: flush phải sau user-dropdown */
-.lang-flag-dropdown {
-  margin-left: 4px;
-}
 /* =============================================
    WISHLIST PAGE STYLES
    ============================================= */

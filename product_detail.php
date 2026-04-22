@@ -49,14 +49,14 @@ $discount_label = $price_info['discount_label'];
 <html lang="vi">
 
 <head>
-    <title><?= htmlspecialchars($product['name']) ?> - MobileStore</title>
+    <title><?= htmlspecialchars($product['name']) ?> - TechMate</title>
     <link rel="stylesheet" href="assets/css/compare.css?v=<?= time() ?>">
 </head>
 
 <body data-user-id="<?= isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0 ?>">
     <div class="container" style="margin-top: 20px;">
         <div style="font-size:14px; color:#666; margin-bottom:15px;">
-            <a href="index.php" style="color:#666;">Trang chủ</a> /
+            <a href="index.php" style="color:#666;"><i class="fa fa-home"></i>Trang chủ</a> /
             <a href="#" style="color:#666;"><?= $product['cat_name'] ?></a> /
             <span style="color:#000; font-weight:500;"><?= $product['name'] ?></span>
         </div>
@@ -156,7 +156,7 @@ $discount_label = $price_info['discount_label'];
                         </ul>
                     </div>
 
-                    <div class="pd-actions">
+                    <div class="pd-actions" style="display: flex; gap: 10px;">
                         <button class="btn-buy-now js-buy-now" data-id="<?= $product['id'] ?>" data-type="<?= $product_type ?>">
                             <strong>MUA NGAY</strong>
                             <span>(Giao tận nơi hoặc lấy tại cửa hàng)</span>
@@ -257,12 +257,15 @@ $discount_label = $price_info['discount_label'];
                     ?>
                     <div class="related-card">
                         <a href="product_detail.php?id=<?= $rel['id'] ?>" style="text-decoration:none;">
-                            <img src="<?= $r_img ?>" alt="<?= $rel['name'] ?>">
+                            <div class="related-img-wrap">
+                                <?php if ($r_is_flash): ?>
+                                <span class="related-flash-badge">⚡ FLASH SALE</span>
+                                <?php endif; ?>
+                                <img src="<?= $r_img ?>" alt="<?= $rel['name'] ?>">
+                            </div>
                             <h3><?= $rel['name'] ?></h3>
                             <div class="price" style="color:#d70018; font-weight:bold;"><?= number_format($r_price, 0, ',', '.') ?> &#x20ab;</div>
-                            <?php if ($r_is_flash): ?>
-                            <span style="background:#ff6b35;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;">FLASH SALE</span>
-                            <?php elseif ($r_orig_price > $r_price): ?>
+                            <?php if ($r_orig_price > $r_price): ?>
                             <del style="color:#999; font-size:12px;"><?= number_format($r_orig_price, 0, ',', '.') ?> &#x20ab;</del>
                             <?php endif; ?>
                         </a>

@@ -4,9 +4,11 @@ include '../config/db.php'; ?>
 <html lang="vi">
 
 <head>
-    <title>Giải quyết khiếu nại - MobileStore</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giải quyết khiếu nại - TechMate</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/pages.css">
+    <link rel="stylesheet" href="../assets/css/mobile.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
@@ -16,14 +18,14 @@ include '../config/db.php'; ?>
         <div class="page-wrapper">
             <h2 class="page-title">Chính sách giải quyết khiếu nại</h2>
             <div class="page-content">
-                <p>MobileStore luôn coi trọng ý kiến của khách hàng. Quy trình giải quyết khiếu nại được thực hiện qua 4
+                <p>TechMate luôn coi trọng ý kiến của khách hàng. Quy trình giải quyết khiếu nại được thực hiện qua 4
                     bước:</p>
 
                 <h3>Bước 1: Tiếp nhận phản ánh</h3>
                 <p>Khách hàng có thể gửi khiếu nại qua:</p>
                 <ul>
                     <li>Hotline: 1900.2091 (Nhánh 2).</li>
-                    <li>Email: cskh@mobilestore.com.vn.</li>
+                    <li>Email: cskh@TechMate.com.vn.</li>
                     <li>Fanpage Facebook / Zalo OA chính thức.</li>
                 </ul>
 

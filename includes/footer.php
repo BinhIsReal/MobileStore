@@ -29,7 +29,7 @@
             <div class="ft-col">
                 <h4>Thông tin liên hệ</h4>
                 <ul>
-                    <li><a href="<?= BASE_URL ?>/pages/about.php">Giới thiệu về MobileStore</a></li>
+                    <li><a href="<?= BASE_URL ?>/pages/about.php">Giới thiệu về TechMate</a></li>
                     <li><a href="<?= BASE_URL ?>/pages/store_system.php"> Hệ thống cửa hàng (124 chi nhánh)</a></li>
                     <li><a href="<?= BASE_URL ?>/pages/warranty_centers.php"> Trung tâm bảo hành chính hãng</a></li>
                     <li><a href="<?= BASE_URL ?>/pages/careers.php">Tuyển dụng nhân tài</a></li>
@@ -77,12 +77,12 @@
         </div>
 
         <div class="footer-bottom">
-            <p>&copy; 2025 CÔNG TY CỔ PHẦN MOBILE STORE VIỆT NAM. MST: 0101234567.</p>
-            <p>Địa chỉ: Số 89 Đường Tam Trinh, Phường Vĩnh Tuy, Quận Hai Bà Trưng, Thành Phố Hà Nội, Việt Nam.</p>
-            <p>Điện thoại: 024.7300.xxxx - Email: cskh@mobilestore.com.vn</p>
+            <p>&copy; 2026 CÔNG TY CỔ PHẦN TECHMATE VIỆT NAM. MST: 10112004.</p>
+            <p>Địa chỉ: Đường Z 115, Quyết Thắng, Thái Nguyên 250000, Việt Nam.</p>
+            <p>Điện thoại: 024.7300.xxxx - Email: cskh@techmate.com.vn</p>
             <div class="footer-dmca">
                 <img src="https://images.dmca.com/Badges/dmca_protected_sml_120n.png"
-                     alt="DMCA Protected - MobileStore"
+                     alt="DMCA Protected - TechMate"
                      width="120" height="38"
                      loading="lazy">
             </div>
@@ -90,6 +90,89 @@
     </div>
 </footer>
 
+<!-- ==============================================
+     MOBILE APP-LIKE BOTTOM NAV AND SHEETS
+     ============================================== -->
+<div class="mobile-bottom-nav">
+    <a href="<?= BASE_URL ?>/index.php" class="m-nav-item <?= (basename($_SERVER['PHP_SELF']) === 'index.php') ? 'active' : '' ?>">
+        <i class="fa-solid fa-house"></i>
+        <span>Trang chủ</span>
+    </a>
+    <div class="m-nav-item" id="m-btn-categories">
+        <i class="fa-solid fa-bars"></i>
+        <span>Danh mục</span>
+    </div>
+    <a href="<?= BASE_URL ?>/cart.php" class="m-nav-item <?= (basename($_SERVER['PHP_SELF']) === 'cart.php') ? 'active' : '' ?>" id="m-btn-cart">
+        <i class="fa-solid fa-cart-shopping"></i>
+        <?php 
+            $m_cart_qty = 0;
+            if(isset($conn) && isset($_SESSION['user_id'])) {
+                $uid = $_SESSION['user_id'];
+                $res = $conn->query("SELECT SUM(quantity) as t FROM cart WHERE user_id=$uid");
+                if($res && $r = $res->fetch_assoc()) $m_cart_qty = $r['t'] ?? 0;
+            } else {
+                $m_cart_qty = isset($_SESSION['cart']) ? array_sum($_SESSION['cart']) : 0;
+            }
+            if ($m_cart_qty > 0): 
+        ?>
+            <span class="m-badge"><?= $m_cart_qty ?></span>
+        <?php endif; ?>
+        <span>Giỏ hàng</span>
+    </a>
+    <div class="m-nav-item" id="m-btn-notif">
+        <i class="fa-solid fa-bell"></i>
+        <span id="m-nav-notif-badge" class="m-badge" style="display:none;">0</span>
+        <span>Thông báo</span>
+    </div>
+    <div class="m-nav-item <?= (in_array(basename($_SERVER['PHP_SELF']), ['profile.php', 'order_history.php', 'login.php'])) ? 'active' : '' ?>" id="m-btn-user">
+        <i class="fa-solid fa-circle-user"></i>
+        <span>Tài khoản</span>
+    </div>
+</div>
+
+<!-- COMMON BACKDROP FOR ALL DRAWERS/SHEETS -->
+<div class="m-backdrop" id="m-backdrop"></div>
+
+<!-- USER BOTTOM SHEET -->
+<div class="m-bottom-sheet" id="m-user-sheet">
+    <div class="m-sheet-header">
+        <b>Tài khoản</b>
+        <button class="m-close-sheet"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="m-sheet-content">
+        <?php if (isset($_SESSION['user_id'])): ?>
+            <a href="<?= BASE_URL ?>/profile.php" class="m-sheet-item"><i class="fa-solid fa-file-invoice"></i> Thông tin cá nhân</a>
+            <a href="<?= BASE_URL ?>/order_history.php" class="m-sheet-item"><i class="fa-solid fa-box"></i> Đơn hàng</a>
+            <a href="<?= BASE_URL ?>/my_vouchers.php" class="m-sheet-item"><i class="fa-solid fa-ticket-simple"></i> Kho Voucher</a>
+            <a href="<?= BASE_URL ?>/wishlist.php" class="m-sheet-item"><i class="fa-solid fa-heart"></i> Yêu thích</a>
+            <?php if (isset($_SESSION['role']) && $_SESSION['role'] == 'admin'): ?>
+            <a href="<?= BASE_URL ?>/admin/dashboard.php" class="m-sheet-item"><i class="fa-solid fa-gauge"></i> Quản trị</a>
+            <?php endif; ?>
+            <a href="<?= BASE_URL ?>/api/auth_api.php?logout=1" class="m-sheet-item" style="color:red;"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</a>
+        <?php else: ?>
+            <a href="<?= BASE_URL ?>/login.php" class="m-sheet-item"><i class="fa-solid fa-right-to-bracket"></i> Đăng nhập</a>
+            <a href="<?= BASE_URL ?>/register.php" class="m-sheet-item"><i class="fa-solid fa-user-plus"></i> Đăng ký ngay</a>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- NOTIFICATION BOTTOM SHEET -->
+<div class="m-bottom-sheet" id="m-notif-sheet">
+    <div class="m-sheet-header">
+        <b>Thông báo</b>
+        <div class="m-sheet-header-top">
+            <button id="m-btn-mark-all-read" style="background:none;border:none;color:var(--primary);font-size:13px;margin-right:10px;">Đánh dấu đã đọc</button>
+            <button class="m-close-sheet"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </div>
+    <div class="m-sheet-content" id="m-notif-list" style="max-height: 65vh; overflow-y: auto;">
+        <?php if (!isset($_SESSION['user_id'])): ?>
+        <div style="padding: 30px; text-align: center; color: #888;">
+            Vui lòng đăng nhập để xem thông báo.
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
 <!-- SweetAlert2 (defer) -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
 <script>

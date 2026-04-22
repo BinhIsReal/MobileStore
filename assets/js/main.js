@@ -13,6 +13,17 @@ $(document).ajaxSend(function (event, jqXHR, settings) {
   }
 });
 
+// Tự động chèn BASE_URL cho tất cả các ajax call dẫn tới api/
+$.ajaxPrefilter(function (options, originalOptions, jqXHR) {
+  if (options.url && options.url.startsWith("api/")) {
+    if (typeof BASE_URL !== "undefined") {
+      options.url = BASE_URL + "/" + options.url;
+    } else {
+      options.url = "/" + options.url;
+    }
+  }
+});
+
 var currentUserId = 0;
 var currentChatTab = "bot";
 var chatInterval = null;
@@ -164,17 +175,17 @@ $(document).ready(function () {
             <div class="cart-item" id="rec-item-${pid}" style="background-color:#fef9f9; border:1px dashed #d70018; margin-top:5px; margin-bottom:15px; margin-left:35px; padding:10px; display:none; border-radius:8px; position:relative;">
               <div style="position:absolute; top:-10px; left:15px; background:#d70018; color:#fff; font-size:10px; padding:2px 8px; border-radius:10px; font-weight:bold;">Gợi ý cho bạn</div>
               <a href="${p.product_url}" style="display:block; text-decoration:none;">
-                <img src="${p.image_url}" alt="${p.name}" style="width:60px; height:60px; object-fit:contain;" onerror="this.style.display='none'">
+                <img src="${p.image_url}" alt="${p.name}" style="width:80px; height:80px; object-fit:contain;" onerror="this.style.display='none'">
               </a>
-              <div class="cart-info" style="flex:1; margin-left:15px;">
+              <div class="cart-info" style="flex:1; min-width: 0; margin-left:0 !important;">
                 <a href="${p.product_url}" style="text-decoration:none; color:inherit;">
-                  <h4 style="font-size:14px; margin:0 0 5px 0;">${p.name}</h4>
+                  <h4 style="font-size:14px; margin:0 0 5px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.name}</h4>
                 </a>
                 <div class="cart-price">
                   <span style="color:#d70018; font-weight:bold; font-size:14px;">${fmt.format(p.display_price)} ₫</span>
                 </div>
               </div>
-              <button type="button" class="js-add-rec-item" data-id="${p.id}" data-price="${p.display_price}" data-type="simple" style="width: 80px;padding:6px 15px; background: linear-gradient(to right, #e6394c, #f94c4c); color:#fff; border:none; border-radius:4px; font-size:12px; font-weight:600; cursor:pointer;">
+              <button type="button" class="js-add-rec-item" data-id="${p.id}" data-price="${p.display_price}" data-type="simple" style="width:90px;white-space: nowrap; flex-shrink: 0; margin-right: 10px;; background: linear-gradient(to right, #e6394c, #f94c4c); color:#fff; border:none; border-radius:4px; font-size:12px; font-weight:600; cursor:pointer;">
                 <i class="fa fa-cart-plus"></i> Thêm
               </button>
             </div>`;
@@ -187,44 +198,48 @@ $(document).ready(function () {
     }
   });
 
-  $(document).on("click", ".js-add-rec-item", function(e) {
+  $(document).on("click", ".js-add-rec-item", function (e) {
     e.preventDefault();
     let btn = $(this);
-    if(btn.data('loading')) return;
-    btn.data('loading', true);
-    
+    if (btn.data("loading")) return;
+    btn.data("loading", true);
+
     let pid = btn.data("id");
     let price = parseFloat(btn.data("price")) || 0;
-    
+
     let oldHtml = btn.html();
     btn.html('<i class="fa fa-spinner fa-spin"></i>');
-    
-    $.post("api/cart_api.php", { action: "add", product_id: pid, quantity: 1, variation_id: "" }, function() {
-        btn.data('loading', false);
+
+    $.post(
+      "api/cart_api.php",
+      { action: "add", product_id: pid, quantity: 1, variation_id: "" },
+      function () {
+        btn.data("loading", false);
         updateCartCount();
         // ============================================
-        // FIX CHECKOUT: Phải tạo checkbox ẩn để logic checkout 
+        // FIX CHECKOUT: Phải tạo checkbox ẩn để logic checkout
         // ở main.js có thể nhặt được sản phẩm này vào mảng `items`.
         // Đồng thời gọi `calcTotal()` để re-sync tổng tiền.
         // ============================================
         let checkHtml = `<input type="checkbox" class="pay-check" value="${pid}" data-qty="1" data-price="${price}" checked style="display:none;">`;
         btn.closest(".cart-item").append(checkHtml);
-        
+
         if (typeof calcTotal === "function") {
-            calcTotal();
+          calcTotal();
         }
-        
+
         // Đổi thành nút Xóa
         btn.removeClass("js-add-rec-item").addClass("btn-remove-item");
         btn.html('<i class="fa fa-trash-can"></i> Xóa');
         btn.css({
-            "background": "none", 
-            "border": "1px solid #d70018", 
-            "color": "#d70018"
+          background: "none",
+          border: "1px solid #d70018",
+          color: "#d70018",
         });
-    }).fail(function() {
-        btn.data('loading', false);
-        btn.html(oldHtml);
+      },
+    ).fail(function () {
+      btn.data("loading", false);
+      btn.html(oldHtml);
     });
   });
 
@@ -353,6 +368,27 @@ $(document).ready(function () {
   $("#chat-toggle, #chat-now, .close-chat").click(function () {
     toggleChat();
   });
+  // Backdrop (mobile drawer): click ngoài vùng chat để đóng
+  $(document).on("click", "#chat-backdrop", function () {
+    toggleChat();
+  });
+
+  // === Listeners cho custom events từ toggleChat() ===
+  $("#chat-toggle")
+    .on("chat:open", function () {
+      // 1. Khóa scroll body trên mobile (drawer toàn màn hình)
+      if (window.innerWidth <= 768) {
+        $("body").css({ overflow: "hidden", touchAction: "none" });
+      }
+      // 2. Đổi icon sang dấu X
+      $(this).find("i").removeClass("fa-comments").addClass("fa-xmark");
+    })
+    .on("chat:close", function () {
+      // 1. Mở khóa scroll body
+      $("body").css({ overflow: "", touchAction: "" });
+      // 2. Restore icon
+      $(this).find("i").removeClass("fa-xmark").addClass("fa-comments");
+    });
   $("#chat-input").keypress(function (e) {
     if (e.which == 13) sendMessage();
   });
@@ -692,7 +728,20 @@ function loadReviews(isReset) {
                               <i class="${likeIcon} fa-thumbs-up"></i> ${likeText} (${rev.likes})
                           </button>
                         </div>
-                    </div>`;
+                    </div>
+                    ${
+                      rev.reply
+                        ? `<div class="review-reply">
+                        <div class="reply-author">
+                            <i class="fa-solid fa-headset"></i>
+                            ${rev.reply_author || "Quản trị viên"}
+                            <span class="reply-badge">Quản trị viên</span>
+                        </div>
+                        <div class="reply-text">${rev.reply}</div>
+                        <div class="reply-date">${rev.reply_date || ""}</div>
+                    </div>`
+                        : ""
+                    }`;
           });
         } else if (isReset) {
           html = `<div style="text-align:center; padding:40px; color:#999; background:#f9f9f9; border-radius:8px;"><i class="fa-regular fa-comments" style="font-size:40px; margin-bottom:10px;"></i><p>Chưa có đánh giá nào phù hợp.</p></div>`;
@@ -1183,16 +1232,16 @@ function loadProducts(brandInput) {
         if (p.is_flash_sale && p.flash_price !== null) {
           // ƯU TIÊN 1: Flash Sale đang active
           let flashPrice = fmt.format(p.flash_price);
-          let origPrice  = fmt.format(p.price);
+          let origPrice = fmt.format(p.price);
           priceDisplay = `<div class="price-wrap"><span class="price-new">${flashPrice}</span><span class="price-old">${origPrice}</span></div>`;
-          badgeHtml    = `<span class="sale-badge discount-badge">${p.flash_discount_label}</span>`;
+          badgeHtml = `<span class="sale-badge discount-badge">${p.flash_discount_label}</span>`;
         } else if (parseFloat(p.sale_price) > 0) {
           // ƯU TIÊN 2: sale_price thường
           let oldPrice = fmt.format(p.price);
           let newPrice = fmt.format(p.sale_price);
-          let percent  = Math.round(((p.price - p.sale_price) / p.price) * 100);
+          let percent = Math.round(((p.price - p.sale_price) / p.price) * 100);
           priceDisplay = `<div class="price-wrap"><span class="price-new">${newPrice}</span><span class="price-old">${oldPrice}</span></div>`;
-          badgeHtml    = `<span class="sale-badge">-${percent}%</span>`;
+          badgeHtml = `<span class="sale-badge">-${percent}%</span>`;
         } else {
           // Giá gốc
           priceDisplay = `<p class="price">${fmt.format(p.price)}</p>`;
@@ -1326,7 +1375,9 @@ setTimeout(() => {
 function toggleChat() {
   var box = $("#chat-box");
   $("#chat-welcome-bubble").fadeOut();
+
   if (!box.hasClass("open")) {
+    // === Mở chat ===
     box.addClass("open");
     $(".chat-badge-notify").remove();
     $("#main-chat-badge").addClass("hidden");
@@ -1335,12 +1386,43 @@ function toggleChat() {
     if (!chatInterval)
       chatInterval = setInterval(() => loadMessages(false), 3000);
     setTimeout(scrollToBottom, 200);
-  } else {
-    box.removeClass("open");
-    if (chatInterval) {
-      clearInterval(chatInterval);
-      chatInterval = null;
+
+    // Backdrop cho mobile drawer (chỉ inject nếu chưa tồn tại)
+    if (!$("#chat-backdrop").length) {
+      $("body").append(
+        '<div id="chat-backdrop" style="' +
+          "position:fixed;inset:0;background:rgba(0,0,0,0.45);" +
+          "z-index:9999;display:none;" +
+          '"></div>',
+      );
     }
+    $("#chat-backdrop").fadeIn(200);
+
+    // Ẩn chat widget button khi drawer đang mở
+    $("#chat-widget").fadeOut(150);
+
+    // Trigger hidden #chat-toggle để các listener bên ngoài vẫn nhận được sự kiện
+    $("#chat-toggle").trigger("chat:open");
+  } else {
+    // === Đóng chat — closing animation trước, cleanup sau ===
+    const ANIM_MS = 350; // khớp với transition duration trong mobile.css
+
+    box.addClass("is-closing");
+    $("#chat-backdrop").fadeOut(ANIM_MS);
+
+    setTimeout(function () {
+      box.removeClass("open is-closing");
+
+      // Hiện lại chat widget button
+      $("#chat-widget").fadeIn(200);
+
+      if (chatInterval) {
+        clearInterval(chatInterval);
+        chatInterval = null;
+      }
+    }, ANIM_MS);
+
+    $("#chat-toggle").trigger("chat:close");
   }
 }
 
@@ -1378,7 +1460,7 @@ function loadMessages(isScroll) {
         } else {
           if (currentChatTab === "bot")
             $("#chat-content").html(
-              `<div class="msg bot"><div class="msg-text">🤖 Chào bạn! Mình là <b>AI MobileStore</b>. Mình có thể giúp gì cho bạn?</div></div>`,
+              `<div class="msg bot"><div class="msg-text">🤖 Chào bạn! Mình là <b>AI TechMate</b>. Mình có thể giúp gì cho bạn?</div></div>`,
             );
           else
             $("#chat-content").html(
@@ -1764,4 +1846,62 @@ $(document).ready(function () {
     heroGoTo($(this).data("idx"));
     resetHeroAuto();
   });
+});
+
+/* =================================================================
+   MOBILE UI INTERACTIONS (BOTTOM SHEETS, DRAWERS)
+================================================================= */
+$(document).ready(function () {
+  const $backdrop = $("#m-backdrop");
+  let openSheet = null;
+
+  function closeAllMobilePanels() {
+    $(".m-bottom-sheet").removeClass("open");
+    $(".sidebar-menu").removeClass("open");
+    $backdrop.removeClass("show");
+    $("body").css("overflow", "");
+    $(".m-nav-item").removeClass("active");
+    openSheet = null;
+  }
+
+  function toggleMobilePanel(panelSelector, btn) {
+    const $panel = $(panelSelector);
+    if ($panel.hasClass("open")) {
+      closeAllMobilePanels();
+    } else {
+      closeAllMobilePanels();
+      $panel.addClass("open");
+      $backdrop.addClass("show");
+      $("body").css("overflow", "hidden");
+      if (btn) $(btn).addClass("active");
+      openSheet = panelSelector;
+    }
+  }
+
+  // Categories Drawer
+  $("#m-btn-categories").on("click", function (e) {
+    if ($(".sidebar-menu").length) {
+      toggleMobilePanel(".sidebar-menu", this);
+    } else {
+      window.location.href = BASE_URL + "/index.php";
+    }
+  });
+
+  // User Sheet
+  $("#m-btn-user").on("click", function () {
+    toggleMobilePanel("#m-user-sheet", this);
+  });
+
+  // Notifications Sheet
+  $("#m-btn-notif").on("click", function () {
+    let sheet = $("#m-notif-sheet");
+    if (!sheet.hasClass("open") && typeof window._loadNotifList === 'function') {
+      window._loadNotifList();
+    }
+    toggleMobilePanel("#m-notif-sheet", this);
+  });
+
+  // Close buttons and Backdrop
+  $(".m-close-sheet").on("click", closeAllMobilePanels);
+  $backdrop.on("click", closeAllMobilePanels);
 });

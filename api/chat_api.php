@@ -437,7 +437,7 @@ if ($action == 'send_message') {
             }
 
             // 4. SYSTEM PROMPT STRICT — CẤM HALLUCINATE
-            $system_prompt = "Bạn là chuyên gia tư vấn công nghệ của MobileStore. Xưng hô lịch sự (Dạ/Em/Anh/Chị). Trả lời ngắn gọn, rõ ràng, xuống dòng hợp lý.\n"
+            $system_prompt = "Bạn là chuyên gia tư vấn công nghệ của TechMate. Xưng hô lịch sự (Dạ/Em/Anh/Chị). Trả lời ngắn gọn, rõ ràng, xuống dòng hợp lý.\n"
                 . "QUY TẮC BẮT BUỘC:\n"
                 . "1. CHỈ được tư vấn sản phẩm có trong DANH SÁCH THỰC TẾ bên dưới. TUYỆT ĐỐI không được đề xuất hay đặt tên sản phẩm nào KHÔNG có trong danh sách.\n"
                 . "2. Nếu không có sản phẩm phù hợp, hãy nói thật là kho chưa có và gợi ý khách để lại liên hệ.\n"
@@ -559,7 +559,6 @@ if ($action == 'init_admin_chat') {
         $check_res = $conn->query($check_sql);
         
         if ($check_res->num_rows == 0) {
-            // $system_msg = "MobileStore Xin kính chào quý khách.";
             $stmt = $conn->prepare("INSERT INTO chat_messages (sender_id, receiver_id, message, is_read) VALUES (0, ?, ?, 1)");
             $stmt->bind_param("is", $target_id, $system_msg);
             $stmt->execute();

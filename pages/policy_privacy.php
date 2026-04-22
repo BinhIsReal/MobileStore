@@ -4,9 +4,11 @@ include '../config/db.php';?>
 <html lang="vi">
 
 <head>
-    <title>Chính sách bảo mật - MobileStore</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chính sách bảo mật - TechMate</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/pages.css">
+    <link rel="stylesheet" href="../assets/css/mobile.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
@@ -17,7 +19,7 @@ include '../config/db.php';?>
             <h2 class="page-title">Chính sách bảo mật thông tin</h2>
             <div class="page-content">
                 <h3>1. Mục đích thu thập thông tin</h3>
-                <p>MobileStore chỉ thu thập các thông tin cơ bản: Tên, Số điện thoại, Địa chỉ giao hàng để phục vụ việc
+                <p>TechMate chỉ thu thập các thông tin cơ bản: Tên, Số điện thoại, Địa chỉ giao hàng để phục vụ việc
                     xử lý đơn hàng và bảo hành sản phẩm.</p>
 
                 <h3>2. Phạm vi sử dụng</h3>

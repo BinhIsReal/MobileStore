@@ -89,9 +89,12 @@ $page_title = "So sánh " . implode(' và ', $titles);
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <title><?= htmlspecialchars($page_title) ?> - MobileStore</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= htmlspecialchars($page_title) ?> - TechMate</title>
     <link rel="stylesheet" href="assets/css/style.css?v=<?= time() ?>">
     <link rel="stylesheet" href="assets/css/compare.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="assets/css/mobile.css?v=<?php echo filemtime('assets/css/mobile.css'); ?>">
 </head>
 <body data-user-id="<?= isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0 ?>">
 
@@ -124,21 +127,23 @@ $page_title = "So sánh " . implode(' và ', $titles);
                         <!-- Cột sản phẩm -->
                         <?php foreach ($ordered_products as $p): ?>
                             <th class="compare-product-cell">
-                                <button class="btn-remove-compare" data-id="<?= $p['id'] ?>" title="Xóa khỏi danh sách">
-                                    <i class="fa fa-minus-circle"></i>
-                                </button>
-                                <img src="<?= $p['final_image'] ?>" alt="<?= htmlspecialchars($p['name']) ?>">
-                                <div class="pd-name"><?= $p['name'] ?></div>
-                                <div class="pd-price-row">
-                                    <span class="pd-current-money"><?= number_format($p['final_price'], 0, ',', '.') ?> &#x20ab;</span>
-                                    <?php if ($p['is_flash_sale']): ?>
-                                        <span style="background:#ff6b35;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:4px;">&#x26A1; FLASH SALE <?= $p['flash_label'] ?></span>
-                                        <span class="pd-old-money"><?= number_format($p['price'], 0, ',', '.') ?> &#x20ab;</span>
-                                    <?php elseif ($p['sale_price'] > 0): ?>
-                                        <span class="pd-old-money"><?= number_format($p['price'], 0, ',', '.') ?> &#x20ab;</span>
-                                    <?php endif; ?>
+                                <div class="cell-inner">
+                                    <img src="<?= $p['final_image'] ?>" alt="<?= htmlspecialchars($p['name']) ?>">
+                                    <div class="pd-name"><?= $p['name'] ?></div>
+                                    <div class="pd-price-row">
+                                        <span class="pd-current-money"><?= number_format($p['final_price'], 0, ',', '.') ?> &#x20ab;</span>
+                                        <?php if ($p['is_flash_sale']): ?>
+                                            <span style="background:#ff6b35;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:4px;">&#x26A1; FLASH SALE <?= $p['flash_label'] ?></span>
+                                            <span class="pd-old-money"><?= number_format($p['price'], 0, ',', '.') ?> &#x20ab;</span>
+                                        <?php elseif ($p['sale_price'] > 0): ?>
+                                            <span class="pd-old-money"><?= number_format($p['price'], 0, ',', '.') ?> &#x20ab;</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <p class="pd-vat">Giá đã bao gồm 10% VAT</p>
+                                    <button class="btn-remove-compare" data-id="<?= $p['id'] ?>" title="Xóa khỏi danh sách so sánh">
+                                        <i class="fa fa-minus-circle"></i> Xóa
+                                    </button>
                                 </div>
-                                <p class="pd-vat">Giá đã bao gồm 10% VAT</p>
                             </th>
                         <?php endforeach; ?>
 

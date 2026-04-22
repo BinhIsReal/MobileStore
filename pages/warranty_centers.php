@@ -4,9 +4,11 @@ include '../config/db.php';?>
 <html lang="vi">
 
 <head>
-    <title>Trung tâm bảo hành - MobileStore</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trung tâm bảo hành - TechMate</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/pages.css">
+      <link rel="stylesheet" href="assets/css/mobile.css?v=<?php echo filemtime('assets/css/mobile.css'); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
@@ -42,7 +44,7 @@ include '../config/db.php';?>
                 </div>
             </div>
             <div class="page-content" style="margin-top:30px;">
-                <p><i>* Ngoài ra, quý khách có thể gửi bảo hành tại bất kỳ cửa hàng bán lẻ nào của MobileStore.</i></p>
+                <p><i>* Ngoài ra, quý khách có thể gửi bảo hành tại bất kỳ cửa hàng bán lẻ nào của TechMate.</i></p>
             </div>
         </div>
     </div>

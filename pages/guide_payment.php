@@ -4,9 +4,11 @@ include '../config/db.php';?>
 <html lang="vi">
 
 <head>
-    <title>Hướng dẫn thanh toán - MobileStore</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hướng dẫn thanh toán - TechMate</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/pages.css">
+    <link rel="stylesheet" href="../assets/css/mobile.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
@@ -25,7 +27,7 @@ include '../config/db.php';?>
                     công.</p>
                 <ul>
                     <li>Ngân hàng: BIDV (Đầu tư và Phát triển)</li>
-                    <li>STK: 0334960320</li>
+                    <li>STK: 3950384173</li>
                     <li>Chủ TK: DAM NGOC BINH</li>
                 </ul>
 

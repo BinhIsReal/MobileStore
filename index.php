@@ -5,8 +5,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobile Store - Hệ thống bán lẻ di động hàng đầu Việt Nam</title>
-    <meta name="description" content="MobileStore - Hệ thống bán lẻ điện thoại, laptop, máy tính bảng chính hãng. Giá tốt, giao nhanh, bảo hành uy tín toàn quốc.">
+    <title>TechMate - Hệ thống bán đồ công nghệ hàng đầu Việt Nam</title>
+    <meta name="description" content="TechMate - Hệ thống bán đồ công nghệ chính hãng. Giá tốt, giao nhanh, bảo hành uy tín toàn quốc.">
     <!-- CSRF Meta Tag -->
     <?php include_once 'includes/security.php'; ?>
     <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
@@ -20,6 +20,8 @@
 
     <!-- CSS Critical (đồng bộ) -->
     <link rel="stylesheet" href="assets/css/style.css?v=<?php echo filemtime('assets/css/style.css'); ?>">
+    <!-- Mobile Responsive -->
+    <link rel="stylesheet" href="assets/css/mobile.css?v=<?php echo filemtime('assets/css/mobile.css'); ?>">
 
     <!-- CSS Non-critical (async) -->
     <link rel="preload" href="assets/css/index_extra.css?v=<?php echo filemtime('assets/css/index_extra.css'); ?>" as="style" onload="this.onload=null;this.rel='stylesheet'">
@@ -328,7 +330,7 @@
             <?php foreach ($main_banners_arr as $idx => $b): ?>
             <div class="hero-slide <?= $idx === 0 ? 'active' : '' ?>">
                 <img src="<?= htmlspecialchars($b['image_url']) ?>"
-                    alt="<?= htmlspecialchars($b['alt_text'] ?? 'Banner quảng cáo MobileStore') ?>"
+                    alt="<?= htmlspecialchars($b['alt_text'] ?? 'Banner quảng cáo TechMate') ?>"
                     width="758" height="380"
                     <?= $idx === 0 ? 'fetchpriority="high" loading="eager"' : 'loading="lazy"' ?>>
             </div>
@@ -367,7 +369,7 @@
         <div class="right-banners">
             <?php foreach ($right_banners_arr as $idx => $rb): ?>
             <img src="<?= htmlspecialchars($rb['image_url']) ?>"
-                 alt="<?= htmlspecialchars($rb['alt_text'] ?? 'Quảng cáo MobileStore') ?>"
+                 alt="<?= htmlspecialchars($rb['alt_text'] ?? 'Quảng cáo TechMate') ?>"
                  width="265" height="120"
                  loading="lazy">
             <?php endforeach; ?>
