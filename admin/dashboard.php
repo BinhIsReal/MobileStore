@@ -14,7 +14,6 @@ $revenue_month = $revenue_month_res ? ($revenue_month_res->fetch_assoc()['t'] ??
 $user_count = $conn->query("SELECT COUNT(*) as t FROM users WHERE role = 'user'")->fetch_assoc()['t'];
 
 // Dữ liệu Doanh thu chi tiết (Trong tháng) 
-// để show popup modal
 $rev_cod = [];
 $rev_bank = [];
 $rev_detail_res = $conn->query("

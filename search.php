@@ -1,6 +1,7 @@
 <?php
 session_start();
-include_once __DIR__ . '/config/db.php'; 
+include_once __DIR__ . '/config/db.php';
+include_once __DIR__ . '/includes/flash_sale_helper.php';
 $cat_id = isset($_GET['cat_id']) ? intval($_GET['cat_id']) : 0;
 $keyword = $_GET['q'] ?? '';
 $brand = $_GET['brand'] ?? ''; 
@@ -98,13 +99,16 @@ if ($brand) {
         <?php endif; ?>
         <?php
         // 1. CÂU TRUY VẤN CƠ BẢN
-        $sql = "SELECT * FROM products WHERE 1=1";
+        $sql = "SELECT p.*, ROUND(IFNULL(AVG(r.rating), 0), 1) AS avg_rating
+                FROM products p
+                LEFT JOIN product_reviews r ON r.product_id = p.id
+                WHERE 1=1";
         $params = []; 
         $types = "";
 
         // 2. LỌC THEO DANH MỤC
         if ($cat_id > 0) {
-            $sql .= " AND category_id = ?";
+            $sql .= " AND p.category_id = ?";
             $params[] = $cat_id; 
             $types .= "i";
         }
@@ -147,7 +151,7 @@ if ($brand) {
                     $name_conds = [];
                     foreach ($words as $w) {
                         if (!empty($w)) {
-                            $name_conds[] = "name LIKE ?";
+                            $name_conds[] = "p.name LIKE ?";
                             $params[] = "%$w%";
                             $types .= "s";
                         }
@@ -181,8 +185,7 @@ if ($brand) {
                     $brand_conds = [];
                     foreach ($brand_words as $bw) {
                         if (!empty($bw)) {
-                            // Bắt buộc TẤT CẢ các chữ trong tên Hãng đều phải xuất hiện trong tên
-                            $brand_conds[] = "name LIKE ?";
+                            $brand_conds[] = "p.name LIKE ?";
                             $params[] = "%$bw%";
                             $types .= "s";
                         }
@@ -194,11 +197,11 @@ if ($brand) {
 
         // 5. SẮP XẾP SẢN PHẨM
         if ($sort == 'price_asc') {
-            $sql .= " ORDER BY price ASC";
+            $sql .= " GROUP BY p.id ORDER BY p.price ASC";
         } elseif ($sort == 'price_desc') {
-            $sql .= " ORDER BY price DESC";
+            $sql .= " GROUP BY p.id ORDER BY p.price DESC";
         } else {
-            $sql .= " ORDER BY id DESC";
+            $sql .= " GROUP BY p.id ORDER BY p.id DESC";
         }
 
         // 6. THỰC THI TRUY VẤN
@@ -213,26 +216,71 @@ if ($brand) {
         $result = $stmt->get_result();
         ?>
 
-        <?php if ($result->num_rows > 0): ?>
         <div class="product-grid">
-            <?php while ($row = $result->fetch_assoc()): 
-                    $price = number_format($row['price'], 0, ',', '.') . ' ₫';
-                    $img = strpos($row['image'], 'http') === 0 ? $row['image'] : "assets/img/{$row['image']}";
-                ?>
+            <?php 
+            $rows = $result->fetch_all(MYSQLI_ASSOC);
+            // Batch lấy Flash Sale
+            $pids = array_column($rows, 'id');
+            $flash_map = get_flash_prices_bulk($conn, $pids);
+
+            foreach ($rows as $row):
+                $pid      = (int)$row['id'];
+                $img      = strpos($row['image'], 'http') === 0 ? $row['image'] : "assets/img/{$row['image']}";
+                $avg_rating = (float)($row['avg_rating'] ?? 0);
+                $r_filled   = round($avg_rating);
+
+                // Tính giá hiển thị (Flash Sale > sale_price > price)
+                if (isset($flash_map[$pid])) {
+                    $display_price = $flash_map[$pid]['flash_price'];
+                    $orig_price    = $flash_map[$pid]['original_price'];
+                    $badge_html    = '<span class="sale-badge discount-badge">' . $flash_map[$pid]['discount_label'] . '</span>';
+                } elseif (!empty($row['sale_price']) && (float)$row['sale_price'] > 0) {
+                    $display_price = (float)$row['sale_price'];
+                    $orig_price    = (float)$row['price'];
+                    $pct           = round((($orig_price - $display_price) / $orig_price) * 100);
+                    $badge_html    = '<span class="sale-badge">-' . $pct . '%</span>';
+                } else {
+                    $display_price = (float)$row['price'];
+                    $orig_price    = 0;
+                    $badge_html    = '';
+                }
+            ?>
             <div class="product-card">
+                <?= $badge_html ?>
                 <a href="product_detail.php?id=<?= $row['id'] ?>">
-                    <img src="<?= $img ?>" alt="<?= $row['name'] ?>">
+                    <img src="<?= $img ?>" alt="<?= htmlspecialchars($row['name']) ?>">
                     <h3><?= $row['name'] ?></h3>
                 </a>
-                <p class="price"><?= $price ?></p>
+
+                <?php if ($orig_price > $display_price): ?>
+                <div class="price-wrap">
+                    <span class="price-new"><?= number_format($display_price, 0, ',', '.') ?> &#x20ab;</span>
+                    <span class="price-old"><?= number_format($orig_price, 0, ',', '.') ?> &#x20ab;</span>
+                </div>
+                <?php else: ?>
+                <p class="price"><?= number_format($display_price, 0, ',', '.') ?> &#x20ab;</p>
+                <?php endif; ?>
+
+                <div class="card-stars">
+                    <?php for ($si = 1; $si <= 5; $si++): ?>
+                        <?php if ($si <= $r_filled): ?>
+                            <i class="fa-solid fa-star" style="color:#f39c12;"></i>
+                        <?php else: ?>
+                            <i class="fa-regular fa-star" style="color:#ccc;"></i>
+                        <?php endif; ?>
+                    <?php endfor; ?>
+                    <?php if ($avg_rating > 0): ?>
+                        <span class="card-rating-num"><?= $avg_rating ?></span>
+                    <?php endif; ?>
+                </div>
 
                 <button type="button" class="js-add-to-cart btn-add" data-id="<?= $row['id'] ?>">
                     THÊM VÀO GIỎ
                 </button>
             </div>
-            <?php endwhile; ?>
+            <?php endforeach; ?>
         </div>
-        <?php else: ?>
+        <?php if (empty($rows)): ?>
         <div style="text-align:center; padding:50px; color:#777;">
             <i class="fa fa-search" style="font-size: 50px; margin-bottom: 20px; color: #ddd;"></i>
             <p>Không tìm thấy sản phẩm nào phù hợp.</p>

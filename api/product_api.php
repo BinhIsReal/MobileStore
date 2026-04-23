@@ -172,27 +172,32 @@ if ($action == 'like_review') {
     exit;
 }
 
-$sql = "SELECT * FROM products WHERE 1=1";
+$sql = "SELECT p.*, ROUND(IFNULL(AVG(r.rating), 0), 1) AS avg_rating, COUNT(r.id) AS review_count
+         FROM products p
+         LEFT JOIN product_reviews r ON r.product_id = p.id
+         WHERE 1=1";
 
 // Lọc Brand
 if (isset($_POST['brand']) && $_POST['brand'] != 'all') {
     $b = $conn->real_escape_string($_POST['brand']);
     // Tìm ID hãng theo tên (Vì FE gửi tên hãng)
-    $sql .= " AND brand_id IN (SELECT id FROM brands WHERE name = '$b')";
+    $sql .= " AND p.brand_id IN (SELECT id FROM brands WHERE name = '$b')";
 }
 
 // Lọc Giá
 if (isset($_POST['min_price'])) {
     $min = floatval($_POST['min_price']);
     $max = floatval($_POST['max_price']);
-    $sql .= " AND price BETWEEN $min AND $max";
+    $sql .= " AND p.price BETWEEN $min AND $max";
 }
+
+$sql .= " GROUP BY p.id";
 
 // Sắp xếp
 $sort = $_POST['sort'] ?? 'newest';
-if ($sort == 'asc') $sql .= " ORDER BY price ASC";
-elseif ($sort == 'desc') $sql .= " ORDER BY price DESC";
-else $sql .= " ORDER BY id DESC";
+if ($sort == 'asc') $sql .= " ORDER BY p.price ASC";
+elseif ($sort == 'desc') $sql .= " ORDER BY p.price DESC";
+else $sql .= " ORDER BY p.id DESC";
 
 $sql .= " LIMIT 24"; // Giới hạn hiển thị: 4 cho hot, 20 cho product-list
 

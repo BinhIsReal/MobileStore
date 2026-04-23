@@ -34,7 +34,7 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js" defer></script>
 </head>
 
-<body data-user-id="<?= isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0 ?>">
+<body class="has-scroll-top" data-user-id="<?= isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0 ?>">
 
     <?php require_once "includes/navbar.php"; ?>
 
@@ -409,6 +409,9 @@
     </div>
 
     <div id="chat-widget">
+        <button id="scroll-top-btn" aria-label="Lên đầu trang">
+            <i class="fa-solid fa-chevron-up"></i>
+        </button>
         <div id="chat-toggle">
             <i class="fa-solid fa-comments"></i>
             <span id="main-chat-badge" class="chat-badge hidden">0</span>

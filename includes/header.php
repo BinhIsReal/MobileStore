@@ -23,7 +23,7 @@
     <link rel="preconnect" href="https://code.jquery.com">
 
     <!-- CSS Critical (đồng bộ) -->
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="<?= defined('BASE_URL') ? BASE_URL : '' ?>/assets/css/style.css?v=<?= filemtime(dirname(__DIR__).'/assets/css/style.css') ?>">
     <!-- Mobile Responsive -->
     <link rel="stylesheet" href="<?= defined('BASE_URL') ? BASE_URL : '' ?>/assets/css/mobile.css?v=<?= time() ?>">
 
@@ -35,7 +35,7 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js" defer></script>
 </head>
 
-<body>
+<body<?= !empty($body_classes) ? ' class="' . htmlspecialchars($body_classes) . '"' : '' ?>>
 
     <?php 
 include __DIR__ . '/navbar.php'; 

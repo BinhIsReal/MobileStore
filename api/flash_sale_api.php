@@ -41,14 +41,10 @@ $conn->query("
 
 
 if ($action === 'ai_suggest') {
-    // ============================================================
-    // AI SUGGEST: chọn 8 sản phẩm ngẫu nhiên theo nhiều tiêu chí
-    // Thuật toán: ưu tiên sản phẩm được mua nhiều nhất,
-    // nếu không đủ thì lấy ngẫu nhiên từ các danh mục khác nhau
-    // ============================================================
+    // Chọn sản phẩm bán chạy nhất dựa trên tổng số lượng đã bán từ đơn hàng hoàn thành
     $suggested = [];
 
-    // Bước 1: Top sản phẩm bán chạy (lấy từ order_items)
+    // Bước 1: Top sản phẩm có total_sold > 0, sắp xếp bán chạy → ít bán
     $sql_hot = "
         SELECT p.id, p.name, p.price, p.image,
                COALESCE(SUM(oi.quantity), 0) AS total_sold
@@ -57,8 +53,9 @@ if ($action === 'ai_suggest') {
         LEFT JOIN orders o ON o.id = oi.order_id AND o.status = 'completed'
         WHERE p.stock > 0
         GROUP BY p.id
-        ORDER BY total_sold DESC, p.id DESC
-        LIMIT 20
+        HAVING total_sold > 0
+        ORDER BY total_sold DESC
+        LIMIT 8
     ";
     $res_hot = $conn->query($sql_hot);
     if ($res_hot) {
@@ -68,19 +65,19 @@ if ($action === 'ai_suggest') {
         }
     }
 
-    // Bước 2: Nếu chưa đủ 8, lấy thêm từ các danh mục đa dạng
+    // Bước 2: Nếu chưa đủ 8 (ít đơn hàng hoàn thành), bổ sung bằng RAND()
     if (count($suggested) < 8) {
         $exclude_ids = implode(',', array_keys($suggested) ?: [0]);
-        $sql_diverse = "
+        $sql_fill = "
             SELECT p.id, p.name, p.price, p.image
             FROM products p
             WHERE p.stock > 0
               AND p.id NOT IN ($exclude_ids)
             ORDER BY RAND()
             LIMIT " . (8 - count($suggested));
-        $res_div = $conn->query($sql_diverse);
-        if ($res_div) {
-            while ($row = $res_div->fetch_assoc()) {
+        $res_fill = $conn->query($sql_fill);
+        if ($res_fill) {
+            while ($row = $res_fill->fetch_assoc()) {
                 $suggested[$row['id']] = $row;
             }
         }
@@ -89,6 +86,29 @@ if ($action === 'ai_suggest') {
     echo json_encode([
         'status'   => 'success',
         'products' => array_values($suggested)
+    ]);
+    exit;
+}
+
+if ($action === 'random_suggest') {
+    // Chọn 8 sản phẩm hoàn toàn ngẫu nhiên
+    $sql_rand = "
+        SELECT p.id, p.name, p.price, p.image
+        FROM products p
+        WHERE p.stock > 0
+        ORDER BY RAND()
+        LIMIT 8
+    ";
+    $res_rand = $conn->query($sql_rand);
+    $random_products = [];
+    if ($res_rand) {
+        while ($row = $res_rand->fetch_assoc()) {
+            $random_products[] = $row;
+        }
+    }
+    echo json_encode([
+        'status'   => 'success',
+        'products' => $random_products
     ]);
     exit;
 }

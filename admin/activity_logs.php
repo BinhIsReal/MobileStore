@@ -79,7 +79,7 @@ $logs = $conn->query($sql);
                         <?php while($row = $logs->fetch_assoc()): 
                             $action_class = explode(' ', trim($row['action']))[0]; 
                             
-                            // Map đường dẫn file thành Tên trang dễ hiểu
+                            // Map đường dẫn file thành Tên trang 
                             $page_map = [
                                 'admin/products.php' => 'Quản lý Sản phẩm',
                                 'admin/product_form.php' => 'Quản lý Sản phẩm',
@@ -91,7 +91,7 @@ $logs = $conn->query($sql);
                                 'admin/dashboard.php' => 'Thống kê doanh thu'
                             ];
                             $display_page = isset($page_map[$row['page_name']]) ? $page_map[$row['page_name']] : $row['page_name'];
-                            $row['display_page'] = $display_page; // Lưu lại để JS dùng cho Popup
+                            $row['display_page'] = $display_page; 
                         ?>
                         <tr>
                             <td>#<?= $row['id'] ?></td>

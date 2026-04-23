@@ -93,6 +93,9 @@ if ($result_items) {
                 <button id="btn-ai-suggest" class="btn-ai-magic">
                     <i class="fa-solid fa-wand-magic-sparkles"></i> AI Chọn 8 SP Hot
                 </button>
+                <button id="btn-random-suggest" class="btn-ai-magic" style="background:linear-gradient(135deg,#6f42c1,#9b59b6);">
+                    <i class="fa-solid fa-shuffle"></i> Ngẫu nhiên 8 SP
+                </button>
                 <button id="btn-save-flash-sale" class="btn-save-flash">
                     <i class="fa-solid fa-floppy-disk"></i> Lưu Flash Sale
                 </button>
@@ -330,6 +333,17 @@ function updateCount() {
     }
 }
 
+// Xóa toàn bộ selection hiện tại (dùng chung cho AI & random suggest)
+function clearSelection() {
+    $('.fs-selected-card').each(function() {
+        var pid = $(this).data('id');
+        $('.fs-check-product[data-id="' + pid + '"]').prop('checked', false);
+        $('.fs-product-row[data-id="' + pid + '"]').removeClass('row-selected');
+    });
+    $('#fs-selected-grid').html('');
+    updateCount();
+}
+
 // -- Add product card to selected grid --
 function addToSelectedGrid(prod, discType, discVal) {
     if ($('.fs-selected-card[data-id="' + prod.id + '"]').length) return;
@@ -442,41 +456,58 @@ $('#btn-clear-selection').on('click', function() {
     });
 });
 
-// -- AI Suggest: Chọn 8 sản phẩm ngẫu nhiên thông minh --
+// -- AI Suggest: Chọn 8 sản phẩm bán chạy --
 $('#btn-ai-suggest').on('click', function() {
     var btn = $(this);
-    btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i> AI đang phân tích...');
+    btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i> Đang phân tích...');
 
     $.post('../api/flash_sale_api.php', { action: 'ai_suggest' }, function(res) {
         btn.prop('disabled', false).html('<i class="fa-solid fa-wand-magic-sparkles"></i> AI Chọn 8 SP Hot');
         try {
             var data = typeof res === 'object' ? res : JSON.parse(res);
             if (data.status === 'success') {
-                // Clear current selection
-                $('.fs-selected-card').each(function() {
-                    var pid = $(this).data('id');
-                    $('.fs-check-product[data-id="' + pid + '"]').prop('checked', false);
-                    $('.fs-product-row[data-id="' + pid + '"]').removeClass('row-selected');
-                });
-                $('#fs-selected-grid').html('');
-                updateCount();
-
+                clearSelection();
                 var defaultDisc = parseInt($('#fs-default-discount').val()) || 20;
                 data.products.forEach(function(prod) {
                     addToSelectedGrid(prod, 'percent', defaultDisc);
                     $('.fs-check-product[data-id="' + prod.id + '"]').prop('checked', true);
                     $('.fs-product-row[data-id="' + prod.id + '"]').addClass('row-selected');
                 });
-                Swal.fire({
-                    toast: true, position: 'top-end', icon: 'success',
-                    title: 'AI đã chọn ' + data.products.length + ' sản phẩm Hot!',
-                    showConfirmButton: false, timer: 2000
-                });
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success',
+                    title: 'AI đã chọn ' + data.products.length + ' sản phẩm bán chạy!',
+                    showConfirmButton: false, timer: 2000 });
             } else {
                 Swal.fire('Lỗi', data.message || 'Không thể lấy gợi ý AI', 'error');
             }
-        } catch(e) { console.error(e); Swal.fire('Lỗi', 'Lỗi phân tích dữ liệu', 'error'); }
+        } catch(e) { Swal.fire('Lỗi', 'Lỗi phân tích dữ liệu', 'error'); }
     }).fail(function() { btn.prop('disabled', false).html('<i class="fa-solid fa-wand-magic-sparkles"></i> AI Chọn 8 SP Hot'); });
+});
+
+// -- Random Suggest: Chọn 8 sản phẩm ngẫu nhiên --
+$('#btn-random-suggest').on('click', function() {
+    var btn = $(this);
+    btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i> Đang chọn...');
+
+    $.post('../api/flash_sale_api.php', { action: 'random_suggest' }, function(res) {
+        btn.prop('disabled', false).html('<i class="fa-solid fa-shuffle"></i> Ngẫu nhiên 8 SP');
+        try {
+            var data = typeof res === 'object' ? res : JSON.parse(res);
+            if (data.status === 'success') {
+                clearSelection();
+                var defaultDisc = parseInt($('#fs-default-discount').val()) || 20;
+                data.products.forEach(function(prod) {
+                    addToSelectedGrid(prod, 'percent', defaultDisc);
+                    $('.fs-check-product[data-id="' + prod.id + '"]').prop('checked', true);
+                    $('.fs-product-row[data-id="' + prod.id + '"]').addClass('row-selected');
+                });
+                Swal.fire({ toast: true, position: 'top-end', icon: 'info',
+                    title: 'Đã chọn ngẫu nhiên ' + data.products.length + ' sản phẩm!',
+                    showConfirmButton: false, timer: 2000 });
+            } else {
+                Swal.fire('Lỗi', data.message || 'Không thể chọn ngẫu nhiên', 'error');
+            }
+        } catch(e) { Swal.fire('Lỗi', 'Lỗi phân tích dữ liệu', 'error'); }
+    }).fail(function() { btn.prop('disabled', false).html('<i class="fa-solid fa-shuffle"></i> Ngẫu nhiên 8 SP'); });
 });
 
 // -- Lưu Flash Sale --

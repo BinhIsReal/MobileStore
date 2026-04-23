@@ -589,7 +589,7 @@
   }
 
   .pd-promo-header i {
-    color: var(--primary, #00487a);
+    color: #d70018;
   }
 
   .pd-promo-list {
@@ -780,13 +780,13 @@
 
   /* Review header: score + progress bars */
   .review-header-box {
-    flex-direction: column;
-    gap: 16px;
+    flex-direction: row;
+    gap: 1px;
     padding-bottom: 16px;
     border-bottom: 1px solid #eee;
   }
 
-  /* Score box: 5/5 ⭐ */
+  /* Score box: 5/5  */
   .review-score-box {
     width: 100%;
     border-right: none;
@@ -817,6 +817,8 @@
   .review-progress-box {
     width: 100%;
     gap: 10px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid #eee;
   }
 
   .progress-item {
@@ -833,7 +835,7 @@
   }
 
   .progress-fill {
-    background: var(--primary, #00487a);
+    background: linear-gradient(to right, #2b52ff, #4190ff);
     border-radius: 10px;
   }
 
@@ -844,7 +846,7 @@
   }
 
   .btn-write-review {
-    background: var(--accent, #eb3e51);
+    background: #00487a;
     color: #fff;
     border: none;
     padding: 12px 24px;
@@ -865,13 +867,14 @@
   /* Filter buttons */
   .review-filter {
     gap: 8px;
-    flex-wrap: wrap;
     margin: 16px 0;
-    justify-content: flex-start;
+    /* 
+    flex-wrap: wrap;
+    justify-content: flex-start; */
   }
 
   .review-filter button {
-    padding: 7px 14px;
+    padding: 2px 1px;
     font-size: 13px;
     border-radius: 20px;
     min-height: 36px;
@@ -1423,7 +1426,7 @@
 
   /* Chat widget toggle: đẩy lên trên mobile nav bar */
   #chat-widget {
-    bottom: 64px;
+    bottom: 84px;
     right: 12px;
   }
 
@@ -1431,6 +1434,7 @@
     width: 48px;
     height: 48px;
     font-size: 22px;
+    margin-top: -90px;
   }
 
   /* Chat box: fixed bottom drawer thay vì popup nhỏ */
@@ -2182,10 +2186,6 @@
     justify-content: center;
     margin-bottom: 16px;
   }
-  .g_id_signin > div {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
 
   /* Auth links */
   .auth-link {
@@ -2534,11 +2534,18 @@
     font-size: 12px;
     min-width: 90px;
   }
+
+  /* Scroll top btn */
+  #scroll-top-btn {
+    width: 38px;
+    height: 38px;
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
 }
 
 /* =========================================
    MOBILE NHỎ (max-width: 480px)
-   Override thêm cho màn nhỏ hơn
 ========================================= */
 @media (max-width: 480px) {
   nav .search-form-wrap {
@@ -2546,7 +2553,6 @@
     margin: 0 6px;
   }
 
-  /* Flash Sale: card nhỏ hơn */
   .hot-sale-container .product-card {
     min-width: 135px;
     max-width: 135px;
@@ -2556,8 +2562,6 @@
     height: 110px;
   }
 
-  /* Product grid 1 cột nếu màn quá nhỏ */
-  /* Giữ 2 cột, chỉ reduce gap */
   .product-grid {
     gap: 8px;
   }
@@ -2566,7 +2570,6 @@
     height: 120px;
   }
 
-  /* Sticky actions: tắt icon, chỉ text */
   .btn-buy-now strong {
     font-size: 13px;
   }
@@ -2575,12 +2578,10 @@
     display: none;
   }
 
-  /* Review score số lớn hơn */
   .review-score-box h1 {
     font-size: 48px;
   }
 
-  /* Footer 1 cột */
   .footer-top {
     display: flex !important;
     flex-direction: column !important;
@@ -2598,7 +2599,7 @@
     padding: 18px;
   }
 
-  /* ORDER HISTORY & DETAILS (480px) */
+  /* ORDER HISTORY & DETAILS */
   .history-table td {
     flex-direction: column;
     align-items: flex-start;
@@ -2617,7 +2618,7 @@
     display: none;
   }
 
-  /* ORDER DETAIL (480px) */
+  /* ORDER DETAIL  */
   .detail-wrapper h2 {
     font-size: 15px;
   }

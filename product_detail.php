@@ -2,7 +2,9 @@
 session_start();
 include 'config/db.php';
 include_once 'includes/flash_sale_helper.php';
+$body_classes = 'has-scroll-top';
 include 'includes/header.php';
+
 
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
@@ -254,6 +256,9 @@ $discount_label = $price_info['discount_label'];
                             $r_orig_price = (float)$rel['price'];
                             $r_is_flash   = false;
                         }
+                        // avg_rating cho related card
+                        $r_rating_res = $conn->query("SELECT ROUND(IFNULL(AVG(rating),0),1) AS avg FROM product_reviews WHERE product_id = $rid");
+                        $r_avg_rating = (float)($r_rating_res ? $r_rating_res->fetch_assoc()['avg'] : 0);
                     ?>
                     <div class="related-card">
                         <a href="product_detail.php?id=<?= $rel['id'] ?>" style="text-decoration:none;">
@@ -268,6 +273,16 @@ $discount_label = $price_info['discount_label'];
                             <?php if ($r_orig_price > $r_price): ?>
                             <del style="color:#999; font-size:12px;"><?= number_format($r_orig_price, 0, ',', '.') ?> &#x20ab;</del>
                             <?php endif; ?>
+                            <div class="card-stars" style="justify-content:center; margin:4px 0 2px;">
+                                <?php
+                                $r_filled = round($r_avg_rating);
+                                for ($si = 1; $si <= 5; $si++) {
+                                    if ($si <= $r_filled) echo '<i class="fa-solid fa-star" style="color:#f39c12; font-size:12px;"></i>';
+                                    else echo '<i class="fa-regular fa-star" style="color:#ccc; font-size:12px;"></i>';
+                                }
+                                if ($r_avg_rating > 0) echo '<span class="card-rating-num">' . $r_avg_rating . '</span>';
+                                ?>
+                            </div>
                         </a>
                         <div style="text-align:center; padding-bottom:10px;">
                             <a href="compare.php?ids=<?= $current_id ?>,<?= $rel['id'] ?>" class="btn-compare-add">+ so sánh</a>
@@ -339,7 +354,7 @@ $discount_label = $price_info['discount_label'];
                         <div class="progress-bg">
                             <div class="progress-fill" style="width: <?= $percent ?>%"></div>
                         </div>
-                        <span style="width:30px; text-align:right; color:#666;"><?= $count ?></span>
+                        <span style="width:30px; text-align:center; color:#666;"><?= $count ?></span>
                     </div>
                     <?php endfor; ?>
                 </div>
@@ -448,6 +463,17 @@ $discount_label = $price_info['discount_label'];
     // ============================================================
     // RECOMMENDATION ENGINE — "Thường được mua cùng"
     // ============================================================
+    function renderStars(rating) {
+        let html = '<div style="margin:4px 0;">';
+        let rounded = Math.round(rating);
+        for(let i=1; i<=5; i++) {
+            html += `<i class="fa${i <= rounded ? '-solid' : '-regular'} fa-star" style="color:${i <= rounded ? '#f39c12' : '#ccc'}; font-size:11px;"></i>`;
+        }
+        if (rating > 0) html += `<span style="font-size:11px; margin-left:4px; color:#666;">${rating}</span>`;
+        html += '</div>';
+        return html;
+    }
+
     $.get('api/recommendation_api.php', { action: 'get_recommendations', product_id: PRODUCT_ID, limit: 4 }, function(res) {
         if (!res || res.status !== 'success' || !res.data || res.data.length === 0) return;
         const fmt = new Intl.NumberFormat('vi-VN');
@@ -456,17 +482,19 @@ $discount_label = $price_info['discount_label'];
             const flashBadge = p.is_flash_sale
                 ? `<span style="background:#ff6b35;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;margin-bottom:4px;display:inline-block;">&#x26A1; ${p.discount_label}</span>`
                 : '';
+            const starsHtml = renderStars(parseFloat(p.avg_rating) || 0);
             html += `
             <div style="width:160px; border:1px solid #eee; border-radius:8px; overflow:hidden; text-align:center; flex-shrink:0; background:#fff;">
                 <a href="${p.product_url}" style="text-decoration:none; color:#333; display:block;">
                     <img src="${p.image_url}" style="width:100%; height:120px; object-fit:contain; padding:8px;" onerror="this.style.display='none'">
-                    <div style="padding:6px 8px; font-size:13px; line-height:1.4; height:50px; overflow:hidden;">${p.name}</div>
+                    <div style="padding:8px 8px; font-size:13px; line-height:1.4; height:50px; overflow:hidden;">${p.name}</div>
                     ${flashBadge}
-                    <div style="padding:0 8px 8px; color:#d70018; font-weight:bold; font-size:14px;">${fmt.format(p.display_price)}&#x20ab;</div>
+                    <div style="padding:0 8px 4px; color:#d70018; font-weight:bold; font-size:14px;">${fmt.format(p.display_price)}&#x20ab;</div>
+                    ${starsHtml}
                 </a>
                 <div style="padding:0 8px 10px;">
                     <button class="js-add-to-cart" data-id="${p.id}" data-type="simple"
-                        style="width:100%; padding:7px; background:#d70018; color:#fff; border:none; border-radius:5px; cursor:pointer; font-size:12px; font-weight:600;">
+                        style="width:100%; padding:7px; background:#eb3e51; color:#fff; border:none; border-radius:5px; cursor:pointer; font-size:12px; font-weight:600;">
                         <i class="fa fa-cart-plus"></i> Thêm giỏ
                     </button>
                 </div>
@@ -479,7 +507,15 @@ $discount_label = $price_info['discount_label'];
 
 
 
+    <!-- Scroll to Top (no chat on this page) -->
+    <div id="chat-widget">
+        <button id="scroll-top-btn" aria-label="Lên đầu trang">
+            <i class="fa-solid fa-chevron-up"></i>
+        </button>
+    </div>
+
     <?php include 'includes/footer.php'; ?>
 </body>
+
 
 </html>

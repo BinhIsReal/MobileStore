@@ -56,7 +56,8 @@ if ($action === 'get_recommendations') {
     $stmt = $conn->prepare("
         SELECT 
             p.id, p.name, p.image, p.price, p.sale_price, p.stock,
-            pa.co_count
+            pa.co_count,
+            ROUND(IFNULL(AVG(r.rating), 0), 1) AS avg_rating
         FROM product_associations pa
         JOIN products p ON (
             CASE
@@ -64,10 +65,12 @@ if ($action === 'get_recommendations') {
                 ELSE p.id = pa.product_a
             END
         )
+        LEFT JOIN product_reviews r ON r.product_id = p.id
         WHERE (pa.product_a = ? OR pa.product_b = ?)
           AND p.id != ?
           AND p.stock > 0
           AND $filter_sql
+        GROUP BY p.id, pa.co_count
         ORDER BY pa.co_count DESC
         LIMIT ?
     ");
@@ -83,6 +86,7 @@ if ($action === 'get_recommendations') {
         $row['display_price']   = $price_info['effective_price'];
         $row['is_flash_sale']   = $price_info['is_flash_sale'];
         $row['discount_label']  = $price_info['discount_label'];
+        $row['avg_rating']      = (float)($row['avg_rating'] ?? 0);
         $row['image_url'] = (strpos($row['image'], 'http') === 0)
             ? $row['image']
             : '/assets/img/' . $row['image'];
@@ -96,12 +100,15 @@ if ($action === 'get_recommendations') {
         $existing_ids = count($recommendations) > 0 ? implode(',', array_column($recommendations, 'id')) : '0';
         
         $cat_stmt = $conn->prepare("
-            SELECT p.id, p.name, p.image, p.price, p.sale_price, p.stock
+            SELECT p.id, p.name, p.image, p.price, p.sale_price, p.stock,
+                   ROUND(IFNULL(AVG(r.rating), 0), 1) AS avg_rating
             FROM products p
+            LEFT JOIN product_reviews r ON r.product_id = p.id
             WHERE p.id != ?
               AND p.id NOT IN ($existing_ids)
               AND p.stock > 0
               AND $filter_sql
+            GROUP BY p.id
             ORDER BY p.id DESC
             LIMIT ?
         ");
@@ -115,6 +122,7 @@ if ($action === 'get_recommendations') {
             $row['display_price']   = $price_info['effective_price'];
             $row['is_flash_sale']   = $price_info['is_flash_sale'];
             $row['discount_label']  = $price_info['discount_label'];
+            $row['avg_rating']      = (float)($row['avg_rating'] ?? 0);
             $row['image_url'] = (strpos($row['image'], 'http') === 0)
                 ? $row['image']
                 : '/assets/img/' . $row['image'];

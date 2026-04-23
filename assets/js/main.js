@@ -171,6 +171,7 @@ $(document).ready(function () {
             ) {
               let p = res.data[0];
               let fmt = new Intl.NumberFormat("vi-VN");
+              let starsHtml = renderStars(parseFloat(p.avg_rating) || 0);
               let html = `
             <div class="cart-item" id="rec-item-${pid}" style="background-color:#fef9f9; border:1px dashed #d70018; margin-top:5px; margin-bottom:15px; margin-left:35px; padding:10px; display:none; border-radius:8px; position:relative;">
               <div style="position:absolute; top:-10px; left:15px; background:#d70018; color:#fff; font-size:10px; padding:2px 8px; border-radius:10px; font-weight:bold;">Gợi ý cho bạn</div>
@@ -183,6 +184,7 @@ $(document).ready(function () {
                 </a>
                 <div class="cart-price">
                   <span style="color:#d70018; font-weight:bold; font-size:14px;">${fmt.format(p.display_price)} ₫</span>
+                  ${starsHtml}
                 </div>
               </div>
               <button type="button" class="js-add-rec-item" data-id="${p.id}" data-price="${p.display_price}" data-type="simple" style="width:90px;white-space: nowrap; flex-shrink: 0; margin-right: 10px;; background: linear-gradient(to right, #e6394c, #f94c4c); color:#fff; border:none; border-radius:4px; font-size:12px; font-weight:600; cursor:pointer;">
@@ -1078,19 +1080,34 @@ function updateCartCount() {
     try {
       let res = typeof data === "object" ? data : JSON.parse(data);
       const count = parseInt(res.count) || 0;
-      // Tìm badge trong .menu-cart-box (chỉ badge cart, không phải notif/wishlist)
+
+      // --- Navbar badge (.menu-cart-box) ---
       const $cartBadge = $(".menu-cart-box .menu-cart-badge");
       if (count > 0) {
         if ($cartBadge.length) {
           $cartBadge.text(count).removeClass("hidden").css("display", "");
         } else {
-          // Badge chưa có trong DOM (cart_qty=0 khi load) → tạo mới
           $(".menu-cart-box .menu-cart-icon").after(
             $('<span class="menu-cart-badge">').text(count),
           );
         }
       } else {
         $cartBadge.addClass("hidden").css("display", "none");
+      }
+
+      // --- Mobile bottom-nav badge (#m-btn-cart) ---
+      const $mBadge = $("#m-btn-cart .m-badge");
+      if (count > 0) {
+        if ($mBadge.length) {
+          $mBadge.text(count).css("display", "");
+        } else {
+          // Badge chưa có trong DOM (cart_qty=0 khi load) → tạo mới
+          $("#m-btn-cart .fa-cart-shopping").after(
+            $('<span class="m-badge">').text(count),
+          );
+        }
+      } else {
+        $mBadge.css("display", "none");
       }
     } catch (e) {}
   });
@@ -1208,6 +1225,19 @@ function showBankingQR(orderId, amount) {
 }
 
 // --- PRODUCT & SHOPPING FUNCTIONS ---
+function renderStars(rating) {
+  const filled = Math.round(rating);
+  let html = '<div class="card-stars">';
+  for (let i = 1; i <= 5; i++) {
+    html += i <= filled
+      ? '<i class="fa-solid fa-star" style="color:#f39c12;"></i>'
+      : '<i class="fa-regular fa-star" style="color:#ccc;"></i>';
+  }
+  html += `<span class="card-rating-num">${rating > 0 ? rating.toFixed(1) : ''}</span>`;
+  html += '</div>';
+  return html;
+}
+
 function loadProducts(brandInput) {
   let brand = brandInput || "all";
   let sort = $("#sortPrice").val() || "asc";
@@ -1247,11 +1277,14 @@ function loadProducts(brandInput) {
           priceDisplay = `<p class="price">${fmt.format(p.price)}</p>`;
         }
 
+        let starsHtml = renderStars(parseFloat(p.avg_rating) || 0);
+
         let item = `
                     <div class="product-card">
                         ${badgeHtml}
                         <a href="product_detail.php?id=${p.id}"><img src="${img}"><h3>${p.name}</h3></a>
                         ${priceDisplay}
+                        ${starsHtml}
                         <button class="js-add-to-cart btn-add" data-id="${p.id}">THÊM VÀO GIỎ</button>
                     </div>`;
 
@@ -1905,3 +1938,41 @@ $(document).ready(function () {
   $(".m-close-sheet").on("click", closeAllMobilePanels);
   $backdrop.on("click", closeAllMobilePanels);
 });
+
+/* =================================================================
+   SCROLL TO TOP BUTTON
+   Enabled only on pages where <body> carries the .has-scroll-top class.
+   HTML required inside #chat-widget (before #chat-toggle):
+     <button id="scroll-top-btn" aria-label="Lên đầu trang">
+       <i class="fa-solid fa-chevron-up"></i>
+     </button>
+================================================================= */
+(function () {
+  if (!document.body.classList.contains("has-scroll-top")) return;
+
+  var $btn = $("#scroll-top-btn");
+  if (!$btn.length) return;
+
+  var ticking = false;
+  var THRESHOLD = 200; // px scrolled before button appears
+
+  function onScroll() {
+    if (!ticking) {
+      requestAnimationFrame(function () {
+        if (window.scrollY > THRESHOLD) {
+          $btn.addClass("is-visible");
+        } else {
+          $btn.removeClass("is-visible");
+        }
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+
+  $btn.on("click", function () {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+})();
