@@ -258,8 +258,11 @@ if ($action === 'checkout') {
     }
 
     // SECURITY: Whitelist payment method
-    $allowed_methods  = ['cod', 'banking'];
+    $allowed_methods  = ['cod', 'banking', 'vnpay'];
     $payment_method   = in_array($_POST['payment_method'] ?? '', $allowed_methods) ? $_POST['payment_method'] : 'cod';
+    
+    // Giữ nguyên là banking cho VNPay trong database theo yêu cầu
+    $db_payment_method = ($payment_method === 'vnpay') ? 'banking' : $payment_method;
     // BƯỚC 1: Tính tổng tiền Server-side (an toàn, không tin giá từ client)
     $total = 0;
     $valid_items = [];
@@ -340,7 +343,7 @@ if ($action === 'checkout') {
     $sql  = "INSERT INTO orders (order_code, user_id, name, phone, address, total_price, discount_amount, status, payment_method, payment_status, created_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'unpaid', NOW())";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("sisssdds", $order_code, $user_id, $buyer_name, $buyer_phone, $buyer_address, $total, $discount_amount, $payment_method);
+    $stmt->bind_param("sisssdds", $order_code, $user_id, $buyer_name, $buyer_phone, $buyer_address, $total, $discount_amount, $db_payment_method);
 
     if ($stmt->execute()) {
         $oid   = $conn->insert_id;
@@ -353,89 +356,87 @@ if ($action === 'checkout') {
             $stmt_d->bind_param("iiid", $oid, $v['pid'], $v['qty'], $v['price']);
             $stmt_d->execute();
 
-            $stmt_del->bind_param("ii", $user_id, $v['pid']);
-            $stmt_del->execute();
+            if ($payment_method !== 'vnpay') {
+                $stmt_del->bind_param("ii", $user_id, $v['pid']);
+                $stmt_del->execute();
+            }
         }
         $stmt_d->close();
         $stmt_del->close();
 
-        // Gửi notification Order Success
-        $n_success_stmt = $conn->prepare("INSERT INTO notifications (user_id, type, title, message, link, is_read, created_at) VALUES (?, 'order_success', 'Đặt hàng thành công', ?, ?, 0, NOW())");
-        if ($n_success_stmt) {
-            $msg = "Đơn hàng #{$order_code} đã được đặt thành công. Cảm ơn bạn đã mua sắm!";
-            $link = "/order_history.php";
-            $n_success_stmt->bind_param("iss", $user_id, $msg, $link);
-            $n_success_stmt->execute();
-            $n_success_stmt->close();
-        }
+        // CHỈ XÁC NHẬN ĐƠN THÀNH CÔNG NẾU KHÔNG PHẢI VNPAY
+        // Nếu là VNPay, các bước này sẽ được thực hiện tại vnpay_return.php sau khi thanh toán thành công
+        if ($payment_method !== 'vnpay') {
+            // Gửi notification Order Success
+            $n_success_stmt = $conn->prepare("INSERT INTO notifications (user_id, type, title, message, link, is_read, created_at) VALUES (?, 'order_success', 'Đặt hàng thành công', ?, ?, 0, NOW())");
+            if ($n_success_stmt) {
+                $msg = "Đơn hàng #{$order_code} đã được đặt thành công. Cảm ơn bạn đã mua sắm!";
+                $link = "/order_history.php";
+                $n_success_stmt->bind_param("iss", $user_id, $msg, $link);
+                $n_success_stmt->execute();
+                $n_success_stmt->close();
+            }
 
-        // ============================================
-        // HOOK 1: AUTO REWARD VOUCHER (MODULE 2)
-        // Tự động gán voucher thưởng cho user nếu đủ điều kiện
-        // ============================================
-        if ($user_id > 0) {
-            $final_paid = $total - $discount_amount;
-            $reward_sql = "SELECT id, code FROM vouchers
-                           WHERE is_reward_template = 1
-                             AND reward_min_order <= ?
-                             AND (expiry_date >= CURDATE() OR expiry_date = '0000-00-00')
-                           ORDER BY reward_min_order DESC
-                           LIMIT 1";
-            $r_stmt = $conn->prepare($reward_sql);
-            $r_stmt->bind_param("d", $final_paid);
-            $r_stmt->execute();
-            $reward_v = $r_stmt->get_result()->fetch_assoc();
-            $r_stmt->close();
+            // HOOK 1: AUTO REWARD VOUCHER
+            if ($user_id > 0) {
+                $final_paid = $total - $discount_amount;
+                $reward_sql = "SELECT id, code FROM vouchers
+                               WHERE is_reward_template = 1
+                                 AND reward_min_order <= ?
+                                 AND (expiry_date >= CURDATE() OR expiry_date = '0000-00-00')
+                               ORDER BY reward_min_order DESC
+                               LIMIT 1";
+                $r_stmt = $conn->prepare($reward_sql);
+                $r_stmt->bind_param("d", $final_paid);
+                $r_stmt->execute();
+                $reward_v = $r_stmt->get_result()->fetch_assoc();
+                $r_stmt->close();
 
-            if ($reward_v) {
-                // Gán voucher 1 lần dùng vào ví user (không trùng)
-                $grant = $conn->prepare(
-                    "INSERT INTO user_vouchers (user_id, voucher_id, usage_limit, is_new)
-                     VALUES (?, ?, 1, 1)
-                     ON DUPLICATE KEY UPDATE usage_limit = usage_limit + 1, is_new = 1"
-                );
-                $grant->bind_param("ii", $user_id, $reward_v['id']);
-                $grant->execute();
-                $grant->close();
+                if ($reward_v) {
+                    $grant = $conn->prepare(
+                        "INSERT INTO user_vouchers (user_id, voucher_id, usage_limit, is_new)
+                         VALUES (?, ?, 1, 1)
+                         ON DUPLICATE KEY UPDATE usage_limit = usage_limit + 1, is_new = 1"
+                    );
+                    $grant->bind_param("ii", $user_id, $reward_v['id']);
+                    $grant->execute();
+                    $grant->close();
 
-                // Gửi notification
-                $noti_msg = "🎁 Bạn nhận được voucher thưởng \"{$reward_v['code']}\" cho đơn hàng vừa hoàn thành!";
-                $n_stmt   = $conn->prepare("INSERT INTO notifications (user_id, type, title, message, link) VALUES (?, 'reward_voucher', 'Nhận Voucher Thưởng!', ?, '/my_vouchers.php')");
-                if ($n_stmt) {
-                    $n_stmt->bind_param("is", $user_id, $noti_msg);
-                    $n_stmt->execute();
-                    $n_stmt->close();
+                    $noti_msg = "🎁 Bạn nhận được voucher thưởng \"{$reward_v['code']}\" cho đơn hàng vừa hoàn thành!";
+                    $n_stmt   = $conn->prepare("INSERT INTO notifications (user_id, type, title, message, link) VALUES (?, 'reward_voucher', 'Nhận Voucher Thưởng!', ?, '/my_vouchers.php')");
+                    if ($n_stmt) {
+                        $n_stmt->bind_param("is", $user_id, $noti_msg);
+                        $n_stmt->execute();
+                        $n_stmt->close();
+                    }
                 }
             }
+
+            // HOOK 2: CẬP NHẬT ASSOCIATION RULES
+            $pairs_stmt = $conn->prepare("
+                SELECT od1.product_id AS a, od2.product_id AS b
+                FROM order_details od1
+                JOIN order_details od2 ON od1.order_id = od2.order_id AND od1.product_id < od2.product_id
+                WHERE od1.order_id = ?
+            ");
+            $pairs_stmt->bind_param("i", $oid);
+            $pairs_stmt->execute();
+            $pairs_res = $pairs_stmt->get_result();
+            $pairs_stmt->close();
+
+            $ins_assoc = $conn->prepare("
+                INSERT INTO product_associations (product_a, product_b, co_count)
+                VALUES (?, ?, 1)
+                ON DUPLICATE KEY UPDATE co_count = co_count + 1
+            ");
+            while ($pair = $pairs_res->fetch_assoc()) {
+                $ins_assoc->bind_param("ii", $pair['a'], $pair['b']);
+                $ins_assoc->execute();
+            }
+            $ins_assoc->close();
         }
 
-        // ============================================
-        // HOOK 2: CẬP NHẬT ASSOCIATION RULES (MODULE 4)
-        // Incremental update, không cần rebuild toàn bộ
-        // ============================================
-        $pairs_stmt = $conn->prepare("
-            SELECT od1.product_id AS a, od2.product_id AS b
-            FROM order_details od1
-            JOIN order_details od2 ON od1.order_id = od2.order_id AND od1.product_id < od2.product_id
-            WHERE od1.order_id = ?
-        ");
-        $pairs_stmt->bind_param("i", $oid);
-        $pairs_stmt->execute();
-        $pairs_res = $pairs_stmt->get_result();
-        $pairs_stmt->close();
-
-        $ins_assoc = $conn->prepare("
-            INSERT INTO product_associations (product_a, product_b, co_count)
-            VALUES (?, ?, 1)
-            ON DUPLICATE KEY UPDATE co_count = co_count + 1
-        ");
-        while ($pair = $pairs_res->fetch_assoc()) {
-            $ins_assoc->bind_param("ii", $pair['a'], $pair['b']);
-            $ins_assoc->execute();
-        }
-        $ins_assoc->close();
-
-        echo json_encode(['status' => 'success', 'order_id' => $oid, 'total_money' => $total]);
+        echo json_encode(['status' => 'success', 'order_id' => $oid, 'order_code' => $order_code, 'total_money' => $total]);
     } else {
         // SECURITY: Không expose chi tiết lỗi DB ra ngoài
         error_log("Checkout DB Error: " . $stmt->error);

@@ -1159,9 +1159,11 @@ function handleCheckout(btn) {
         let data = typeof res === "object" ? res : JSON.parse(res);
         if (data.status === "success") {
           $("#checkout-modal").hide();
-          if (paymentMethod === "banking")
+          if (paymentMethod === "banking") {
             showBankingQR(data.order_id, data.total_money);
-          else {
+          } else if (paymentMethod === "vnpay") {
+            window.location.href = `api/vnpay_create.php?order_code=${data.order_code}&amount=${data.total_money}`;
+          } else {
             showToast({
               title: "Thành công",
               message: "Đặt hàng thành công!",

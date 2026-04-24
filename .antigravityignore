@@ -1,0 +1,28 @@
+# 1. Nếu muốn giấu 1 file cụ thể (Ghi rõ tên file kèm đuôi)
+secret_logic.php
+config.php
+get_acc.php
+get_categories.php
+get_products.php
+.htaccess
+.env
+.gitignore
+flash_sale_helper.php
+admin_logger.php
+admin_sidebar.php
+admin.css
+dashboard.css
+flash_sale.css
+media_manager.css
+
+
+# 2. Nếu muốn giấu toàn bộ 1 thư mục (Thêm dấu / ở cuối)
+img/
+api/
+admin/
+js/
+css/
+# 3. Nếu muốn giấu tất cả các file có chung đuôi (Dùng dấu *)
+*.md
+*.js
+*.png

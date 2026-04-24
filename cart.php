@@ -81,7 +81,7 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
             <i class="fa-solid fa-cart-shopping" style="font-size: 80px; color: #787878ff; margin-bottom: 20px;"></i>
             <h3 style="color: #555;">Giỏ hàng của bạn đang trống</h3>
             <p style="color: #888; margin-bottom: 20px;">Hãy chọn thêm sản phẩm để mua sắm nhé</p>
-            <a href="index.php" style="color: #d70018; font-weight: bold;">
+            <a href="index.php" style="color: #00487a; font-weight: bold;">
                 ← Quay lại trang chủ</a>
         </div>
         <?php else: ?>
@@ -245,7 +245,7 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
                         <div class="form-group" style="margin-top: 15px;">
                             <label style="font-weight:600; display:block; margin-bottom:8px;">Hình thức thanh
                                 toán:</label>
-                            <div style="display:flex; gap:15px;">
+                            <div style="display:flex; gap:15px; flex-wrap: wrap;">
                                 <label class="payment-option">
                                     <input type="radio" name="payment_method" value="cod" class="payment-radio" checked>
                                     <div class="payment-content">
@@ -258,6 +258,13 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
                                     <div class="payment-content">
                                         <b>Chuyển khoản ngân hàng</b><br>
                                         <span class="payment-sub">Quét mã QR</span>
+                                    </div>
+                                </label>
+                                <label class="payment-option">
+                                    <input type="radio" name="payment_method" value="vnpay" class="payment-radio">
+                                    <div class="payment-content">
+                                        <b>Ví điện tử VNPay</b><br>
+                                        <span class="payment-sub">Thanh toán qua VNPay</span>
                                     </div>
                                 </label>
                             </div>
@@ -351,6 +358,24 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
         </div>
         <?php endif; ?>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+    $(document).ready(function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const vnpayStatus = urlParams.get('vnpay_status');
+        if (vnpayStatus === 'invalid_signature') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Lỗi xác thực thanh toán',
+                text: 'Chữ ký giao dịch VNPay không hợp lệ. Vui lòng thử lại hoặc liên hệ hỗ trợ.',
+                confirmButtonColor: '#ff9800'
+            });
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, '', cleanUrl);
+        }
+    });
+    </script>
 
     <?php require_once "includes/footer.php"; ?>
 </body>

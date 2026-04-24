@@ -106,6 +106,59 @@ $user_id = $_SESSION['user_id'];
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+    $(document).ready(function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const vnpayStatus = urlParams.get('vnpay_status');
+        
+        if (vnpayStatus === 'success') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Thanh toán thành công!',
+                text: 'Đơn hàng của bạn đã được thanh toán qua VNPay.',
+                confirmButtonColor: '#00487a'
+            });
+        } else if (vnpayStatus === 'failed') {
+            const errorMap = {
+                'cancelled': 'Bạn đã hủy giao dịch.',
+                'insufficient': 'Tài khoản không đủ số dư.',
+                'timeout': 'Giao dịch hết hạn chờ.',
+                'card_locked': 'Thẻ/Tài khoản bị khóa.',
+                'wrong_otp': 'Nhập sai mã OTP xác thực.',
+                'wrong_password': 'Sai mật khẩu thanh toán.',
+                'over_limit': 'Vượt hạn mức giao dịch trong ngày.',
+                'bank_maintenance': 'Ngân hàng đang bảo trì.',
+                'auth_failed': 'Xác thực thất bại quá 3 lần.',
+                'not_registered': 'Thẻ chưa đăng ký InternetBanking.',
+                'suspected': 'Giao dịch nghi ngờ gian lận.'
+            };
+            const errorCode = urlParams.get('error_code') || 'unknown';
+            const errorMsg = errorMap[errorCode] || 'Đã xảy ra lỗi trong quá trình thanh toán.';
+            
+            Swal.fire({
+                icon: 'error',
+                title: 'Thanh toán thất bại',
+                text: errorMsg + ' Đơn hàng vẫn được lưu, bạn có thể thử thanh toán lại.',
+                confirmButtonColor: '#d70018'
+            });
+        } else if (vnpayStatus === 'invalid_signature') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Lỗi xác thực',
+                text: 'Chữ ký giao dịch không hợp lệ. Vui lòng liên hệ hỗ trợ.',
+                confirmButtonColor: '#ff9800'
+            });
+        }
+        
+        // Clean URL
+        if (vnpayStatus) {
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, '', cleanUrl);
+        }
+    });
+    </script>
+
     <?php require_once "includes/footer.php"; ?>
 
 </body>
