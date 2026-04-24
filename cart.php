@@ -228,17 +228,16 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
 
                         <div class="form-group">
                             <label>Mã giảm giá</label>
-                            <div style="display: flex; gap: 10px;">
-                                <input type="text" id="c-coupon" class="modal-input" placeholder="Chọn mã voucher"
-                                    readonly style="flex: 1; background-color: #f8f9fa;">
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <div style="position: relative; flex: 1; display: flex; align-items: center;">
+                                    <input type="text" id="c-coupon" class="modal-input" placeholder="Nhập hoặc chọn mã" style=" width: 100%;margin: 0;">
+                                    <button type="button" id="btn-clear-voucher" class="btn-cancel"
+                                        onclick="clearVoucher()"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
                                 <input type="hidden" id="c-voucher-id" value="">
-
-                                <button type="button" class="btn-primary" onclick="openVoucherList()">
-                                    <p class="active-code" style="transform: translate(0px, -5px);">Chọn
-                                        Mã</p>
+                                <button type="button" class="btn-primary" onclick="openVoucherList()" style="margin: 0; min-height: 42px; width:90px">
+                                    <p class="active-code">Chọn Mã</p>
                                 </button>
-                                <button type="button" id="btn-clear-voucher" class="btn-cancel"
-                                    onclick="clearVoucher()">X</button>
                             </div>
                         </div>
 
@@ -283,12 +282,12 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
                                 <span id="modal-discount-amount" style="font-weight: bold;">-0 ₫</span>
                             </div>
 
-                            <div
-                                style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 18px;">
+                            <div id="total_price">
                                 <span style="font-weight: bold;">Tổng thanh toán:</span>
-                                <del id="modal-old-total"
-                                    style="color: #999; font-size: 14px; margin-right: 10px; display: none;">0 ₫</del>
-                                <h3 id="modal-total-money" style="color:#d70018; margin: 0;">0 ₫</h3>
+                                <div class="total-price-right">
+                                    <del id="modal-old-total">0 ₫</del>
+                                    <h3 id="modal-total-money">0 ₫</h3>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -301,7 +300,7 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
             </div>
 
             <div id="voucher-list-modal" class="modal" style="z-index: 10000 !important; background: rgba(0,0,0,0.7);">
-                <div class="modal-content" style="max-width: 400px; padding: 20px;">
+                <div class="modal-content" style="width: 800px; padding: 20px;margin-top: 100px;">
                     <div class="modal-header"
                         style="margin-top:-20px;margin-left:-20px;margin-right:-20px;border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
                         <h3 style="margin: 0;">Chọn Mã Giảm Giá</h3>

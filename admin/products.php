@@ -200,7 +200,7 @@ $result = $stmt->get_result();
                                     onclick="confirmDelete(<?= $row['id'] ?>)" class="btn-delete"
                                     title="Xóa">
                                     <i class="fa-solid fa-trash-can"
-                                        style="color:#e74c3c; font-size:14px;color:white;"></i>
+                                        style="color:#eb3e51; font-size:14px;color:white;"></i>
                                 </a>
                             </td>
                         </tr>

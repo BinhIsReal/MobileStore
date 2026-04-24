@@ -87,7 +87,7 @@ $join_date = !empty($user['created_at']) ? date('d/m/Y', strtotime($user['create
                 </a>
 
                 <div style="flex:1; display:flex; gap:10px;">
-                    <button type="button" class="btn btn-primary" id="btn-edit">
+                    <button type="button" class="btn btn-primary" id="btn-edit" style="margin-top: -1px;">
                         <i class="fa fa-edit"></i> Chỉnh sửa
                     </button>
                     <button type="button" class="btn btn-secondary" id="btn-cancel" style="display: none;">

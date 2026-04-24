@@ -778,6 +778,20 @@ let selectedVoucher = null;
 // ==========================================
 // 1. HÀM TÍNH TỔNG TIỀN (Đã cập nhật)
 // ==========================================
+// 1. HÀM TÍNH TỔNG TIỀN (Đã cập nhật)
+// ==========================================
+
+// Bấm vào khoảng trống của cart-item để chọn/bỏ chọn checkbox
+$(document).on("click", ".cart-item", function (e) {
+  if ($(e.target).closest("a, button, input, .qty-control, .cart-variant-box").length) {
+    return;
+  }
+  let chk = $(this).find(".pay-check");
+  if (chk.length) {
+    chk.prop("checked", !chk.prop("checked")).trigger("change");
+  }
+});
+
 function calcTotal() {
   let total = 0;
   $(".pay-check:checked").each(function () {
@@ -860,7 +874,8 @@ function openVoucherList() {
               : "Áp dụng cho mọi đơn hàng";
 
           let btnAction = isEligible
-            ? `<button type="button" class="btn-primary" style="padding: 6px 12px; font-size: 13px; border-radius:4px;" onclick='selectVoucher(${JSON.stringify(v)})'>Chọn mã</button>`
+            ? `<button type="button" class="btn-primary" style="padding: 6px 12px; font-size: 13px; border-radius:14px;width: 80px;
+    font-weight: 600;" onclick='selectVoucher(${JSON.stringify(v)})'>Chọn mã</button>`
             : `<span style="color:#d70018; font-size: 12px; font-weight:bold;">Chưa đủ điều kiện</span>`;
 
           let html = `
@@ -923,6 +938,57 @@ function selectVoucher(v) {
     timer: 1500,
   });
 }
+
+let voucherTypeTimer;
+$(document).on("keyup", "#c-coupon", function () {
+  clearTimeout(voucherTypeTimer);
+  let code = $(this).val().trim().toUpperCase();
+
+  if (code.length === 0) {
+    clearVoucher();
+    return;
+  }
+
+  voucherTypeTimer = setTimeout(function () {
+    if (currentSubtotal === 0) return;
+
+    $.post(
+      "api/voucher_api.php",
+      { action: "get_my_vouchers" },
+      function (res) {
+        try {
+          let response =
+            typeof res === "object"
+              ? res
+              : JSON.parse(res.substring(res.indexOf("{")));
+          if (response.status === "success" && response.data.length > 0) {
+            let found = response.data.find(
+              (v) => v.code.toUpperCase() === code,
+            );
+            if (found && currentSubtotal >= parseFloat(found.min_order_value)) {
+              selectedVoucher = found;
+              $("#c-voucher-id").val(found.id);
+              $("#btn-clear-voucher").show();
+              applyVoucherLogic();
+            } else {
+              if (
+                selectedVoucher &&
+                selectedVoucher.code.toUpperCase() !== code
+              ) {
+                selectedVoucher = null;
+                $("#c-voucher-id").val("");
+                $("#btn-clear-voucher").hide();
+                applyVoucherLogic();
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Lỗi Parse JSON voucher:", e);
+        }
+      },
+    );
+  }, 500);
+});
 
 // Xử lý khi User bấm "Bỏ chọn" (Nút đỏ)
 function clearVoucher() {
@@ -1056,10 +1122,9 @@ function applyVoucherLogic() {
   let finalTotal = currentSubtotal - discountValue;
 
   // 3. CẬP NHẬT GIAO DIỆN MODAL
-  // Gắn tên mã voucher vào chữ "Giảm giá"
   $("#discount-label").text(selectedVoucher.code);
 
-  // Hiện số tiền trừ đi (màu xanh)
+  // Hiện số tiền trừ đi
   $("#modal-discount-amount").text("-" + fmtTotal.format(discountValue));
   $("#voucher-discount-info").css("display", "flex"); // Hiện dòng giảm giá
 
@@ -1231,12 +1296,13 @@ function renderStars(rating) {
   const filled = Math.round(rating);
   let html = '<div class="card-stars">';
   for (let i = 1; i <= 5; i++) {
-    html += i <= filled
-      ? '<i class="fa-solid fa-star" style="color:#f39c12;"></i>'
-      : '<i class="fa-regular fa-star" style="color:#ccc;"></i>';
+    html +=
+      i <= filled
+        ? '<i class="fa-solid fa-star" style="color:#f39c12;"></i>'
+        : '<i class="fa-regular fa-star" style="color:#ccc;"></i>';
   }
-  html += `<span class="card-rating-num">${rating > 0 ? rating.toFixed(1) : ''}</span>`;
-  html += '</div>';
+  html += `<span class="card-rating-num">${rating > 0 ? rating.toFixed(1) : ""}</span>`;
+  html += "</div>";
   return html;
 }
 
@@ -1930,7 +1996,10 @@ $(document).ready(function () {
   // Notifications Sheet
   $("#m-btn-notif").on("click", function () {
     let sheet = $("#m-notif-sheet");
-    if (!sheet.hasClass("open") && typeof window._loadNotifList === 'function') {
+    if (
+      !sheet.hasClass("open") &&
+      typeof window._loadNotifList === "function"
+    ) {
       window._loadNotifList();
     }
     toggleMobilePanel("#m-notif-sheet", this);

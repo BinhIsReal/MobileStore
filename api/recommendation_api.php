@@ -37,18 +37,13 @@ if ($action === 'get_recommendations') {
     
     $source_cat_id = $cat_res['category_id'] ?? 0;
 
-    // Xây dựng điều kiện lọc phụ kiện tương ứng
     if (in_array($source_cat_id, [1, 3, 5])) { 
-        // Điện thoại, Máy tính bảng, Đồng hồ: Gợi ý sạc, cáp, tai nghe... (Loại trừ chuột, phím, đế, bảng vẽ)
         $filter_sql = "(p.category_id IN (15, 20) AND p.name NOT LIKE '%chuột%' AND p.name NOT LIKE '%phím%' AND p.name NOT LIKE '%đế%' AND p.name NOT LIKE '%bảng vẽ%')";
     } elseif (in_array($source_cat_id, [2, 7, 10, 13])) { 
-        // Laptop, PC, Màn hình: Gợi ý chuột, phím, lót chuột, đế... (Loại trừ củ sạc, pin sạc đt)
         $filter_sql = "(p.category_id IN (13, 15, 20) AND p.name NOT LIKE '%pin sạc dự phòng%' AND p.name NOT LIKE '%củ sạc%' AND p.name NOT LIKE '%cáp sạc%')";
     } elseif ($source_cat_id == 17) {
-        // Camera: Phụ kiện hoặc thiết bị liên quan
         $filter_sql = "(p.category_id = 20)";
     } else {
-        // Mặc định
         $filter_sql = "(p.category_id = 20 OR p.category_id = $source_cat_id)";
     }
 

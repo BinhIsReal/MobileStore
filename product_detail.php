@@ -171,7 +171,7 @@ $discount_label = $price_info['discount_label'];
                         <button id="btn-wishlist" class="btn-wishlist-toggle"
                             data-product-id="<?= $product['id'] ?>"
                             title="Thêm vào yêu thích">
-                            <i class="fa-regular fa-heart" style="color:#e74c3c;"></i>
+                            <i class="fa-regular fa-heart" style="color:#eb3e51;"></i>
                         </button>
                         <?php endif; ?>
                     </div>
@@ -296,7 +296,7 @@ $discount_label = $price_info['discount_label'];
         <!-- ===== RECOMMENDATION ENGINE: THƯỜNG MUA CÙNG ===== -->
         <div id="recommendation-section" style="margin:30px 0; display:none;">
             <h3 style="margin-bottom:15px; border-left:4px solid #e74c3c; padding-left:12px; color:#333;">
-                <i class="fa fa-bolt" style="color:#e74c3c;"></i> Thường được mua cùng
+                <i class="fa fa-bolt" style="color:#eb3e51;"></i> Thường được mua cùng
             </h3>
             <div id="recommendation-track" style="display:flex; gap:16px; flex-wrap:wrap;"></div>
         </div>
@@ -436,11 +436,11 @@ $discount_label = $price_info['discount_label'];
     const IS_LOGGED  = <?= $user_id > 0 ? 'true' : 'false' ?>;
 
     function setWishlistState(isActive) {
-        const btn = $('#btn-wishlist');
-        if (!btn.length) return;
-        btn.find('i').attr('class', isActive ? 'fa-solid fa-heart' : 'fa-regular fa-heart');
-        btn.attr('title', isActive ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích');
-        btn.toggleClass('active', isActive);
+        const btns = $('.btn-wishlist-toggle');
+        if (!btns.length) return;
+        btns.find('i').attr('class', isActive ? 'fa-solid fa-heart' : 'fa-regular fa-heart');
+        btns.attr('title', isActive ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích');
+        btns.toggleClass('active', isActive);
     }
 
     if (IS_LOGGED) {
@@ -448,7 +448,7 @@ $discount_label = $price_info['discount_label'];
             if (res && res.in_wishlist) setWishlistState(true);
         });
 
-        $(document).on('click', '#btn-wishlist', function() {
+        $(document).on('click', '.btn-wishlist-toggle', function() {
             const isActive = $(this).find('i').hasClass('fa-solid');
             $.post('api/wishlist_api.php', { action: isActive ? 'remove' : 'add', product_id: PRODUCT_ID }, function(res) {
                 if (res && res.status === 'success') {
@@ -507,8 +507,7 @@ $discount_label = $price_info['discount_label'];
 
 
 
-    <!-- Scroll to Top (no chat on this page) -->
-    <div id="chat-widget">
+    <div id="chat-widget" style="display:none;">
         <button id="scroll-top-btn" aria-label="Lên đầu trang">
             <i class="fa-solid fa-chevron-up"></i>
         </button>
