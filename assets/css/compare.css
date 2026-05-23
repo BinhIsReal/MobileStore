@@ -65,10 +65,32 @@
   min-height: 220px;
 }
 
-.compare-product-cell img {
-  max-width: 150px;
-  height: auto;
+.pd-image-wrapper {
+  position: relative;
+  display: block;
   margin: 0 auto 15px;
+  max-width: 150px;
+}
+
+.pd-flash-badge {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ff6b35;
+  color: #fff;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  z-index: 2;
+  font-weight: bold;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(255, 107, 53, 0.3);
+}
+
+.compare-product-cell img {
+  max-width: 100%;
+  height: auto;
   display: block;
 }
 
@@ -215,7 +237,6 @@
   background: #fcfcfc;
 }
 
-/* Nút thêm vào danh sách so sánh (sử dụng ở Trang SP) */
 .btn-compare-add {
   display: inline-block;
   border: 1px solid #3498db;

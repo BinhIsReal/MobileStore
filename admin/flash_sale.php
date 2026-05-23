@@ -112,8 +112,8 @@ if ($result_items) {
                     <div class="fs-form-group">
                         <label>Tiêu đề Flash Sale</label>
                         <input type="text" id="fs-title" class="fs-input"
-                               value="<?= htmlspecialchars($flash_config['title'] ?? '🔥 HOT SALE CUỐI TUẦN') ?>"
-                               placeholder="VD: 🔥 HOT SALE CUỐI TUẦN">
+                               value="<?= htmlspecialchars($flash_config['title'] ?? '🔥 Flash Sale') ?>"
+                               placeholder="VD: 🔥 Flash Sale">
                     </div>
                     <div class="fs-form-group">
                         <label>Giảm giá mặc định (%)</label>

@@ -2,7 +2,6 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 $_is_logged    = isset($_SESSION['user_id']);
 ?>
-    <!-- Đảm bảo mobile.css luôn được load đúng đường dẫn (Responsive UI) -->
     <link rel="stylesheet" href="<?= defined('BASE_URL') ? BASE_URL : '' ?>/assets/css/mobile.css?v=<?= time() ?>">
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -51,7 +50,6 @@ $_is_logged    = isset($_SESSION['user_id']);
             <!-- ===== NOTIFICATION BELL ===== -->
             <div class="menu-item nav-notif-wrap" id="nav-notif-btn" title="Thông báo">
                 <i class="fa-solid fa-bell"></i>
-                <!-- Badge chỉ render khi count > 0 qua JS -->
                 <span id="nav-notif-badge" style="display:none;" class="menu-cart-badge">0</span>
                 <div id="notif-dropdown">
                     <div class="notif-header">
@@ -92,7 +90,7 @@ $_is_logged    = isset($_SESSION['user_id']);
                 <?php endif; ?>
             </div>
 
-        </div><!-- /.menu -->
+        </div>
     </div>
 </nav>
 
@@ -161,11 +159,13 @@ document.addEventListener('DOMContentLoaded', function() {
             ${unread ? '<span class="notif-dot"></span>' : ''}
         `;
 
-        // Click: mark_read → redirect
         el.addEventListener('click', function() {
             fetch('/api/notification_api.php', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 body: 'action=mark_read&id=' + encodeURIComponent(n.id)
             }).finally(function() {
                 if (deepLink && deepLink !== '#') {
@@ -181,12 +181,13 @@ document.addEventListener('DOMContentLoaded', function() {
         return el;
     }
 
-    // --- Load + render danh sách (Cả Desktop và Mobile) ---
     function loadNotifList() {
         if (notifList) notifList.innerHTML = '<div class="notif-empty"><i class="fa fa-spinner fa-spin"></i> Đang tải...</div>';
         if (mNotifList) mNotifList.innerHTML = '<div style="padding: 30px; text-align: center; color: #888;"><i class="fa fa-spinner fa-spin"></i> Đang tải...</div>';
 
-        fetch('/api/notification_api.php?action=get_notifications&limit=15')
+        fetch('/api/notification_api.php?action=get_notifications&limit=15', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
             .then(r => r.json())
             .then(function(res) {
                 if (notifList) notifList.innerHTML = '';
@@ -209,9 +210,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    // --- Refresh badges: CHỈ hiện khi count > 0 ---
     function refreshBadges() {
-        fetch('/api/notification_api.php?action=count_unread')
+        fetch('/api/notification_api.php?action=count_unread', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
             .then(r => r.json())
             .then(function(res) {
                 const count = parseInt(res.unread) || 0;
@@ -224,7 +226,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     if (mNotifBadge) {
                         mNotifBadge.textContent = badgeText;
-                        mNotifBadge.style.display = 'flex'; // m-badge uses display: flex natively
+                        mNotifBadge.style.display = 'flex';
                     }
                 } else {
                     if (notifBadge) {
@@ -242,7 +244,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    // --- Toggle dropdown (Desktop) ---
     if (notifBtn) {
         notifBtn.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -252,20 +253,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- Click Outside (Desktop) ---
     document.addEventListener('click', function(e) {
         if (notifBtn && notifDropdown && !notifBtn.contains(e.target)) {
             notifDropdown.classList.remove('open');
         }
     });
 
-    // --- Mark all read (Desktop & Mobile) ---
     function doMarkAllRead(e) {
         e.preventDefault();
         e.stopPropagation();
         fetch('/api/notification_api.php', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             body: 'action=mark_read'
         }).then(function() {
             loadNotifList();
@@ -280,7 +282,6 @@ document.addEventListener('DOMContentLoaded', function() {
         mMarkAllBtn.addEventListener('click', doMarkAllRead);
     }
 
-    // --- Wishlist badge refresh ---
     function refreshWishlistBadge() {
         const wishBadge = document.getElementById('nav-wishlist-count');
         if (!wishBadge) return;
@@ -301,11 +302,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }).catch(function() {});
     }
 
-    // --- Auto-refresh mỗi 30 giây ---
     refreshBadges();
     setInterval(refreshBadges, 30000);
 
-    // Expose ra global để main.js gọi được
     window._navRefreshBadges = refreshBadges;
     window._navRefreshWishlist = refreshWishlistBadge;
     window._loadNotifList = loadNotifList;

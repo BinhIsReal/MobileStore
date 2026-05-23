@@ -9,6 +9,20 @@ header('Content-Type: application/json');
 $action = $_POST['action'] ?? '';
 $tab = $_POST['tab'] ?? 'bot';
 
+// SECURITY: Admin-only actions require role check + CSRF
+$admin_actions = ['init_admin_chat', 'get_chat_users', 'get_conversation', 'send_msg', 'mark_read'];
+if (in_array($action, $admin_actions)) {
+    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+        echo json_encode(['status' => 'error', 'message' => 'Unauthorized']); exit;
+    }
+}
+// SECURITY: CSRF verify cho mọi write action
+$csrf_actions = ['send_message', 'send_msg'];
+if (in_array($action, $csrf_actions)) {
+    include_once '../includes/security.php';
+    csrf_verify_or_die();
+}
+
 // --- XÁC ĐỊNH ID NGƯỜI DÙNG ---
 $real_user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
 
@@ -62,6 +76,56 @@ if ($action == 'send_message') {
         if (!$stmt->execute()) {
             echo json_encode(['status' => 'error', 'message' => 'DB Error: ' . $stmt->error]);
             exit;
+        }
+
+        // --- AUTO-REPLY CHO CHAT SHOP ---
+        if ($tab == 'shop') {
+            $auto_reply_content = "Xin chào! Shop đã nhận được tin nhắn. Vui lòng đợi trong ít phút, nhân viên sẽ phản hồi bạn sớm nhất có thể.";
+
+            // Lấy thời gian tin nhắn CUỐI CÙNG giữa user và shop (receiver_id = 0 hoặc sender_id = 0)
+            $history_stmt = $conn->prepare(
+                "SELECT created_at FROM chat_messages
+                 WHERE (sender_id = ? AND receiver_id = 0)
+                    OR (sender_id = 0 AND receiver_id = ?)
+                 ORDER BY created_at DESC
+                 LIMIT 2"
+            );
+            $history_stmt->bind_param("ii", $real_user_id, $real_user_id);
+            $history_stmt->execute();
+            $history_result = $history_stmt->get_result();
+            $history_stmt->close();
+
+            $should_send_auto_reply = false;
+
+            if ($history_result->num_rows <= 1) {
+                // Trường hợp 1: Khách mới tinh — chỉ có 1 dòng là tin nhắn vừa insert
+                $should_send_auto_reply = true;
+            } else {
+                // Bỏ qua tin nhắn vừa insert (index 0), lấy tin nhắn trước đó (index 1)
+                $history_result->fetch_assoc(); // bỏ qua dòng mới nhất
+                $last_row = $history_result->fetch_assoc();
+
+                if ($last_row) {
+                    $last_message_time = strtotime($last_row['created_at']);
+                    $elapsed_seconds   = time() - $last_message_time;
+
+                    if ($elapsed_seconds >= 18000) {
+                        // Trường hợp 2: Khách cũ, lâu không chat (>= 5 tiếng)
+                        $should_send_auto_reply = true;
+                    }
+                    // Trường hợp 3: Đang chat liên tục — không gửi auto-reply
+                }
+            }
+
+            if ($should_send_auto_reply) {
+                $auto_stmt = $conn->prepare(
+                    "INSERT INTO chat_messages (sender_id, receiver_id, message, role, is_read, created_at)
+                     VALUES (0, ?, ?, 'shop', 0, NOW())"
+                );
+                $auto_stmt->bind_param("is", $real_user_id, $auto_reply_content);
+                $auto_stmt->execute();
+                $auto_stmt->close();
+            }
         }
 
         // --- BOT TRẢ LỜI BẰNG GEMINI API ---
@@ -518,30 +582,34 @@ if ($action == 'send_message') {
 // ---------------------------------------------------------
 if ($action == 'get_messages') {
     if ($tab == 'bot') {
-        // Bot: Lấy theo ID hiện tại (User thật hoặc Khách tạm)
-        $sql = "SELECT * FROM chat_messages 
-                WHERE (sender_id = $current_chat_id AND receiver_id = 9999) 
-                   OR (sender_id = 9999 AND receiver_id = $current_chat_id) 
-                ORDER BY created_at ASC";
+        $stmt = $conn->prepare(
+            "SELECT * FROM chat_messages
+             WHERE (sender_id = ? AND receiver_id = 9999)
+                OR (sender_id = 9999 AND receiver_id = ?)
+             ORDER BY created_at ASC"
+        );
+        $stmt->bind_param("ii", $current_chat_id, $current_chat_id);
     } else {
-        // Shop: Chỉ lấy khi đã đăng nhập
         if ($real_user_id == 0) { echo json_encode([]); exit; }
-        
-        $sql = "SELECT * FROM chat_messages 
-                WHERE (sender_id = $real_user_id AND receiver_id = 0) 
-                   OR (sender_id = 0 AND receiver_id = $real_user_id) 
-                ORDER BY created_at ASC";
+        $stmt = $conn->prepare(
+            "SELECT * FROM chat_messages
+             WHERE (sender_id = ? AND receiver_id = 0)
+                OR (sender_id = 0 AND receiver_id = ?)
+             ORDER BY created_at ASC"
+        );
+        $stmt->bind_param("ii", $real_user_id, $real_user_id);
     }
-
-    $result = $conn->query($sql);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $stmt->close();
     $msgs = [];
     if ($result) {
         while ($row = $result->fetch_assoc()) {
             $msgs[] = [
                 'sender_id' => $row['sender_id'],
-                'message' => $row['message'],
-                'role' => $row['role'], 
-                'time' => date('H:i', strtotime($row['created_at']))
+                'message'   => $row['message'],
+                'role'      => $row['role'],
+                'time'      => date('H:i', strtotime($row['created_at']))
             ];
         }
     }
@@ -552,18 +620,24 @@ if ($action == 'get_messages') {
 
 if ($action == 'init_admin_chat') {
     $target_id = intval($_POST['user_id'] ?? 0);
-    
     if ($target_id > 0) {
-        // Kiểm tra xem đã có tin nhắn nào giữa Shop và User này chưa
-        $check_sql = "SELECT id FROM chat_messages WHERE (sender_id = $target_id AND receiver_id = 0) OR (sender_id = 0 AND receiver_id = $target_id) LIMIT 1";
-        $check_res = $conn->query($check_sql);
-        
-        if ($check_res->num_rows == 0) {
-            $stmt = $conn->prepare("INSERT INTO chat_messages (sender_id, receiver_id, message, is_read) VALUES (0, ?, ?, 1)");
-            $stmt->bind_param("is", $target_id, $system_msg);
-            $stmt->execute();
-            $stmt->close();
+        $chk = $conn->prepare(
+            "SELECT id FROM chat_messages
+             WHERE (sender_id = ? AND receiver_id = 0)
+                OR (sender_id = 0 AND receiver_id = ?)
+             LIMIT 1"
+        );
+        $chk->bind_param("ii", $target_id, $target_id);
+        $chk->execute();
+        $chk->store_result();
+        if ($chk->num_rows == 0) {
+            $system_msg = 'Xin chào! Nhân viên shop sẽ hỗ trợ bạn sớm nhất có thể.';
+            $ins = $conn->prepare("INSERT INTO chat_messages (sender_id, receiver_id, message, is_read) VALUES (0, ?, ?, 1)");
+            $ins->bind_param("is", $target_id, $system_msg);
+            $ins->execute();
+            $ins->close();
         }
+        $chk->close();
         echo json_encode(['status' => 'success']);
     } else {
         echo json_encode(['status' => 'error']);
@@ -612,17 +686,20 @@ if ($action == 'get_chat_users') {
 
 // 2. LẤY NỘI DUNG CUỘC TRÒ CHUYỆN
 if ($action == 'get_conversation') {
-    $user_id = intval($_POST['user_id'] ?? 0);
-    $sql = "SELECT * FROM chat_messages 
-            WHERE (sender_id = $user_id AND receiver_id = 0) 
-               OR (sender_id = 0 AND receiver_id = $user_id) 
-            ORDER BY created_at ASC";
-    $res = $conn->query($sql);
+    $conv_uid = intval($_POST['user_id'] ?? 0);
+    $stmt = $conn->prepare(
+        "SELECT * FROM chat_messages
+         WHERE (sender_id = ? AND receiver_id = 0)
+            OR (sender_id = 0 AND receiver_id = ?)
+         ORDER BY created_at ASC"
+    );
+    $stmt->bind_param("ii", $conv_uid, $conv_uid);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $stmt->close();
     $msgs = [];
     if ($res) {
-        while($row = $res->fetch_assoc()) {
-            $msgs[] = $row;
-        }
+        while ($row = $res->fetch_assoc()) $msgs[] = $row;
     }
     echo json_encode($msgs);
     exit;
@@ -648,30 +725,38 @@ if ($action == 'send_msg') {
 // 4. CHECK NOTIFICATION CỦA ADMIN GỬI USER
 if ($action == 'check_notification') {
     $unread = 0;
-    if ($real_user_id > 0) {
-        $res = $conn->query("SELECT COUNT(id) as c FROM chat_messages WHERE receiver_id = $real_user_id AND sender_id = 0 AND is_read = 0");
-        $unread = $res->fetch_assoc()['c'] ?? 0;
-    } else if ($current_chat_id < 0) {
-        $res = $conn->query("SELECT COUNT(id) as c FROM chat_messages WHERE receiver_id = $current_chat_id AND sender_id = 0 AND is_read = 0");
-        $unread = $res->fetch_assoc()['c'] ?? 0;
+    $check_id = ($real_user_id > 0) ? $real_user_id : (($current_chat_id < 0) ? $current_chat_id : 0);
+    if ($check_id != 0) {
+        $stmt = $conn->prepare("SELECT COUNT(id) as c FROM chat_messages WHERE receiver_id = ? AND sender_id = 0 AND is_read = 0");
+        $stmt->bind_param("i", $check_id);
+        $stmt->execute();
+        $unread = $stmt->get_result()->fetch_assoc()['c'] ?? 0;
+        $stmt->close();
     }
     echo json_encode(['unread' => $unread]);
     exit;
 }
 
-// 5. ĐÁNH DẤU ĐÃ ĐỌC
+// 5. ĐÁNH DẤU ĐÃ ĐỌC (Admin)
 if ($action == 'mark_read') {
     $target_id = intval($_POST['target_id'] ?? 0);
     if ($target_id > 0) {
-        $conn->query("UPDATE chat_messages SET is_read = 1 WHERE sender_id = $target_id AND receiver_id = 0");
+        $stmt = $conn->prepare("UPDATE chat_messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = 0");
+        $stmt->bind_param("i", $target_id);
+        $stmt->execute();
+        $stmt->close();
     }
     echo json_encode(['status' => 'success']);
     exit;
 }
 
+// 6. ĐÁNH DẤU ĐÃ ĐỌC (User)
 if ($action == 'mark_read_user' && $real_user_id > 0) {
-    $conn->query("UPDATE chat_messages SET is_read=1 WHERE receiver_id=$real_user_id AND sender_id=0");
-    echo json_encode(['status'=>'success']); exit;
+    $stmt = $conn->prepare("UPDATE chat_messages SET is_read=1 WHERE receiver_id=? AND sender_id=0");
+    $stmt->bind_param("i", $real_user_id);
+    $stmt->execute();
+    $stmt->close();
+    echo json_encode(['status' => 'success']); exit;
 }
 
 

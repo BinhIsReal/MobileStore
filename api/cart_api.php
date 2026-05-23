@@ -5,11 +5,19 @@ include_once '../includes/security.php';
 include_once '../includes/flash_sale_helper.php';
 header('Content-Type: application/json');
 
-// =============================================
-// SECURITY: Không bao giờ expose lỗi ra ngoài
-// =============================================
 ini_set('display_errors', 0);
 error_reporting(0);
+
+if (!function_exists('generateOrderCode')) {
+    function generateOrderCode(): string {
+        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        $code  = '';
+        for ($i = 0; $i < 10; $i++) {
+            $code .= $chars[random_int(0, strlen($chars) - 1)];
+        }
+        return $code;
+    }
+}
 
 $action  = $_POST['action'] ?? '';
 $user_id = (int)($_SESSION['user_id'] ?? 0);
@@ -92,13 +100,21 @@ if ($action === 'count') {
 // -----------------------------------------------
 if ($action === 'delete') {
     $pid = (int)($_POST['id'] ?? 0);
+    $vid = isset($_POST['vid']) && $_POST['vid'] !== '' ? (int)$_POST['vid'] : 0;
+    
     if ($user_id > 0) {
-        $stmt = $conn->prepare("DELETE FROM cart WHERE user_id=? AND product_id=?");
-        $stmt->bind_param("ii", $user_id, $pid);
+        if ($vid > 0) {
+            $stmt = $conn->prepare("DELETE FROM cart WHERE user_id=? AND product_id=? AND variation_id=?");
+            $stmt->bind_param("iii", $user_id, $pid, $vid);
+        } else {
+            $stmt = $conn->prepare("DELETE FROM cart WHERE user_id=? AND product_id=? AND (variation_id IS NULL OR variation_id=0)");
+            $stmt->bind_param("ii", $user_id, $pid);
+        }
         $stmt->execute();
         $stmt->close();
     } else {
-        unset($_SESSION['cart'][$pid]);
+        $key = $vid > 0 ? $pid . '_' . $vid : $pid;
+        unset($_SESSION['cart'][$key]);
     }
     echo json_encode(['status' => 'success']);
     exit;
@@ -108,27 +124,35 @@ if ($action === 'delete') {
 // 4. DELETE LIST
 // -----------------------------------------------
 if ($action === 'delete_list') {
-    $raw_ids = json_decode($_POST['ids'] ?? '[]', true);
-    if (!is_array($raw_ids)) { echo json_encode(['status' => 'error']); exit; }
+    $raw_items = json_decode($_POST['items'] ?? '[]', true);
+    if (!is_array($raw_items)) { echo json_encode(['status' => 'error']); exit; }
 
-    // FIXED: ép kiểu int cho từng phần tử, loại bỏ giá trị 0/âm
-    $ids = array_filter(array_map('intval', $raw_ids), fn($v) => $v > 0);
-
-    if (!empty($ids)) {
-        if ($user_id > 0) {
-            // Dùng placeholder động thay vì implode trực tiếp
-            $placeholders = implode(',', array_fill(0, count($ids), '?'));
-            $types  = str_repeat('i', count($ids) + 1);
-            $params = array_merge([$user_id], array_values($ids));
-            $stmt   = $conn->prepare("DELETE FROM cart WHERE user_id=? AND product_id IN ($placeholders)");
-            // FIXED: dùng call_user_func_array thay vì spread operator để pass by reference
-            $bind_args = [$types];
-            foreach ($params as &$param) $bind_args[] = &$param;
-            call_user_func_array([$stmt, 'bind_param'], $bind_args);
-            $stmt->execute();
-            $stmt->close();
-        } else {
-            foreach ($ids as $pid) unset($_SESSION['cart'][$pid]);
+    if ($user_id > 0) {
+        $stmt_var = $conn->prepare("DELETE FROM cart WHERE user_id=? AND product_id=? AND variation_id=?");
+        $stmt_no_var = $conn->prepare("DELETE FROM cart WHERE user_id=? AND product_id=? AND (variation_id IS NULL OR variation_id=0)");
+        
+        foreach ($raw_items as $item) {
+            $pid = (int)($item['id'] ?? 0);
+            $vid = isset($item['vid']) && $item['vid'] !== '' ? (int)$item['vid'] : 0;
+            if ($pid <= 0) continue;
+            
+            if ($vid > 0) {
+                $stmt_var->bind_param("iii", $user_id, $pid, $vid);
+                $stmt_var->execute();
+            } else {
+                $stmt_no_var->bind_param("ii", $user_id, $pid);
+                $stmt_no_var->execute();
+            }
+        }
+        if($stmt_var) $stmt_var->close();
+        if($stmt_no_var) $stmt_no_var->close();
+    } else {
+        foreach ($raw_items as $item) {
+            $pid = (int)($item['id'] ?? 0);
+            $vid = isset($item['vid']) && $item['vid'] !== '' ? (int)$item['vid'] : 0;
+            if ($pid <= 0) continue;
+            $key = $vid > 0 ? $pid . '_' . $vid : $pid;
+            unset($_SESSION['cart'][$key]);
         }
     }
     echo json_encode(['status' => 'success']);
@@ -156,12 +180,18 @@ if ($action === 'delete_all') {
 // -----------------------------------------------
 if ($action === 'update_qty') {
     $pid   = (int)($_POST['product_id'] ?? 0);
+    $vid   = isset($_POST['variation_id']) && $_POST['variation_id'] !== '' ? (int)$_POST['variation_id'] : 0;
     $delta = (int)($_POST['delta'] ?? 0);
     $new_qty = 0;
 
     if ($user_id > 0) {
-        $stmt = $conn->prepare("SELECT quantity FROM cart WHERE user_id=? AND product_id=?");
-        $stmt->bind_param("ii", $user_id, $pid);
+        if ($vid > 0) {
+            $stmt = $conn->prepare("SELECT quantity FROM cart WHERE user_id=? AND product_id=? AND variation_id=?");
+            $stmt->bind_param("iii", $user_id, $pid, $vid);
+        } else {
+            $stmt = $conn->prepare("SELECT quantity FROM cart WHERE user_id=? AND product_id=? AND (variation_id IS NULL OR variation_id=0)");
+            $stmt->bind_param("ii", $user_id, $pid);
+        }
         $stmt->execute();
         $curr = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -169,8 +199,13 @@ if ($action === 'update_qty') {
         if ($curr) {
             $new_qty = $curr['quantity'] + $delta;
             if ($new_qty >= 1) {
-                $stmt = $conn->prepare("UPDATE cart SET quantity=? WHERE user_id=? AND product_id=?");
-                $stmt->bind_param("iii", $new_qty, $user_id, $pid);
+                if ($vid > 0) {
+                    $stmt = $conn->prepare("UPDATE cart SET quantity=? WHERE user_id=? AND product_id=? AND variation_id=?");
+                    $stmt->bind_param("iiii", $new_qty, $user_id, $pid, $vid);
+                } else {
+                    $stmt = $conn->prepare("UPDATE cart SET quantity=? WHERE user_id=? AND product_id=? AND (variation_id IS NULL OR variation_id=0)");
+                    $stmt->bind_param("iii", $new_qty, $user_id, $pid);
+                }
                 $stmt->execute();
                 $stmt->close();
             } else {
@@ -178,9 +213,11 @@ if ($action === 'update_qty') {
             }
         }
     } else {
-        if (isset($_SESSION['cart'][$pid])) {
-            $_SESSION['cart'][$pid] = max(1, $_SESSION['cart'][$pid] + $delta);
-            $new_qty = $_SESSION['cart'][$pid];
+        $key = $vid > 0 ? $pid . '_' . $vid : $pid;
+        if (isset($_SESSION['cart'][$key])) {
+            $new_qty = max(1, $_SESSION['cart'][$key] + $delta);
+            unset($_SESSION['cart'][$key]);
+            $_SESSION['cart'][$key] = $new_qty;
         }
     }
     echo json_encode(['status' => 'success', 'new_qty' => $new_qty]);
@@ -188,7 +225,83 @@ if ($action === 'update_qty') {
 }
 
 // -----------------------------------------------
-// 7. GET CART
+// 7.  VARIANT
+// -----------------------------------------------
+if ($action === 'update_variant') {
+    $pid = (int)($_POST['product_id'] ?? 0);
+    $old_vid = (int)($_POST['old_vid'] ?? 0);
+    $new_vid = (int)($_POST['new_vid'] ?? 0);
+
+    if ($pid > 0 && $new_vid > 0) {
+        if ($user_id > 0) {
+            // Kiểm tra xem biến thể mới đã có trong giỏ hàng chưa
+            $check = $conn->prepare("SELECT quantity FROM cart WHERE user_id=? AND product_id=? AND variation_id=?");
+            $check->bind_param("iii", $user_id, $pid, $new_vid);
+            $check->execute();
+            $curr = $check->get_result()->fetch_assoc();
+            $check->close();
+
+            if ($curr) {
+                // Đã có, cộng dồn số lượng và xóa cái cũ
+                // Lấy số lượng cái cũ
+                if ($old_vid > 0) {
+                    $get_old = $conn->prepare("SELECT quantity FROM cart WHERE user_id=? AND product_id=? AND variation_id=?");
+                    $get_old->bind_param("iii", $user_id, $pid, $old_vid);
+                } else {
+                    $get_old = $conn->prepare("SELECT quantity FROM cart WHERE user_id=? AND product_id=? AND (variation_id IS NULL OR variation_id=0)");
+                    $get_old->bind_param("ii", $user_id, $pid);
+                }
+                $get_old->execute();
+                $old_qty_res = $get_old->get_result()->fetch_assoc();
+                $old_qty = $old_qty_res ? $old_qty_res['quantity'] : 1;
+                $get_old->close();
+
+                $stmt = $conn->prepare("UPDATE cart SET quantity=quantity+? WHERE user_id=? AND product_id=? AND variation_id=?");
+                $stmt->bind_param("iiii", $old_qty, $user_id, $pid, $new_vid);
+                $stmt->execute();
+                $stmt->close();
+
+                if ($old_vid > 0) {
+                    $del = $conn->prepare("DELETE FROM cart WHERE user_id=? AND product_id=? AND variation_id=?");
+                    $del->bind_param("iii", $user_id, $pid, $old_vid);
+                } else {
+                    $del = $conn->prepare("DELETE FROM cart WHERE user_id=? AND product_id=? AND (variation_id IS NULL OR variation_id=0)");
+                    $del->bind_param("ii", $user_id, $pid);
+                }
+                $del->execute();
+                $del->close();
+            } else {
+                // Chưa có, chỉ cần update variation_id
+                if ($old_vid > 0) {
+                    $stmt = $conn->prepare("UPDATE cart SET variation_id=? WHERE user_id=? AND product_id=? AND variation_id=?");
+                    $stmt->bind_param("iiii", $new_vid, $user_id, $pid, $old_vid);
+                } else {
+                    $stmt = $conn->prepare("UPDATE cart SET variation_id=? WHERE user_id=? AND product_id=? AND (variation_id IS NULL OR variation_id=0)");
+                    $stmt->bind_param("iii", $new_vid, $user_id, $pid);
+                }
+                $stmt->execute();
+                $stmt->close();
+            }
+        } else {
+            $old_key = $old_vid > 0 ? $pid . '_' . $old_vid : $pid;
+            $new_key = $pid . '_' . $new_vid;
+            if (isset($_SESSION['cart'][$old_key])) {
+                $qty = $_SESSION['cart'][$old_key];
+                if (isset($_SESSION['cart'][$new_key])) {
+                    $qty += $_SESSION['cart'][$new_key];
+                    unset($_SESSION['cart'][$new_key]);
+                }
+                unset($_SESSION['cart'][$old_key]);
+                $_SESSION['cart'][$new_key] = $qty;
+            }
+        }
+    }
+    echo json_encode(['status' => 'success']);
+    exit;
+}
+
+// -----------------------------------------------
+// 8. GET CART
 // -----------------------------------------------
 if ($action === 'get_cart') {
     $data = [];
@@ -282,7 +395,8 @@ if ($action === 'checkout') {
             $price_info = get_effective_price($conn, $pid, $p['price'], $p['sale_price']);
             $unit_price     = $price_info['effective_price'];
             $total         += $unit_price * $qty;
-            $valid_items[]  = ['pid' => $pid, 'qty' => $qty, 'price' => $unit_price];
+            $variant_text   = trim($it['variant_text'] ?? '');
+            $valid_items[]  = ['pid' => $pid, 'qty' => $qty, 'price' => $unit_price, 'variant_text' => $variant_text];
         }
     }
 
@@ -323,21 +437,16 @@ if ($action === 'checkout') {
                 if ($discount_amount > $total) $discount_amount = $total;
                 
                 // Trừ lượt dùng của user đó
-                $conn->query("UPDATE user_vouchers SET used_count = used_count + 1 WHERE user_id = $user_id AND voucher_id = $voucher_id");
+                $upd_v = $conn->prepare("UPDATE user_vouchers SET used_count = used_count + 1 WHERE user_id = ? AND voucher_id = ?");
+                $upd_v->bind_param("ii", $user_id, $voucher_id);
+                $upd_v->execute();
+                $upd_v->close();
             }
         }
         $v_stmt->close();
     }
 
     // BƯỚC 3: Tạo đơn hàng
-    function generateOrderCode() {
-        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        $code = '';
-        for ($i = 0; $i < 10; $i++) {
-            $code .= $chars[rand(0, strlen($chars) - 1)];
-        }
-        return $code;
-    }
     $order_code = generateOrderCode();
 
     $sql  = "INSERT INTO orders (order_code, user_id, name, phone, address, total_price, discount_amount, status, payment_method, payment_status, created_at)
@@ -349,11 +458,12 @@ if ($action === 'checkout') {
         $oid   = $conn->insert_id;
         $stmt->close();
 
-        $stmt_d = $conn->prepare("INSERT INTO order_details (order_id, product_id, quantity, price) VALUES (?,?,?,?)");
+        $stmt_d = $conn->prepare("INSERT INTO order_details (order_id, product_id, quantity, price, variant_text) VALUES (?,?,?,?,?)");
         $stmt_del = $conn->prepare("DELETE FROM cart WHERE user_id=? AND product_id=?");
 
         foreach ($valid_items as $v) {
-            $stmt_d->bind_param("iiid", $oid, $v['pid'], $v['qty'], $v['price']);
+            $vt = $v['variant_text'] ?? '';
+            $stmt_d->bind_param("iiids", $oid, $v['pid'], $v['qty'], $v['price'], $vt);
             $stmt_d->execute();
 
             if ($payment_method !== 'vnpay') {
@@ -412,7 +522,6 @@ if ($action === 'checkout') {
                 }
             }
 
-            // HOOK 2: CẬP NHẬT ASSOCIATION RULES
             $pairs_stmt = $conn->prepare("
                 SELECT od1.product_id AS a, od2.product_id AS b
                 FROM order_details od1

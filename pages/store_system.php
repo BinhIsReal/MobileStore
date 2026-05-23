@@ -1,10 +1,13 @@
-<?php session_start(); 
+﻿<?php session_start(); 
 include '../config/db.php';?>
 <!DOCTYPE html>
 <html lang="vi">
 
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
+    <link rel="shortcut icon" type="image/svg+xml" href="/assets/img/favicon.svg">
     <title>Hệ thống 124 Cửa hàng - TechMate</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/pages.css">

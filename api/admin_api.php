@@ -8,7 +8,6 @@ error_reporting(0);
 
 // =============================================
 // SECURITY: Kiểm tra session tồn tại trước khi truy cập key
-// FIXED: isset($_SESSION['role']) trước, tránh PHP Warning & bypass khi session chưa có
 // =============================================
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     http_response_code(403);
@@ -19,7 +18,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
 $action = $_POST['action'] ?? '';
 
 // -----------------------------------------------
-// ACTION: UPDATE ORDER STATUS
+// ACTION:  ORDER STATUS
 // -----------------------------------------------
 if ($action === 'update_status') {
     // SECURITY: Xác thực CSRF token trước khi thay đổi trạng thái đơn hàng

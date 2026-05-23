@@ -7,6 +7,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TechMate - Hệ thống bán đồ công nghệ hàng đầu Việt Nam</title>
     <meta name="description" content="TechMate - Hệ thống bán đồ công nghệ chính hãng. Giá tốt, giao nhanh, bảo hành uy tín toàn quốc.">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
+    <link rel="shortcut icon" type="image/svg+xml" href="assets/img/favicon.svg">
+
     <!-- CSRF Meta Tag -->
     <?php include_once 'includes/security.php'; ?>
     <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
@@ -382,7 +387,7 @@
                 <div class="hot-title-wrap">
                     <h2 id="fs-display-title">
                         <i class="fa-solid fa-bolt" style="-webkit-text-fill-color:#ff6b35; color:#ff6b35;"></i>
-                        <span>HOT SALE CUỐI TUẦN</span>
+                        <span> Flash Sale</span>
                     </h2>
                 </div>
                 <div class="hot-timer" id="hot-timer-display">
@@ -425,7 +430,7 @@
                 <span id="badge-bot" class="tab-badge"></span>
             </div>
             <div class="chat-tab" data-tab="shop">
-                <i class="fa-solid fa-headset"></i> Chat Shop
+                <i class="fa-solid fa-headset" style="margin-right: 4px;"></i> Chat với Shop
                 <span id="badge-shop" class="tab-badge"></span>
             </div>
 

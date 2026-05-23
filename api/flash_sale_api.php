@@ -114,8 +114,7 @@ if ($action === 'random_suggest') {
 }
 
 if ($action === 'save_flash_sale') {
-    $title            = $_POST['title'] ?? '🔥 HOT SALE CUỐI TUẦN';
-    // Fix datetime-local format -> MySQL datetime
+    $title            = $_POST['title'] ?? '🔥 Flash Sale';
     $end_time_raw     = $_POST['end_time'] ?? '';
     $end_time         = $end_time_raw ? date('Y-m-d H:i:s', strtotime(str_replace('T', ' ', $end_time_raw))) : '';
     $default_discount = (int)($_POST['default_discount'] ?? 20);

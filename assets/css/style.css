@@ -131,6 +131,73 @@ nav .menu-item {
   min-width: auto;
 }
 
+/* --- CART VARIANT DROPDOWN --- */
+.cart-variant-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #f1f2f6;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 5px;
+  position: relative;
+  user-select: none;
+}
+.cart-variant-box i {
+  transition: transform 0.3s ease;
+}
+.cart-variant-box.open i {
+  transform: rotate(180deg);
+}
+.variant-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  min-width: 200px;
+  z-index: 100;
+  margin-top: 5px;
+  overflow: hidden;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.variant-dropdown-menu.show {
+  visibility: visible;
+  opacity: 1;
+  border: 1px solid #9b9999;
+  transform: translateY(0);
+}
+.variant-option {
+  padding: 10px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s;
+}
+.variant-option:last-child {
+  border-bottom: none;
+}
+.variant-option:hover {
+  background: #f8f9fa;
+}
+.variant-option.active {
+  background: #eef5ff;
+  font-weight: bold;
+  color: #00487a;
+}
+.variant-option .v-price {
+  color: #d70018;
+  font-weight: 600;
+}
+
 nav .menu-item i {
   margin-bottom: 0;
   font-size: 18px;
@@ -302,7 +369,7 @@ nav .menu-item:hover {
 }
 
 .hot-timer .timer-block b {
-  font-size: 28px;
+  font-size: 30px;
   line-height: 1;
   font-weight: bold;
 }
@@ -318,7 +385,9 @@ nav .menu-item:hover {
   text-transform: uppercase;
   opacity: 0.9;
 }
-
+#fs-display-title {
+  color: linear-gradient(135deg, #ff4e00, #ec9f05);
+}
 /* =========================================
    4. PRODUCT CARD & GRID
 ========================================= */
@@ -354,11 +423,6 @@ nav .menu-item:hover {
   height: 100%;
 }
 
-.product-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
 .product-card img {
   height: 180px;
   width: 100%;
@@ -375,10 +439,12 @@ nav .menu-item:hover {
   cursor: pointer;
   transition: transform 0.2s ease;
 }
-.product-card:hover,
-.tracking-result:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+@media (hover: hover) {
+  .product-card:hover,
+  .tracking-result:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  }
 }
 .product-card h3 {
   font-size: 14px;
@@ -427,7 +493,6 @@ nav .menu-item:hover {
   font-size: 13px;
 }
 
-/* Star Rating Row — dùng trong product-card, related-card, recommendation-track */
 .card-stars {
   display: flex;
   align-items: center;
@@ -464,15 +529,15 @@ nav .menu-item:hover {
   gap: 8px;
 }
 
-.product-card button:hover,
-.btn-add:hover {
-  background: linear-gradient(to right, #2b52ff, #4190ff);
-  border: none;
-  color: white;
-  transform: translateY(-2px);
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 72, 122, 0.3);
+@media (hover: hover) {
+  .product-card button:hover,
+  .btn-add:hover {
+    background: linear-gradient(to right, #284be9, #3474cf);
+    border-color: transparent;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 72, 122, 0.3);
+  }
 }
 
 .product-card button::before {
@@ -548,12 +613,7 @@ nav .menu-item:hover {
   color: var(--accent);
 }
 
-.btn-buy-now:hover {
-  transform: scale(1.02);
-  box-shadow: 0 6px 15px rgba(215, 0, 24, 0.4);
-}
-
-/* Nút THÊM GIỎ (Viền đỏ, nền trắng) */
+/* Nút THÊM GIỎ  */
 .btn-add-cart-pd {
   flex: 1;
   background: white;
@@ -637,7 +697,7 @@ nav .menu-item:hover {
   color: white;
   border: 1px solid transparent;
   padding: 0 15px !important;
-  border-radius: 4px;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 13px;
   font-weight: bold;
@@ -653,7 +713,7 @@ nav .menu-item:hover {
   color: #e82e44;
   border: 1px solid #ffb3b3;
   padding: 0 15px;
-  border-radius: 4px;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 13px;
   font-weight: bold;
@@ -734,18 +794,20 @@ nav .menu-item:hover {
 }
 
 .cart-variant-box {
-  background: #f5f5f5;
+  background: #e3e3e3;
   padding: 4px 8px;
+  justify-content: space-between;
   border-radius: 4px;
+  border: 1px solid #9b9999;
   font-size: 12px;
-  color: #555;
+  color: #000000;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   cursor: pointer;
 }
 
-/* 4. Ô Giá tiền (Được đặt dưới Tên sản phẩm) */
+/* 4. Ô Giá tiền  */
 .cart-item-price {
   text-align: left;
   display: flex;
@@ -764,13 +826,31 @@ nav .menu-item:hover {
   margin-bottom: 4px;
   font-weight: bold;
 }
+.flash-badge {
+  display: inline-block;
+  background: #ff6b35;
+  color: #fff;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 2px;
+  font-weight: bold;
+}
+.cart-item-price .flash-badge {
+  display: none;
+}
 
 .cart-item-price .current-price {
   font-weight: bold;
   color: #d70018;
   font-size: 15px;
 }
-
+.current-price {
+  font-weight: bold;
+}
+.old-price {
+  color: #999;
+  font-size: 12px;
+}
 .cart-item-price .old-price {
   color: #999;
   font-size: 13px;
@@ -1091,7 +1171,7 @@ nav .menu-item:hover {
   color: var(--primary);
   cursor: pointer;
 }
-/* --- Widget Nút Tròn --- */
+
 #chat-widget {
   position: fixed;
   bottom: 20px;
@@ -1140,12 +1220,12 @@ nav .menu-item:hover {
   bottom: 90px;
   right: 20px;
   width: 350px;
-  height: 450px;
+  height: 500px;
   background: #fff;
   border-radius: 15px;
   box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
-  z-index: 9999;
-  overflow: hidden;
+  z-index: 100000;
+  overflow: visible;
   border: 1px solid #f0f0f0;
   opacity: 0;
   visibility: hidden;
@@ -1154,6 +1234,16 @@ nav .menu-item:hover {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
+}
+#chat-box::after {
+  content: "";
+  position: absolute;
+  bottom: -9px;
+  right: 21px;
+  border-width: 9px 9px 0;
+  border-style: solid;
+  border-color: white transparent transparent transparent;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.08));
 }
 #chat-box.open {
   opacity: 1;
@@ -1174,6 +1264,8 @@ nav .menu-item:hover {
   height: 45px;
   background: var(--primary);
   user-select: none;
+  border-radius: 15px 15px 0 0;
+  overflow: hidden;
 }
 .chat-tab {
   flex: 1;
@@ -1203,7 +1295,6 @@ nav .menu-item:hover {
   background: #fff;
 }
 
-/* Khung tin nhắn bên phải */
 #chat-window {
   flex: 1;
   padding: 20px;
@@ -1326,6 +1417,8 @@ nav .menu-item:hover {
   display: flex;
   gap: 10px;
   align-items: center;
+  border-radius: 0 0 15px 15px;
+  overflow: hidden;
 }
 
 .chat-footer input,
@@ -1456,7 +1549,6 @@ nav .menu-item:hover {
   box-shadow: 0 0 0 3px rgba(0, 72, 122, 0.1);
 }
 
-/* Nút Đăng nhập */
 .auth-btn {
   width: 100%;
   padding: 12px;
@@ -1580,7 +1672,7 @@ nav .menu-item:hover {
   background: #04416b;
 }
 .close-chat:hover {
-  background-color: red;
+  background-color: rgb(246, 39, 39);
 }
 @keyframes floatUp {
   from {
@@ -1715,7 +1807,8 @@ nav .menu-item:hover {
 }
 
 .sub-column a {
-  display: block;
+  display: inline-block;
+  position: relative;
   font-size: 14px;
   color: #555;
   padding: 6px 0;
@@ -1724,9 +1817,24 @@ nav .menu-item:hover {
 }
 
 .sub-column a:hover {
-  color: #d70018;
+  color: #dc0e26;
   transform: translateX(5px);
   font-weight: 500;
+}
+.sub-column a::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background-color: #dc0e26;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+.sub-column a:hover::after {
+  transform: scaleX(1);
 }
 .sort-btn {
   text-decoration: none;
@@ -1945,7 +2053,6 @@ nav .menu-item:hover {
   align-items: center;
   gap: 10px;
 }
-/* Căn chỉnh icon cho đều */
 .sidebar-menu li i:first-child {
   width: 20px;
   text-align: center;
@@ -2034,7 +2141,7 @@ nav .menu-item:hover {
   transform: translate();
 }
 /* =========================================
-   TOAST NOTIFICATION (THÔNG BÁO TRÔI)
+   TOAST NOTIFICATION 
 ========================================= */
 #toast-container {
   position: fixed;
@@ -2047,16 +2154,14 @@ nav .menu-item:hover {
   display: flex;
   align-items: center;
   background-color: #fff;
-  border-radius: 4px;
-  padding: 15px 20px;
-  min-width: 300px;
-  max-width: 400px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 12px 20px;
+  width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   margin-bottom: 15px;
   animation:
     slideInLeft 0.5s ease,
     fadeOut 1s 3s forwards;
-  border-left: 6px solid;
 }
 
 @keyframes slideInLeft {
@@ -2077,48 +2182,38 @@ nav .menu-item:hover {
 }
 
 /* Các loại thông báo */
-.toast--success {
-  border-color: #47d864;
-}
 .toast--success .toast__icon {
-  color: #47d864;
+  color: #a5dc86;
 }
 
-.toast--error {
-  border-color: #ff623d;
-}
 .toast--error .toast__icon {
-  color: #ff623d;
+  color: #f27474;
 }
 
-.toast--warning {
-  border-color: #ffcc00;
-}
 .toast--warning .toast__icon {
-  color: #ffcc00;
+  color: #f8bb86;
 }
 
 .toast__icon {
   font-size: 24px;
-  margin-right: 15px;
+  margin-right: 12px;
 }
 .toast__body {
   flex-grow: 1;
 }
 .toast__title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #333;
-  margin-bottom: 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #545454;
+  margin-bottom: 0;
 }
 .toast__msg {
   font-size: 14px;
-  color: #666;
+  color: #545454;
+  margin-top: 4px;
 }
 .toast__close {
-  font-size: 20px;
-  color: #999;
-  cursor: pointer;
+  display: none;
 }
 
 /* =========================================
@@ -2277,9 +2372,12 @@ nav .menu-item:hover {
   top: calc(100% + 12px);
   width: 340px;
   background: #fff;
-  border: 1px solid #e5e7eb;
+  border: 1.5px solid #d0d7e3;
+  border-top: 3px solid var(--primary);
   border-radius: 12px;
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.14);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(var(--primary-rgb, 220, 38, 38), 0.08);
   z-index: 9998;
   overflow: hidden;
 }
@@ -2288,7 +2386,7 @@ nav .menu-item:hover {
 }
 .notif-header {
   padding: 12px 16px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #b7b7b7;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2522,7 +2620,7 @@ nav .menu-item:hover {
   padding: 10px 12px;
   border-radius: 14px;
   color: #ffffff;
-  font-size: 12px;
+  font-size: 11px;
   transition: 0.2s;
   background: #00487a;
   font-weight: 600;
@@ -2759,7 +2857,7 @@ nav .menu-item:hover {
   cursor: pointer;
 }
 /* =========================================
-   11. NEW FOOTER (STYLE GIỐNG ẢNH MẪU)
+   11. NEW FOOTER 
 ========================================= */
 footer {
   background-color: var(--primary);
@@ -2797,17 +2895,16 @@ footer {
   color: rgba(255, 255, 255, 0.9);
   text-decoration: none;
   transition: 0.2s;
-  /* Tăng touch target mobile — ídínhất 44px */
   display: block;
   padding: 8px 0;
 }
 
 .ft-col ul li a:hover {
   color: white;
-  padding-left: 5px; /* Hiệu ứng trượt nhẹ */
+  padding-left: 5px;
+  border-left: 3px solid #dcdcdc;
 }
 
-/* Icons thanh toán & Vận chuyển */
 .pay-grid {
   display: flex;
   gap: 10px;
@@ -2988,7 +3085,7 @@ footer {
   vertical-align: middle;
 }
 /* =========================================
-   TRANG CHI TIẾT SẢN PHẨM (PRODUCT DETAIL)
+   (PRODUCT DETAIL)
 ========================================= */
 .pd-wrapper {
   background: #fff;
@@ -3047,7 +3144,7 @@ footer {
   color: #333;
   margin-bottom: 10px;
 }
-/* Thống nhất giao diện giá */
+
 .pd-price-box {
   display: flex;
   align-items: baseline;
@@ -3135,7 +3232,10 @@ footer {
   transition: transform 0.2s;
   text-align: center;
 }
-
+.btn-buy-now:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 15px rgba(215, 0, 24, 0.4);
+}
 .btn-buy-now strong {
   display: block;
   font-size: 16px;
@@ -3170,7 +3270,7 @@ footer {
   margin-bottom: 3px;
 }
 
-/* SLIDER SẢN PHẨM LIÊN QUAN */
+/* SLIDER SẢN PHẨM  */
 .related-wrapper {
   background: #fff;
   padding: 20px;
@@ -3196,6 +3296,12 @@ footer {
   display: flex;
   gap: 15px;
   transition: transform 0.4s ease-in-out;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.related-track:active {
+  cursor: grabbing;
 }
 .related-card {
   min-width: calc(25% - 11.25px);
@@ -3300,9 +3406,9 @@ footer {
 
 .review-list {
   display: flex;
-  flex-direction: column; /* Xếp dọc các review */
-  gap: 15px; /* Khoảng cách đều giữa các review */
-  height: auto !important; /* Cho phép co dãn theo số lượng review */
+  flex-direction: column;
+  gap: 15px;
+  height: auto !important;
   margin-top: 20px;
 }
 
@@ -3419,7 +3525,7 @@ footer {
   background: #fff;
   border: 1px solid #eee;
   border-radius: 8px;
-  width: 100%; /* Đảm bảo không bị tràn chiều ngang */
+  width: 100%;
   box-sizing: border-box;
 }
 .review-card:last-child {
@@ -3515,7 +3621,6 @@ button {
   opacity: 0.9;
   transform: translateY(-1px);
 }
-/* Nút Like */
 .btn-like-review {
   background: none;
   border: none;
@@ -3639,7 +3744,6 @@ button {
   }
 }
 
-/* Loading State */
 .review-loading,
 .empty-review {
   text-align: center;
@@ -3654,7 +3758,6 @@ button {
   color: #ccc;
 }
 
-/* Nút Xem thêm (Load More) */
 .btn-view-all-reviews {
   display: inline-block;
   padding: 10px 30px;
@@ -3924,7 +4027,6 @@ button {
   color: #dc3545;
 }
 
-/* Custom Payment Method Options */
 .payment-option {
   position: relative;
   cursor: pointer;
@@ -3960,7 +4062,6 @@ button {
   transition: 0.2s;
 }
 
-/* Kiểu dáng khi được chọn sử dụng :has() */
 .payment-option:has(.payment-radio:checked) {
   border-color: #00487a;
   background: #f0f7ff;
@@ -3992,7 +4093,6 @@ button {
    8. RESPONSIVE / MOBILE OPTIMIZATION
 ========================================= */
 
-/* --- TABLET HOÀC LAPTOP NHỎ (Max 1024px) --- */
 @media (max-width: 1024px) {
   .hero-section {
     grid-template-columns: 200px 1fr 200px;
@@ -4013,7 +4113,6 @@ button {
   }
 }
 
-/* --- TABLET & MOBILE LỚN (Max 768px) --- */
 @media (max-width: 768px) {
   body {
     padding-top: 56px;
@@ -4022,7 +4121,7 @@ button {
     height: 56px;
   }
   nav .menu {
-    display: none; /* Cần có JS toggle cho menu mobile */
+    display: none;
   }
   nav .search-box {
     margin: 0 10px;
@@ -4095,7 +4194,6 @@ button {
   }
 }
 
-/* --- MOBILE NHỎ (Max 480px) --- */
 @media (max-width: 480px) {
   nav .search-box {
     max-width: 150px;
@@ -4313,7 +4411,7 @@ button {
 }
 .wishlist-header h2 {
   color: var(--primary, #d70018);
-  font-size: 22px;
+  font-size: 18px;
 }
 .wishlist-grid {
   display: grid;
@@ -4328,6 +4426,9 @@ button {
   background: #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   transition: transform 0.2s;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 .wishlist-card:hover {
   transform: translateY(-3px);
@@ -4341,6 +4442,9 @@ button {
 }
 .wishlist-card-body {
   padding: 10px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 .wishlist-card-body a {
   text-decoration: none;
@@ -4375,7 +4479,8 @@ button {
 .wishlist-actions {
   display: flex;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: auto;
+  padding-top: 10px;
 }
 .btn-remove-wish {
   width: 20%;
@@ -4465,4 +4570,166 @@ button {
   pointer-events: auto;
   margin-right: 4px;
   margin-bottom: 98px;
+}
+
+.mobile-bottom-nav,
+.m-backdrop,
+.m-bottom-sheet {
+  display: none !important;
+}
+.cart-recommendation-add-btn {
+  background: #e6394c !important;
+  border: 1px solid #e6394c !important;
+  color: #ffffff !important;
+  padding: 7px !important;
+  border-radius: 8px !important;
+  cursor: pointer;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  transition: 0.2s;
+}
+.cart-recommendation-add-btn:hover {
+  box-shadow: 0 6px 15px rgba(215, 0, 24, 0.4) !important;
+}
+.cart-recommendation-add-btn:active {
+  transform: scale(0.98);
+}
+
+.swal2-container.swal2-top-end {
+  top: 70px !important;
+  z-index: 99999 !important;
+}
+
+/* =========================================
+   ORDER DETAIL - VARIANT TEXT
+========================================= */
+.item-variant-text {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  border: 1px solid #d3d3d3;
+  background: #f1f3f5;
+  border-radius: 4px;
+  padding: 2px 7px;
+  margin-top: 3px;
+  width: fit-content;
+  font-weight: 500;
+}
+
+/* =========================================
+   ADMIN ORDER DETAIL - PRODUCT INFO LAYOUT
+========================================= */
+.order-detail-product-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* =========================================
+   PRODUCT IMAGE LIGHTBOX
+========================================= */
+.pd-main-img-wrap img {
+  cursor: zoom-in;
+}
+
+#img-lightbox-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 99999;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  touch-action: none;
+}
+#img-lightbox-overlay.active {
+  display: flex;
+}
+
+#img-lightbox-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#img-lightbox-img {
+  max-width: 92vw;
+  max-height: 88vh;
+  object-fit: contain;
+  border-radius: 6px;
+  transform-origin: center center;
+  transform: scale(1) translate(0px, 0px);
+  transition: transform 0.15s ease;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+  will-change: transform;
+}
+
+#img-lightbox-close {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  color: #fff;
+  font-size: 32px;
+  cursor: pointer;
+  line-height: 1;
+  z-index: 100001;
+  opacity: 0.85;
+  background: none;
+  border: none;
+}
+#img-lightbox-close:hover {
+  opacity: 1;
+  transform: rotate(90deg);
+}
+
+#img-lightbox-zoom-bar {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(30, 30, 30, 0.75);
+  backdrop-filter: blur(8px);
+  border-radius: 30px;
+  padding: 8px 18px;
+  z-index: 100001;
+}
+#img-lightbox-zoom-bar button {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.15s;
+}
+#img-lightbox-zoom-bar button:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+#img-lightbox-zoom-label {
+  color: #eee;
+  font-size: 13px;
+  min-width: 42px;
+  text-align: center;
+}
+
+#img-lightbox-wrap.dragging {
+  cursor: grabbing;
+}
+#img-lightbox-wrap:not(.dragging) {
+  cursor: grab;
 }

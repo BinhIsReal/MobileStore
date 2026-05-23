@@ -26,31 +26,91 @@ if ($action === 'get_recommendations') {
 
     $limit = min(8, (int)($_GET['limit'] ?? 4));
 
-    $limit = min(8, (int)($_GET['limit'] ?? 4));
+   
 
-    // Xác định category của sản phẩm gốc để quyết định tập gợi ý phụ kiện
-    $cat_stmt = $conn->prepare("SELECT category_id FROM products WHERE id = ?");
+    $cat_stmt = $conn->prepare("SELECT category_id, name, price, brand_id FROM products WHERE id = ?");
     $cat_stmt->bind_param("i", $product_id);
     $cat_stmt->execute();
     $cat_res = $cat_stmt->get_result()->fetch_assoc();
     $cat_stmt->close();
     
-    $source_cat_id = $cat_res['category_id'] ?? 0;
+    $source_cat_id = (int)($cat_res['category_id'] ?? 0);
+    $source_name = mb_strtolower($cat_res['name'] ?? '', 'UTF-8');
+    $source_price = (float)($cat_res['price'] ?? 0);
+    $source_brand = (int)($cat_res['brand_id'] ?? 0);
 
-    if (in_array($source_cat_id, [1, 3, 5])) { 
-        $filter_sql = "(p.category_id IN (15, 20) AND p.name NOT LIKE '%chuột%' AND p.name NOT LIKE '%phím%' AND p.name NOT LIKE '%đế%' AND p.name NOT LIKE '%bảng vẽ%')";
-    } elseif (in_array($source_cat_id, [2, 7, 10, 13])) { 
-        $filter_sql = "(p.category_id IN (13, 15, 20) AND p.name NOT LIKE '%pin sạc dự phòng%' AND p.name NOT LIKE '%củ sạc%' AND p.name NOT LIKE '%cáp sạc%')";
-    } elseif ($source_cat_id == 17) {
-        $filter_sql = "(p.category_id = 20)";
-    } else {
-        $filter_sql = "(p.category_id = 20 OR p.category_id = $source_cat_id)";
+    // 1. Flexibility & Complementary Logic
+    $target_categories = []; 
+    $include_keywords = [];
+
+    switch ($source_cat_id) {
+        case 1: // Điện thoại
+            $target_categories = [15, 20]; 
+            $include_keywords = ['sạc dự phòng', 'củ sạc', 'cáp sạc', 'tai nghe', 'ốp lưng', 'cường lực'];
+            break;
+        case 2: // Laptop
+            $target_categories = [15, 20];
+            $include_keywords = ['chuột', 'balo', 'túi chống sốc', 'tai nghe', 'đế tản nhiệt', 'lót chuột'];
+            break;
+        case 3: // Máy tính bảng
+            $target_categories = [15, 20];
+            $include_keywords = ['bao da', 'bút cảm ứng', 'củ sạc', 'cáp sạc', 'tai nghe'];
+            break;
+        case 5: // Đồng hồ
+            $target_categories = [20];
+            $include_keywords = ['dây đồng hồ', 'đế sạc', 'cáp sạc đồng hồ', 'kính cường lực đồng hồ'];
+            break;
+        case 7: // PC
+            $target_categories = [10, 13, 20]; 
+            $include_keywords = ['màn hình', 'chuột', 'phím', 'bàn phím', 'lót chuột', 'webcam'];
+            break;
+        case 17: // Camera
+            $target_categories = [20];
+            $include_keywords = ['thẻ nhớ', 'túi đựng máy ảnh', 'tripod', 'ống kính', 'pin máy ảnh'];
+            break;
+        case 10: // Màn hình / Tivi
+            $target_categories = [20, 15];
+            $include_keywords = ['cáp hdmi', 'giá treo', 'loa', 'soundbar'];
+            break;
+        case 15: // Âm thanh (Tai nghe, Loa)
+            $target_categories = [20];
+            $include_keywords = ['giá đỡ tai nghe', 'hộp đựng tai nghe', 'cáp âm thanh', 'jack chuyển'];
+            break;
     }
 
-    // 1. Ưu tiên lấy các phụ kiện được mua cùng nhiều nhất từ product_associations (Có filter)
+    $cat_in = implode(',', array_filter($target_categories, 'is_numeric'));
+    if (empty($cat_in)) {
+        $cat_in = '0';
+    }
+    
+    $filter_sql = "p.category_id IN ($cat_in)";
+
+    if (!empty($include_keywords)) {
+        $include_conditions = [];
+        foreach ($include_keywords as $kw) {
+            $include_conditions[] = "p.name LIKE '%" . $conn->real_escape_string($kw) . "%'";
+        }
+        $filter_sql .= " AND (" . implode(" OR ", $include_conditions) . ")";
+        $include_score = "(CASE WHEN " . implode(" OR ", $include_conditions) . " THEN 5 ELSE 0 END)";
+    } else {
+        $filter_sql .= " AND 1=0"; // Không có phụ kiện phù hợp -> Không gợi ý
+        $include_score = "0";
+    }
+
+    // 2. Real-world Context (Price & Brand synergy)
+    $min_price = $source_price * 0.005;
+    $max_price = $source_price * 0.4;
+    $price_boost = "CASE WHEN p.price BETWEEN $min_price AND $max_price THEN 2 ELSE 0 END";
+    $brand_boost = "CASE WHEN p.brand_id = $source_brand AND $source_brand > 0 THEN 3 ELSE 0 END";
+
+    $order_by = "(pa.co_count * 2) + ($price_boost) + ($brand_boost) + $include_score DESC";
+    $fallback_order_by = "($price_boost) + ($brand_boost) + $include_score DESC, p.id DESC";
+
+    $fetch_limit = 30; 
+
     $stmt = $conn->prepare("
         SELECT 
-            p.id, p.name, p.image, p.price, p.sale_price, p.stock,
+            p.id, p.name, p.image, p.price, p.sale_price, p.stock, p.brand_id, p.category_id,
             pa.co_count,
             ROUND(IFNULL(AVG(r.rating), 0), 1) AS avg_rating
         FROM product_associations pa
@@ -66,53 +126,70 @@ if ($action === 'get_recommendations') {
           AND p.stock > 0
           AND $filter_sql
         GROUP BY p.id, pa.co_count
-        ORDER BY pa.co_count DESC
+        ORDER BY $order_by
         LIMIT ?
     ");
-    $stmt->bind_param("iiiii", $product_id, $product_id, $product_id, $product_id, $limit);
+    $stmt->bind_param("iiiii", $product_id, $product_id, $product_id, $product_id, $fetch_limit);
     $stmt->execute();
     $res = $stmt->get_result();
     $stmt->close();
 
-    $recommendations = [];
+    $pool = [];
     while ($row = $res->fetch_assoc()) {
-        // Ưu tiên Flash Sale > sale_price > price
-        $price_info = get_effective_price($conn, (int)$row['id'], $row['price'], $row['sale_price']);
-        $row['display_price']   = $price_info['effective_price'];
-        $row['is_flash_sale']   = $price_info['is_flash_sale'];
-        $row['discount_label']  = $price_info['discount_label'];
-        $row['avg_rating']      = (float)($row['avg_rating'] ?? 0);
-        $row['image_url'] = (strpos($row['image'], 'http') === 0)
-            ? $row['image']
-            : '/assets/img/' . $row['image'];
-        $row['product_url'] = '/product_detail.php?id=' . $row['id'];
-        $recommendations[] = $row;
+        $pool[] = $row;
     }
 
-    // 2. Fallback: Nếu không đủ gợi ý từ association, bổ sung dựa trên filter quy định (Phụ kiện tương thích)
-    if (count($recommendations) < $limit) {
-        $fill_limit = $limit - count($recommendations);
-        $existing_ids = count($recommendations) > 0 ? implode(',', array_column($recommendations, 'id')) : '0';
-        
-        $cat_stmt = $conn->prepare("
-            SELECT p.id, p.name, p.image, p.price, p.sale_price, p.stock,
-                   ROUND(IFNULL(AVG(r.rating), 0), 1) AS avg_rating
-            FROM products p
-            LEFT JOIN product_reviews r ON r.product_id = p.id
-            WHERE p.id != ?
-              AND p.id NOT IN ($existing_ids)
-              AND p.stock > 0
-              AND $filter_sql
-            GROUP BY p.id
-            ORDER BY p.id DESC
-            LIMIT ?
-        ");
-        $cat_stmt->bind_param("ii", $product_id, $fill_limit);
-        $cat_stmt->execute();
-        $cat_res = $cat_stmt->get_result();
-        $cat_stmt->close();
+    $existing_ids = count($pool) > 0 ? implode(',', array_column($pool, 'id')) : '0';
+    $cat_stmt = $conn->prepare("
+        SELECT p.id, p.name, p.image, p.price, p.sale_price, p.stock, p.brand_id, p.category_id,
+               ROUND(IFNULL(AVG(r.rating), 0), 1) AS avg_rating,
+               0 AS co_count
+        FROM products p
+        LEFT JOIN product_reviews r ON r.product_id = p.id
+        WHERE p.id != ?
+          AND p.id NOT IN ($existing_ids)
+          AND p.stock > 0
+          AND $filter_sql
+        GROUP BY p.id
+        ORDER BY $fallback_order_by
+        LIMIT ?
+    ");
+    $cat_stmt->bind_param("ii", $product_id, $fetch_limit);
+    $cat_stmt->execute();
+    $cat_res = $cat_stmt->get_result();
+    $cat_stmt->close();
 
-        while ($row = $cat_res->fetch_assoc()) {
+    while ($row = $cat_res->fetch_assoc()) {
+        $pool[] = $row;
+    }
+
+    // 3. Diversity 
+    $get_product_type = function($name) {
+        $name = mb_strtolower($name, 'UTF-8');
+        if (strpos($name, 'sạc dự phòng') !== false) return 'power_bank';
+        if (strpos($name, 'củ sạc') !== false || strpos($name, 'adapter') !== false) return 'charger';
+        if (strpos($name, 'cáp') !== false || strpos($name, 'dây sạc') !== false) return 'cable';
+        if (strpos($name, 'ốp lưng') !== false || strpos($name, 'bao da') !== false) return 'case';
+        if (strpos($name, 'tai nghe') !== false) return 'audio';
+        if (strpos($name, 'chuột') !== false) return 'mouse';
+        if (strpos($name, 'phím') !== false || strpos($name, 'bàn phím') !== false) return 'keyboard';
+        if (strpos($name, 'màn hình') !== false) return 'monitor';
+        if (strpos($name, 'thẻ nhớ') !== false) return 'memory_card';
+        if (strpos($name, 'balo') !== false || strpos($name, 'túi') !== false) return 'bag';
+        if (strpos($name, 'dây đồng hồ') !== false) return 'watch_strap';
+        return 'other';
+    };
+
+    $recommendations = [];
+    $seen_types = [];
+
+    foreach ($pool as $row) {
+        if (count($recommendations) >= $limit) break;
+        
+        $type = $get_product_type($row['name']);
+        $max_per_type = ($type === 'other') ? 2 : 1; 
+
+        if (($seen_types[$type] ?? 0) < $max_per_type) {
             $price_info = get_effective_price($conn, (int)$row['id'], $row['price'], $row['sale_price']);
             $row['display_price']   = $price_info['effective_price'];
             $row['is_flash_sale']   = $price_info['is_flash_sale'];
@@ -122,13 +199,15 @@ if ($action === 'get_recommendations') {
                 ? $row['image']
                 : '/assets/img/' . $row['image'];
             $row['product_url'] = '/product_detail.php?id=' . $row['id'];
-            $row['co_count']    = 0;
-            $recommendations[]  = $row;
+            
+            $recommendations[] = $row;
+            $seen_types[$type] = ($seen_types[$type] ?? 0) + 1;
         }
     }
 
     echo json_encode(['status' => 'success', 'data' => $recommendations, 'source_product_id' => $product_id]);
     exit;
+
 }
 
 // -----------------------------------------------
@@ -140,7 +219,6 @@ if ($action === 'rebuild_associations') {
         exit;
     }
 
-    // Xóa dữ liệu cũ và tính lại toàn bộ từ order_details
     $conn->query("TRUNCATE TABLE product_associations");
 
     $rebuild_sql = "
@@ -166,8 +244,7 @@ if ($action === 'rebuild_associations') {
 }
 
 // -----------------------------------------------
-// 3. HOOK: Được gọi từ cart_api.php sau checkout thành công
-// Cập nhật association từ đơn hàng mới (incremental update)
+// 3. HOOK
 // -----------------------------------------------
 if ($action === 'update_from_order') {
     $order_id = (int)($_POST['order_id'] ?? 0);
@@ -200,6 +277,141 @@ if ($action === 'update_from_order') {
     $ins->close();
 
     echo json_encode(['status' => 'success']);
+    exit;
+}
+
+// -----------------------------------------------
+// 4. GET CART RECOMMENDATIONS (Dựa trên lịch sử xem & sp trong giỏ)
+// -----------------------------------------------
+if ($action === 'get_cart_recommendations') {
+    $cart_ids_json = $_GET['cart_ids'] ?? $_POST['cart_ids'] ?? '[]';
+    $cart_ids = json_decode($cart_ids_json, true);
+    if (!is_array($cart_ids)) $cart_ids = [];
+    
+    // Lọc bỏ ID không hợp lệ và unique
+    $cart_ids = array_unique(array_filter(array_map('intval', $cart_ids), function($id) { return $id > 0; }));
+    
+    $viewed_ids = isset($_SESSION['viewed_history']) && is_array($_SESSION['viewed_history']) ? $_SESSION['viewed_history'] : [];
+    $viewed_ids = array_unique(array_filter(array_map('intval', $viewed_ids), function($id) { return $id > 0; }));
+
+    // Loại bỏ những sản phẩm đã có trong giỏ khỏi danh sách gợi ý
+    $valid_viewed = array_diff($viewed_ids, $cart_ids);
+
+    $limit = 12; // Tổng số lượng trả về
+    $half = floor($limit / 2);
+
+    $recommendations = [];
+    $used_ids = $cart_ids; // Mảng này sẽ lưu những ID đã lấy để tránh trùng lặp
+
+    // Hàm tiện ích để get product details
+    $get_products_by_ids = function($ids) use ($conn) {
+        if (empty($ids)) return [];
+        $ids_str = implode(',', $ids);
+        $sql = "
+            SELECT p.id, p.name, p.image, p.price, p.sale_price, p.stock, p.brand_id, p.category_id,
+                   ROUND(IFNULL(AVG(r.rating), 0), 1) AS avg_rating
+            FROM products p
+            LEFT JOIN product_reviews r ON r.product_id = p.id
+            WHERE p.id IN ($ids_str) AND p.stock > 0
+            GROUP BY p.id
+        ";
+        $res = $conn->query($sql);
+        $list = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $list[$row['id']] = $row;
+            }
+        }
+        
+        // Giữ đúng thứ tự của $ids
+        $sorted_list = [];
+        foreach ($ids as $id) {
+            if (isset($list[$id])) {
+                $sorted_list[] = $list[$id];
+            }
+        }
+        return $sorted_list;
+    };
+
+    // 1. Lấy danh sách từ lịch sử xem
+    $viewed_products = [];
+    if (!empty($valid_viewed)) {
+        // Lấy $limit sản phẩm từ lịch sử xem (phòng hờ luồng kia không có)
+        $top_viewed = array_slice($valid_viewed, 0, $limit);
+        $viewed_products = $get_products_by_ids($top_viewed);
+    }
+
+    // 2. Lấy danh sách từ Product Associations (Dựa trên cart_ids)
+    $assoc_products = [];
+    if (!empty($cart_ids)) {
+        $cart_ids_str = implode(',', $cart_ids);
+        // Exclude used_ids (giỏ hàng) và valid_viewed (để không trùng với luồng 1)
+        $exclude_ids = array_merge($cart_ids, $valid_viewed);
+        $exclude_str = !empty($exclude_ids) ? implode(',', $exclude_ids) : '0';
+
+        $assoc_sql = "
+            SELECT 
+                p.id, p.name, p.image, p.price, p.sale_price, p.stock, p.brand_id, p.category_id,
+                SUM(pa.co_count) as total_co_count,
+                ROUND(IFNULL(AVG(r.rating), 0), 1) AS avg_rating
+            FROM product_associations pa
+            JOIN products p ON (
+                CASE
+                    WHEN pa.product_a IN ($cart_ids_str) THEN p.id = pa.product_b
+                    ELSE p.id = pa.product_a
+                END
+            )
+            LEFT JOIN product_reviews r ON r.product_id = p.id
+            WHERE (pa.product_a IN ($cart_ids_str) OR pa.product_b IN ($cart_ids_str))
+              AND p.id NOT IN ($exclude_str)
+              AND p.stock > 0
+            GROUP BY p.id
+            ORDER BY total_co_count DESC, p.id DESC
+            LIMIT $limit
+        ";
+        $res = $conn->query($assoc_sql);
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $assoc_products[] = $row;
+            }
+        }
+    }
+
+    // 3. MERGE LOGIC (50/50)
+    $final_pool = [];
+    $viewed_count = count($viewed_products);
+    $assoc_count = count($assoc_products);
+
+    $take_viewed = min($half, $viewed_count);
+    $take_assoc = min($limit - $take_viewed, $assoc_count);
+
+    // Nếu assoc ít hơn dự kiến, bù thêm từ viewed
+    if ($take_assoc < $half) {
+        $take_viewed = min($limit - $take_assoc, $viewed_count);
+    }
+
+    $final_pool = array_merge(
+        array_slice($viewed_products, 0, $take_viewed),
+        array_slice($assoc_products, 0, $take_assoc)
+    );
+
+    // Format kết quả cuối cùng
+    $recommendations = [];
+    foreach ($final_pool as $row) {
+        $price_info = get_effective_price($conn, (int)$row['id'], $row['price'], $row['sale_price']);
+        $row['display_price']   = $price_info['effective_price'];
+        $row['is_flash_sale']   = $price_info['is_flash_sale'];
+        $row['discount_label']  = $price_info['discount_label'];
+        $row['avg_rating']      = (float)($row['avg_rating'] ?? 0);
+        $row['image_url'] = (strpos($row['image'], 'http') === 0)
+            ? $row['image']
+            : 'assets/img/' . $row['image'];
+        $row['product_url'] = 'product_detail.php?id=' . $row['id'];
+        
+        $recommendations[] = $row;
+    }
+
+    echo json_encode(['status' => 'success', 'data' => $recommendations]);
     exit;
 }
 

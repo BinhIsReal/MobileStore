@@ -45,7 +45,6 @@ if ($action === 'upload_image') {
     exit;
 }
 
-// Admin-only beyond this point
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized']); exit;
 }
@@ -70,7 +69,11 @@ if ($action === 'add_banner') {
         }
     }
 
-    $sort = (int)$conn->query("SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM site_banners WHERE section='$section'")->fetch_assoc()['n'];
+    $sort_stmt = $conn->prepare("SELECT COALESCE(MAX(sort_order),0)+1 AS n FROM site_banners WHERE section=?");
+    $sort_stmt->bind_param('s', $section);
+    $sort_stmt->execute();
+    $sort = (int)$sort_stmt->get_result()->fetch_assoc()['n'];
+    $sort_stmt->close();
     $stmt = $conn->prepare("INSERT INTO site_banners (section, image_url, alt_text, sort_order) VALUES (?,?,?,?)");
     $stmt->bind_param('sssi', $section, $image_url, $alt_text, $sort);
     if ($stmt->execute()) {
@@ -125,9 +128,13 @@ if ($action === 'delete_banner') {
 // ============================================================
 if ($action === 'get_banners') {
     $section = in_array($_GET['section'] ?? '', ['main_banner','right_banners']) ? $_GET['section'] : 'main_banner';
-    $result  = $conn->query("SELECT * FROM site_banners WHERE section='$section' AND is_active=1 ORDER BY sort_order ASC");
+    $stmt = $conn->prepare("SELECT * FROM site_banners WHERE section=? AND is_active=1 ORDER BY sort_order ASC");
+    $stmt->bind_param('s', $section);
+    $stmt->execute();
+    $result = $stmt->get_result();
     $banners = [];
     if ($result) { while ($row = $result->fetch_assoc()) $banners[] = $row; }
+    $stmt->close();
     echo json_encode(['status' => 'success', 'banners' => $banners]);
     exit;
 }

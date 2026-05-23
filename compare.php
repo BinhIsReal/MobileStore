@@ -22,9 +22,7 @@ if (empty($ids_array)) {
     exit();
 }
 
-// Giới hạn số lượng (Desktop: 3, Mobile CSS tự scroll)
 if (count($ids_array) > 3) {
-    // Có thể show toast thông báo cắt item sau.
     $ids_array = array_slice($ids_array, 0, 3);
 }
 
@@ -45,7 +43,6 @@ if ($res) {
     }
 }
 
-// Batch lấy giá Flash Sale cho toàn bộ sản phẩm so sánh
 $cmp_ids       = array_keys($products);
 $cmp_flash_map = get_flash_prices_bulk($conn, $cmp_ids);
 foreach ($products as $pid => &$prod_row) {
@@ -60,7 +57,6 @@ foreach ($products as $pid => &$prod_row) {
 }
 unset($prod_row);
 
-// Sắp xếp lại theo đúng trình tự trên URL
 $ordered_products = [];
 foreach ($ids_array as $id) {
     if (isset($products[$id])) {
@@ -68,7 +64,6 @@ foreach ($ids_array as $id) {
     }
 }
 
-// Cập nhật lại mảng ID hợp lệ
 $valid_ids = array_column($ordered_products, 'id');
 $current_url_ids = implode(',', $valid_ids);
 
@@ -81,13 +76,13 @@ if (empty($ordered_products)) {
     exit();
 }
 
-// Tạo tiêu đề trang SEO dựa trên các sản phẩm so sánh
 $titles = array_column($ordered_products, 'name');
 $page_title = "So sánh " . implode(' và ', $titles);
 ?>
 
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -96,6 +91,7 @@ $page_title = "So sánh " . implode(' và ', $titles);
     <link rel="stylesheet" href="assets/css/compare.css?v=<?= time() ?>">
     <link rel="stylesheet" href="assets/css/mobile.css?v=<?php echo filemtime('assets/css/mobile.css'); ?>">
 </head>
+
 <body data-user-id="<?= isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0 ?>">
 
     <div class="container compare-wrapper">
@@ -117,47 +113,57 @@ $page_title = "So sánh " . implode(' và ', $titles);
                         <th class="compare-title-cell">
                             <h3>So sánh sản phẩm</h3>
                             <?php foreach ($ordered_products as $idx => $p): ?>
-                                <p style="font-weight:bold; font-size:16px; margin:10px 0;">
-                                    <?= $p['name'] ?>
-                                </p>
-                                <?= ($idx < count($ordered_products)-1) ? '<p style="font-size:12px; color:#999; margin:5px 0;">&</p>' : '' ?>
+                            <p style="font-weight:bold; font-size:16px; margin:10px 0;">
+                                <?= $p['name'] ?>
+                            </p>
+                            <?= ($idx < count($ordered_products)-1) ? '<p style="font-size:12px; color:#999; margin:5px 0;">&</p>' : '' ?>
                             <?php endforeach; ?>
                         </th>
 
                         <!-- Cột sản phẩm -->
                         <?php foreach ($ordered_products as $p): ?>
-                            <th class="compare-product-cell">
-                                <div class="cell-inner">
+                        <th class="compare-product-cell">
+                            <div class="cell-inner">
+                                <div class="pd-image-wrapper">
+                                    <?php if ($p['is_flash_sale']): ?>
+                                    <span class="pd-flash-badge">&#x26A1; FLASH SALE <?= $p['flash_label'] ?></span>
+                                    <?php endif; ?>
                                     <img src="<?= $p['final_image'] ?>" alt="<?= htmlspecialchars($p['name']) ?>">
-                                    <div class="pd-name"><?= $p['name'] ?></div>
-                                    <div class="pd-price-row">
-                                        <span class="pd-current-money"><?= number_format($p['final_price'], 0, ',', '.') ?> &#x20ab;</span>
-                                        <?php if ($p['is_flash_sale']): ?>
-                                            <span style="background:#ff6b35;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:4px;">&#x26A1; FLASH SALE <?= $p['flash_label'] ?></span>
-                                            <span class="pd-old-money"><?= number_format($p['price'], 0, ',', '.') ?> &#x20ab;</span>
-                                        <?php elseif ($p['sale_price'] > 0): ?>
-                                            <span class="pd-old-money"><?= number_format($p['price'], 0, ',', '.') ?> &#x20ab;</span>
-                                        <?php endif; ?>
-                                    </div>
-                                    <p class="pd-vat">Giá đã bao gồm 10% VAT</p>
-                                    <button class="btn-remove-compare" data-id="<?= $p['id'] ?>" title="Xóa khỏi danh sách so sánh">
-                                        <i class="fa fa-minus-circle"></i> Xóa
-                                    </button>
                                 </div>
-                            </th>
+                                <div class="pd-name"><?= $p['name'] ?></div>
+                                <div class="pd-price-row">
+                                    <span class="pd-current-money"><?= number_format($p['final_price'], 0, ',', '.') ?>
+                                        &#x20ab;</span>
+                                    <?php if ($p['is_flash_sale'] || $p['sale_price'] > 0): ?>
+                                    <span class="pd-old-money"><?= number_format($p['price'], 0, ',', '.') ?>
+                                        &#x20ab;</span>
+                                    <?php else: ?>
+                                    <span class="pd-old-money" style="visibility:hidden;">0 &#x20ab;</span>
+                                    <?php endif; ?>
+                                </div>
+                                <p class="pd-vat">Giá đã bao gồm 10% VAT</p>
+                                <button class="btn-remove-compare" data-id="<?= $p['id'] ?>"
+                                    title="Xóa khỏi danh sách so sánh">
+                                    <i class="fa fa-minus-circle"></i> Xóa
+                                </button>
+                            </div>
+                        </th>
                         <?php endforeach; ?>
 
                         <!-- Cột thêm sản phẩm (chỉ hiện nếu số lg < 3) -->
                         <?php if (count($ordered_products) < 3): ?>
-                            <th class="compare-add-cell">
-                                <i class="fa fa-plus-circle" style="font-size:30px; color:#e0e0e0; margin-bottom:15px; display:block;"></i>
-                                <p style="font-weight:bold; color:#444; margin-bottom:15px;">Bạn muốn so sánh thêm sản phẩm?</p>
-                                <div class="compare-search-wrap">
-                                    <input type="text" id="compare-search-input" placeholder="Tìm kiếm sản phẩm" autocomplete="off">
-                                    <!-- Search Suggestions Box -->
-                                    <div id="compare-suggestions" class="compare-suggestions-box"></div>
-                                </div>
-                            </th>
+                        <th class="compare-add-cell">
+                            <i class="fa fa-plus-circle"
+                                style="font-size:30px; color:#e0e0e0; margin-bottom:15px; display:block;"></i>
+                            <p style="font-weight:bold; color:#444; margin-bottom:15px;">Bạn muốn so sánh thêm sản phẩm?
+                            </p>
+                            <div class="compare-search-wrap">
+                                <input type="text" id="compare-search-input" placeholder="Tìm kiếm sản phẩm"
+                                    autocomplete="off">
+                                <!-- Search Suggestions Box -->
+                                <div id="compare-suggestions" class="compare-suggestions-box"></div>
+                            </div>
+                        </th>
                         <?php endif; ?>
                     </tr>
                 </thead>
@@ -172,7 +178,7 @@ $page_title = "So sánh " . implode(' và ', $titles);
                     <tr>
                         <td class="spec-label">Thông tin màn hình</td>
                         <?php foreach ($ordered_products as $p): ?>
-                            <td><?= $p['specs_data']['screen'] ?? '-' ?></td>
+                        <td><?= $p['specs_data']['screen'] ?? '-' ?></td>
                         <?php endforeach; ?>
                         <?php if (count($ordered_products) < 3): ?> <td class="spec-empty"></td> <?php endif; ?>
                     </tr>
@@ -185,21 +191,21 @@ $page_title = "So sánh " . implode(' và ', $titles);
                     <tr>
                         <td class="spec-label">Vi xử lý (CPU)</td>
                         <?php foreach ($ordered_products as $p): ?>
-                            <td><?= $p['specs_data']['cpu'] ?? '-' ?></td>
+                        <td><?= $p['specs_data']['cpu'] ?? '-' ?></td>
                         <?php endforeach; ?>
                         <?php if (count($ordered_products) < 3): ?> <td class="spec-empty"></td> <?php endif; ?>
                     </tr>
                     <tr>
                         <td class="spec-label">RAM</td>
                         <?php foreach ($ordered_products as $p): ?>
-                            <td><?= $p['specs_data']['ram'] ?? '-' ?></td>
+                        <td><?= $p['specs_data']['ram'] ?? '-' ?></td>
                         <?php endforeach; ?>
                         <?php if (count($ordered_products) < 3): ?> <td class="spec-empty"></td> <?php endif; ?>
                     </tr>
                     <tr>
                         <td class="spec-label">Bộ nhớ trong</td>
                         <?php foreach ($ordered_products as $p): ?>
-                            <td><?= $p['specs_data']['storage'] ?? '-' ?></td>
+                        <td><?= $p['specs_data']['storage'] ?? '-' ?></td>
                         <?php endforeach; ?>
                         <?php if (count($ordered_products) < 3): ?> <td class="spec-empty"></td> <?php endif; ?>
                     </tr>
@@ -212,7 +218,7 @@ $page_title = "So sánh " . implode(' và ', $titles);
                     <tr>
                         <td class="spec-label">Hãng sx</td>
                         <?php foreach ($ordered_products as $p): ?>
-                            <td><?= $p['brand_name'] ?? '-' ?></td>
+                        <td><?= $p['brand_name'] ?? '-' ?></td>
                         <?php endforeach; ?>
                         <?php if (count($ordered_products) < 3): ?> <td class="spec-empty"></td> <?php endif; ?>
                     </tr>
@@ -224,51 +230,56 @@ $page_title = "So sánh " . implode(' và ', $titles);
     <?php include 'includes/footer.php'; ?>
 
     <script>
-        const CURRENT_IDS = [<?= implode(',', $valid_ids) ?>];
+    const CURRENT_IDS = [<?= implode(',', $valid_ids) ?>];
 
-        // 1. Chức năng Xóa sản phẩm khỏi mảng so sánh
-        $('.btn-remove-compare').click(function() {
-            let idToRemove = $(this).data('id');
-            // Xóa ID khỏi mảng
-            let newIds = CURRENT_IDS.filter(id => id !== idToRemove);
-            
-            // Nếu xóa hết, về trang chủ
-            if (newIds.length === 0) {
-                window.location.href = 'index.php';
-            } else {
-                window.location.href = 'compare.php?ids=' + newIds.join(',');
-            }
-        });
+    // 1. Chức năng Xóa sản phẩm khỏi mảng so sánh
+    $('.btn-remove-compare').click(function() {
+        let idToRemove = $(this).data('id');
+        // Xóa ID khỏi mảng
+        let newIds = CURRENT_IDS.filter(id => id !== idToRemove);
 
-        // 2. Chức năng Tìm kiếm tự động (Auto-Suggest)
-        let compareSearchTimeout = null;
-        $('#compare-search-input').on('input', function() {
-            let keyword = $(this).val().trim();
-            let box = $('#compare-suggestions');
-            
-            clearTimeout(compareSearchTimeout);
-            
-            if (keyword.length < 2) {
-                box.hide();
-                return;
-            }
+        // Nếu xóa hết, về trang chủ
+        if (newIds.length === 0) {
+            window.location.href = 'index.php';
+        } else {
+            window.location.href = 'compare.php?ids=' + newIds.join(',');
+        }
+    });
 
-            compareSearchTimeout = setTimeout(function() {
-                $.get('api/search_suggest.php', { q: keyword }, function(data) {
-                    try {
-                        let products = typeof data === 'string' ? JSON.parse(data) : data;
-                        if (products && products.length > 0) {
-                            let html = '';
-                            let fmt = new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' });
-                            
-                            products.forEach(p => {
-                                // Bỏ qua SP đã có trong danh sách
-                                if (CURRENT_IDS.includes(parseInt(p.id))) return;
+    // 2. Chức năng Tìm kiếm tự động (Auto-Suggest)
+    let compareSearchTimeout = null;
+    $('#compare-search-input').on('input', function() {
+        let keyword = $(this).val().trim();
+        let box = $('#compare-suggestions');
 
-                                let img = p.image.startsWith('http') ? p.image : `assets/img/${p.image}`;
-                                let price = p.sale_price > 0 ? p.sale_price : p.price;
-                                
-                                html += `
+        clearTimeout(compareSearchTimeout);
+
+        if (keyword.length < 2) {
+            box.hide();
+            return;
+        }
+
+        compareSearchTimeout = setTimeout(function() {
+            $.get('api/search_suggest.php', {
+                q: keyword
+            }, function(data) {
+                try {
+                    let products = typeof data === 'string' ? JSON.parse(data) : data;
+                    if (products && products.length > 0) {
+                        let html = '';
+                        let fmt = new Intl.NumberFormat('vi-VN', {
+                            style: 'currency',
+                            currency: 'VND'
+                        });
+
+                        products.forEach(p => {
+                            if (CURRENT_IDS.includes(parseInt(p.id))) return;
+
+                            let img = p.image.startsWith('http') ? p.image :
+                                `assets/img/${p.image}`;
+                            let price = p.sale_price > 0 ? p.sale_price : p.price;
+
+                            html += `
                                     <div class="compare-suggest-item" onclick="addCompare(${p.id})">
                                         <img src="${img}" alt="${p.name}">
                                         <div class="cs-info">
@@ -277,39 +288,43 @@ $page_title = "So sánh " . implode(' và ', $titles);
                                         </div>
                                     </div>
                                 `;
-                            });
+                        });
 
-                            if (html === '') {
-                                box.html('<div style="padding:10px;text-align:center;color:#999;font-size:13px;">Không có SP khả dụng</div>').show();
-                            } else {
-                                box.html(html).show();
-                            }
+                        if (html === '') {
+                            box.html(
+                                '<div style="padding:10px;text-align:center;color:#999;font-size:13px;">Không có SP khả dụng</div>'
+                            ).show();
                         } else {
-                            box.html('<div style="padding:10px;text-align:center;color:#999;font-size:13px;">Không tìm thấy</div>').show();
+                            box.html(html).show();
                         }
-                    } catch(e) {
-                         box.hide();
+                    } else {
+                        box.html(
+                            '<div style="padding:10px;text-align:center;color:#999;font-size:13px;">Không tìm thấy</div>'
+                        ).show();
                     }
-                });
-            }, 500); // 500ms debounce
-        });
+                } catch (e) {
+                    box.hide();
+                }
+            });
+        }, 500); // 500ms debounce
+    });
 
-        // Ẩn search box khi click ra ngoài
-        $(document).click(function(e) {
-            if (!$(e.target).closest('.compare-search-wrap').length) {
-                $('#compare-suggestions').hide();
-            }
-        });
-
-        function addCompare(id) {
-            if(CURRENT_IDS.length >= 3) {
-                alert("Bạn chỉ có thể so sánh tối đa 3 sản phẩm cùng lúc.");
-                return;
-            }
-            // Thêm ID mới và reload
-            let newIds = [...CURRENT_IDS, id];
-            window.location.href = 'compare.php?ids=' + newIds.join(',');
+    $(document).click(function(e) {
+        if (!$(e.target).closest('.compare-search-wrap').length) {
+            $('#compare-suggestions').hide();
         }
+    });
+
+    function addCompare(id) {
+        if (CURRENT_IDS.length >= 3) {
+            alert("Bạn chỉ có thể so sánh tối đa 3 sản phẩm cùng lúc.");
+            return;
+        }
+        // Thêm ID mới và reload
+        let newIds = [...CURRENT_IDS, id];
+        window.location.href = 'compare.php?ids=' + newIds.join(',');
+    }
     </script>
 </body>
+
 </html>

@@ -9,6 +9,17 @@ include 'includes/header.php';
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $user_id = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 0;
 
+if ($id > 0) {
+    if (!isset($_SESSION['viewed_history'])) {
+        $_SESSION['viewed_history'] = [];
+    }
+    if (($key = array_search($id, $_SESSION['viewed_history'])) !== false) {
+        unset($_SESSION['viewed_history'][$key]);
+    }
+    array_unshift($_SESSION['viewed_history'], $id);
+    $_SESSION['viewed_history'] = array_slice($_SESSION['viewed_history'], 0, 20); // Lưu 20 sp gần nhất
+}
+
 $sql = "SELECT p.*, b.name as brand_name, c.name as cat_name 
         FROM products p 
         LEFT JOIN brands b ON p.brand_id = b.id 
@@ -132,8 +143,19 @@ $discount_label = $price_info['discount_label'];
                                     return true;
                                 });
                                 if (match) {
-                                    let priceFmt = new Intl.NumberFormat('vi-VN').format(match.price) + ' ₫';
-                                    $('.pd-price-current').text(priceFmt);
+                                    const fmt = new Intl.NumberFormat('vi-VN');
+                                    // Ưu tiên sale_price của biến thể (đồng bộ từ SP cha), fallback về price
+                                    const displayPrice = (parseFloat(match.sale_price) > 0) ? parseFloat(match.sale_price) : parseFloat(match.price);
+                                    const originalPrice = parseFloat(match.price);
+                                    $('.pd-price-current').text(fmt.format(displayPrice) + ' ₫');
+                                    if (displayPrice < originalPrice) {
+                                        if ($('.pd-price-old').length === 0) {
+                                            $('.pd-price-current').after('<span class="pd-price-old" style="font-size:14px;color:#999;text-decoration:line-through;margin-left:8px;"></span>');
+                                        }
+                                        $('.pd-price-old').text(fmt.format(originalPrice) + ' ₫').show();
+                                    } else {
+                                        $('.pd-price-old').hide();
+                                    }
                                     $('.js-add-to-cart').attr('data-variation-id', match.id);
                                     $('.js-buy-now').attr('data-variation-id', match.id);
                                 } else {
@@ -453,8 +475,15 @@ $discount_label = $price_info['discount_label'];
             $.post('api/wishlist_api.php', { action: isActive ? 'remove' : 'add', product_id: PRODUCT_ID }, function(res) {
                 if (res && res.status === 'success') {
                     setWishlistState(!isActive);
-                    // Trigger badge refresh ở navbar (navbar.php tự handle)
                     if (window._navRefreshBadges) window._navRefreshBadges();
+                    
+                    if (typeof showToast === 'function') {
+                        showToast({
+                            title: !isActive ? "Thành công" : "Thông báo",
+                            message: !isActive ? "Đã thêm vào mục yêu thích" : "Đã xóa khỏi mục yêu thích",
+                            type: !isActive ? "success" : "error"
+                        });
+                    }
                 }
             });
         });
@@ -480,15 +509,15 @@ $discount_label = $price_info['discount_label'];
         let html = '';
         res.data.forEach(function(p) {
             const flashBadge = p.is_flash_sale
-                ? `<span style="background:#ff6b35;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;margin-bottom:4px;display:inline-block;">&#x26A1; ${p.discount_label}</span>`
+                ? `<span style="position:absolute; top:8px; right:8px; background:#ff6b35;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,0.2);">&#x26A1; ${p.discount_label}</span>`
                 : '';
             const starsHtml = renderStars(parseFloat(p.avg_rating) || 0);
             html += `
             <div style="width:160px; border:1px solid #eee; border-radius:8px; overflow:hidden; text-align:center; flex-shrink:0; background:#fff;">
-                <a href="${p.product_url}" style="text-decoration:none; color:#333; display:block;">
+                <a href="${p.product_url}" style="text-decoration:none; color:#333; display:block; position:relative;">
+                    ${flashBadge}
                     <img src="${p.image_url}" style="width:100%; height:120px; object-fit:contain; padding:8px;" onerror="this.style.display='none'">
                     <div style="padding:8px 8px; font-size:13px; line-height:1.4; height:50px; overflow:hidden;">${p.name}</div>
-                    ${flashBadge}
                     <div style="padding:0 8px 4px; color:#d70018; font-weight:bold; font-size:14px;">${fmt.format(p.display_price)}&#x20ab;</div>
                     ${starsHtml}
                 </a>

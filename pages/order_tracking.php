@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 include '../config/db.php'; 
 ?>
@@ -7,6 +7,9 @@ include '../config/db.php';
 
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
+    <link rel="shortcut icon" type="image/svg+xml" href="/assets/img/favicon.svg">
     <meta charset="UTF-8">
     <title>Tra cứu đơn hàng - TechMate</title>
     <link rel="stylesheet" href="../assets/css/style.css?v=<?= time() ?>">
@@ -26,7 +29,7 @@ include '../config/db.php';
                 <p style="margin-bottom:20px;">Nhập Mã đơn hàng và Số điện thoại đặt hàng để kiểm tra.</p>
 
                 <div class="tracking-input-group">
-                    <input type="number" id="track-id" class="tracking-input" placeholder="Mã đơn (Ví dụ: 123)">
+                    <input type="number" id="track-id" class="tracking-input" placeholder="Mã đơn (Ví dụ: 123)" min="0">
                     <input type="text" id="track-phone" class="tracking-input" placeholder="Số điện thoại nhận hàng">
                 </div>
 

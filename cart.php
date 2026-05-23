@@ -23,11 +23,14 @@ if ($user_id > 0) {
 
     // 2. LẤY DỮ LIỆU GIỎ HÀNG TỪ DATABASE
     $sql = "SELECT p.id as p_id, p.name as p_name, p.image, p.price as base_price, p.sale_price, c.quantity, c.variation_id, 
-                   COALESCE(pv.price, p.price) as final_price, pv.attributes as var_attrs
+                   COALESCE(pv.price, p.price) as final_price,
+                   COALESCE(NULLIF(pv.sale_price, 0), 0) as var_sale_price,
+                   pv.attributes as var_attrs
             FROM cart c
             JOIN products p ON c.product_id = p.id
             LEFT JOIN product_variations pv ON c.variation_id = pv.id
-            WHERE c.user_id = $user_id";
+            WHERE c.user_id = $user_id
+            ORDER BY c.updated_at DESC, c.id DESC";
     $result = $conn->query($sql);
     if ($result) {
         while ($row = $result->fetch_assoc()) {
@@ -37,12 +40,16 @@ if ($user_id > 0) {
 } else {
     // LẤY DỮ LIỆU GIỎ HÀNG CỦA KHÁCH VÃNG LAI (TỪ SESSION)
     if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
-        foreach ($_SESSION['cart'] as $key => $qty) {
+        $cart_items = array_reverse($_SESSION['cart'], true);
+        foreach ($cart_items as $key => $qty) {
             $parts = explode('_', $key);
             $pid = (int)$parts[0];
             $vid = isset($parts[1]) ? (int)$parts[1] : 0;
             
-            $sql = "SELECT p.id as p_id, p.name as p_name, p.image, p.price as base_price, p.sale_price, COALESCE(pv.price, p.price) as final_price, pv.attributes as var_attrs
+            $sql = "SELECT p.id as p_id, p.name as p_name, p.image, p.price as base_price, p.sale_price,
+                    COALESCE(pv.price, p.price) as final_price,
+                    COALESCE(NULLIF(pv.sale_price, 0), 0) as var_sale_price,
+                    pv.attributes as var_attrs
                     FROM products p
                     LEFT JOIN product_variations pv ON pv.id = $vid
                     WHERE p.id = $pid";
@@ -59,6 +66,34 @@ if ($user_id > 0) {
 // Batch lấy giá Flash Sale cho toàn bộ product trong giỏ (1 query duy nhất)
 $cart_product_ids   = array_column($cart_data, 'p_id');
 $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
+
+// Batch lấy discount_type + discount_value để tính lại giá Flash Sale cho từng biến thể trong dropdown
+$flash_discount_map = []; // [product_id => ['discount_type' => ..., 'discount_value' => ...]]
+if (!empty($flash_price_map)) {
+    $flash_ids_str = implode(',', array_keys($flash_price_map));
+    $fdi_res = $conn->query("SELECT product_id, discount_type, discount_value FROM flash_sale_items WHERE product_id IN ($flash_ids_str)");
+    if ($fdi_res) {
+        while ($fdi_row = $fdi_res->fetch_assoc()) {
+            $flash_discount_map[(int)$fdi_row['product_id']] = [
+                'discount_type'  => $fdi_row['discount_type'],
+                'discount_value' => (float)$fdi_row['discount_value'],
+            ];
+        }
+    }
+}
+
+// LẤY TẤT CẢ BIẾN THỂ CỦA CÁC SẢN PHẨM TRONG GIỎ (Để làm Dropdown chọn biến thể)
+$all_variations = [];
+if (!empty($cart_product_ids)) {
+    $ids_str = implode(',', array_unique($cart_product_ids));
+    $var_sql = "SELECT id, product_id, price, sale_price, attributes, stock FROM product_variations WHERE product_id IN ($ids_str) AND stock > 0 ORDER BY id ASC";
+    $var_res = $conn->query($var_sql);
+    if ($var_res) {
+        while ($vrow = $var_res->fetch_assoc()) {
+            $all_variations[$vrow['product_id']][] = $vrow;
+        }
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -108,16 +143,26 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
                     $item_name = $item['p_name'];
 
                     if (isset($flash_price_map[$item_id])) {
-                        $calc_price = $flash_price_map[$item_id]['flash_price'];
+                        // Ưu tiên 1: Flash Sale (áp dụng trên giá biến thể nếu có)
+                        $base_for_flash = !empty($item['variation_id']) ? (float)$item['final_price'] : (float)$item['base_price'];
+                        $calc_price    = $flash_price_map[$item_id]['flash_price'];
                         $show_original = $flash_price_map[$item_id]['original_price'];
                         $is_sale    = true;
                         $is_flash   = true;
-                    } elseif (isset($item['sale_price']) && $item['sale_price'] > 0 && empty($item['variation_id'])) {
+                    } elseif (!empty($item['variation_id']) && isset($item['var_sale_price']) && (float)$item['var_sale_price'] > 0) {
+                        // Ưu tiên 2: Giá KM đồng bộ từ sản phẩm cha xuống biến thể
+                        $calc_price    = (float)$item['var_sale_price'];
+                        $show_original = (float)$item['final_price'];
+                        $is_sale       = true;
+                        $is_flash      = false;
+                    } elseif (empty($item['variation_id']) && isset($item['sale_price']) && $item['sale_price'] > 0) {
+                        // Ưu tiên 3: Giá KM của sản phẩm cha (không có biến thể)
                         $calc_price    = (float)$item['sale_price'];
                         $show_original = (float)$item['base_price'];
                         $is_sale       = true;
                         $is_flash      = false;
                     } else {
+                        // Mặc định: giá gốc
                         $calc_price    = (float)$item['final_price'];
                         $show_original = (float)$item['base_price'];
                         $is_sale       = false;
@@ -137,16 +182,24 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
                         }
                     }
                 ?>
-                <div class="cart-item" id="item-<?= $item_id ?>">
-                    <input type="checkbox" class="pay-check" value="<?= $item_id ?>" data-price="<?= $calc_price ?>"
+                <?php 
+                    $unique_id = $item_id . '-' . ($item['variation_id'] ?: 0);
+                ?>
+                <div class="cart-item" id="item-<?= $unique_id ?>">
+                    <input type="checkbox" class="pay-check" value="<?= $item_id ?>" data-vid="<?= $item['variation_id'] ?: 0 ?>" data-price="<?= $calc_price ?>"
                         data-qty="<?= $item['quantity'] ?>" onchange="calcTotal()">
 
                     <?php 
                         $imgCart = (strpos($item['image'], 'http') === 0) ? $item['image'] : "assets/img/" . $item['image'];
                     ?>
 
-                    <a href="product_detail.php?id=<?= $item_id ?>" class="cart-item-img-link" style="text-decoration: none;">
+                    <a href="product_detail.php?id=<?= $item_id ?>" class="cart-item-img-link" style="text-decoration: none; position: relative; display: block;">
                         <img src="<?= $imgCart ?>" alt="<?= htmlspecialchars($item_name) ?>">
+                        <?php if ($is_flash): ?>
+                            <span class="flash-badge" style="display:inline-block; position:absolute; top:4px; right:4px; background:#ff6b35;color:#fff;font-size:9px;padding:2px 4px;border-radius:4px;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,0.2);">&#x26A1; FLASH SALE</span>
+                        <?php elseif ($is_sale): ?>
+                            <span class="flash-badge" style="display:inline-block; position:absolute; top:4px; right:4px; background:#e6394c;color:#ffffff;font-weight: 700;font-size:9px;padding:2px 4px;border-radius:4px;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,0.2);">KHUYẾN MÃI</span>
+                        <?php endif; ?>
                     </a>
 
                     <div class="cart-item-info">
@@ -158,9 +211,9 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
                             <div class="cart-item-price">
                                 <?php if ($is_sale): ?>
                                     <?php if ($is_flash): ?>
-                                        <span class="flash-badge">FLASH SALE</span>
+                                        <span class="flash-badge flash-badge--price">FLASH SALE</span>
                                     <?php else: ?>
-                                        <span class="flash-badge" style="background:#ddd; color:#333;">KHUYẾN MÃI</span>
+                                        <span class="flash-badge flash-badge--price" style="background:#ddd; color:#333;">KHUYẾN MÃI</span>
                                     <?php endif; ?>
                                     <br class="br-mobile">
                                     <span class="current-price"><?= number_format($calc_price, 0, ',', '.') ?> ₫</span>
@@ -170,18 +223,64 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
                                 <?php endif; ?>
                             </div>
 
-                            <div class="cart-variant-box" <?php if(empty($variant_display)){ echo 'style="display:none;"'; } ?>>
-                                <span class="variant-text"><?= $variant_display ?></span>
+                            <div class="cart-variant-box" <?php if(empty($variant_display) && empty($all_variations[$item_id])){ echo 'style="display:none;"'; } ?>>
+                                <span class="variant-text"><?= $variant_display ?: 'Chọn phân loại' ?></span>
                                 <i class="fa-solid fa-chevron-down"></i>
+                                
+                                <?php if (!empty($all_variations[$item_id])): ?>
+                                <div class="variant-dropdown-menu">
+                                    <?php foreach ($all_variations[$item_id] as $vopt): 
+                                        $opt_attrs = json_decode($vopt['attributes'], true);
+                                        $opt_name = $opt_attrs ? implode(', ', $opt_attrs) : 'Mặc định';
+                                        
+                                        // Tính giá cho biến thể này
+                                        if (isset($flash_discount_map[$item_id])) {
+                                            // Flash Sale: tính lại theo giá riêng của từng biến thể
+                                            $fdi = $flash_discount_map[$item_id];
+                                            $v_base = (float)$vopt['price'];
+                                            if ($fdi['discount_type'] === 'percent') {
+                                                $v_calc = max(0, round($v_base * (1 - $fdi['discount_value'] / 100)));
+                                            } else {
+                                                $v_calc = max(0, round($v_base - $fdi['discount_value']));
+                                            }
+                                            $v_orig    = $v_base;
+                                            $v_is_sale = true;
+                                            $v_is_flash = true;
+                                        } elseif ($vopt['sale_price'] > 0) {
+                                            $v_calc = $vopt['sale_price'];
+                                            $v_orig = $vopt['price'];
+                                            $v_is_sale = true;
+                                            $v_is_flash = false;
+                                        } else {
+                                            $v_calc = $vopt['price'];
+                                            $v_orig = $vopt['price'];
+                                            $v_is_sale = false;
+                                            $v_is_flash = false;
+                                        }
+                                    ?>
+                                        <div class="variant-option <?= ($vopt['id'] == $item['variation_id']) ? 'active' : '' ?>" 
+                                             data-pid="<?= $item_id ?>" 
+                                             data-old-vid="<?= $item['variation_id'] ?: 0 ?>" 
+                                             data-new-vid="<?= $vopt['id'] ?>"
+                                             data-calc-price="<?= $v_calc ?>"
+                                             data-orig-price="<?= $v_orig ?>"
+                                             data-is-sale="<?= $v_is_sale ? 1 : 0 ?>"
+                                             data-is-flash="<?= $v_is_flash ? 1 : 0 ?>">
+                                            <span class="v-name"><?= htmlspecialchars($opt_name) ?></span>
+                                            <span class="v-price"><?= number_format($v_calc, 0, ',', '.') ?>đ</span>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                         
                         <div class="qty-control">
-                            <button class="qty-btn" data-id="<?= $item_id ?>" data-delta="-1">-</button>
-                            <span id="qty-<?= $item_id ?>"><?= $item['quantity'] ?></span>
-                            <button class="qty-btn" data-id="<?= $item_id ?>" data-delta="1">+</button>
+                            <button class="qty-btn" data-id="<?= $item_id ?>" data-vid="<?= $item['variation_id'] ?: 0 ?>" data-delta="-1">-</button>
+                            <span id="qty-<?= $unique_id ?>"><?= $item['quantity'] ?></span>
+                            <button class="qty-btn" data-id="<?= $item_id ?>" data-vid="<?= $item['variation_id'] ?: 0 ?>" data-delta="1">+</button>
                         </div>
-                         <button class="btn-remove-item" data-id="<?= $item_id ?>">
+                         <button class="btn-remove-item" data-id="<?= $item_id ?>" data-vid="<?= $item['variation_id'] ?: 0 ?>">
                         <i class="fa-solid fa-trash-can"></i>
                     </button>
                     </div>
@@ -358,6 +457,12 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
         <?php endif; ?>
     </div>
 
+    <!-- KHUNG GỢI Ý CHO BẠN -->
+    <div class="container" id="cart-recommendations-wrapper" style="display: none; margin-bottom: 50px;">
+        <h3 class="section-title" style="margin-top: 20px; margin-bottom: 15px;">Gợi ý cho bạn</h3>
+        <div class="product-grid" id="cart-recommendations-list"></div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
     $(document).ready(function() {
@@ -373,6 +478,155 @@ $flash_price_map    = get_flash_prices_bulk($conn, $cart_product_ids);
             const cleanUrl = window.location.pathname;
             window.history.replaceState({}, '', cleanUrl);
         }
+
+        // ---  GỢI Ý SẢN PHẨM TRONG GIỎ HÀNG ---
+        const cartIds = <?= json_encode($cart_product_ids ?? []) ?>;
+        const fmt = new Intl.NumberFormat('vi-VN');
+
+        function loadCartRecommendations() {
+            $.get('api/recommendation_api.php', { action: 'get_cart_recommendations', cart_ids: JSON.stringify(cartIds) }, function(res) {
+                try {
+                    let data = typeof res === 'object' ? res : JSON.parse(res);
+                    if (data.status === 'success' && data.data && data.data.length > 0) {
+                        let html = '';
+                        data.data.forEach(p => {
+                            let badgeHtml = '';
+                            if (p.is_flash_sale) {
+                                badgeHtml = '<span class="flash-badge" style="position:absolute; top:8px; right:8px; background:#ff6b35;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,0.2);">&#x26A1; FLASH SALE</span>';
+                            } else if (p.discount_label) {
+                                badgeHtml = `<span class="flash-badge" style="position:absolute; top:8px; right:8px;    background: #e6394c;
+    color: #ffffff;font-size:10px;padding:2px 6px;border-radius:4px;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,0.2);">${p.discount_label}</span>`;
+                            }
+
+                            let oldPriceHtml = p.discount_label || p.is_flash_sale ? `<del class="old-price">${fmt.format(p.price)} ₫</del>` : '';
+                            
+                            let starsHtml = '';
+                            for (let i = 1; i <= 5; i++) {
+                                starsHtml += i <= p.avg_rating 
+                                    ? '<i class="fa-solid fa-star" style="color:#f39c12;font-size:11px;"></i>' 
+                                    : '<i class="fa-regular fa-star" style="color:#ccc;font-size:11px;"></i>';
+                            }
+
+                            html += `
+                                <div class="product-card">
+                                    ${badgeHtml}
+                                    <a href="${p.product_url}">
+                                        <img src="${p.image_url}" alt="${p.name}">
+                                        <div class="product-info">
+                                            <h3>${p.name}</h3>
+                                            <div class="price">
+                                                <span class="current-price">${fmt.format(p.display_price)} ₫</span>
+                                                ${oldPriceHtml}
+                                            </div>
+                                            <div class="rating">
+                                                ${starsHtml}
+                                            </div>
+                                        </div>
+                                    </a>
+                                    <button class="cart-recommendation-add-btn" data-id="${p.id}" style="width:100%; margin-top:10px; flex:none;">
+                                        <strong>Thêm vào giỏ</strong>
+                                    </button>
+                                </div>
+                            `; 
+                        });
+                        $('#cart-recommendations-list').html(html);
+                        $('#cart-recommendations-wrapper').fadeIn(300);
+                        
+                        $(document).off('click', '.cart-recommendation-add-btn').on('click', '.cart-recommendation-add-btn', function(e) {
+                            e.preventDefault();
+                            let btn = $(this);
+                            if (btn.data('loading')) return;
+                            btn.data('loading', true);
+                            
+                            let pid = btn.data('id');
+                            let oldHtml = btn.html();
+                            btn.html('<i class="fa fa-spinner fa-spin" style="font-size: 16px;"></i>');
+                            
+                            $.post('api/cart_api.php', { action: 'add', product_id: pid, quantity: 1, variation_id: '' }, function(res) {
+                                try {
+                                    let data = typeof res === 'object' ? res : JSON.parse(res);
+                                    if (data.status === 'success') {
+                                        Swal.fire({
+                                            toast: true,
+                                            position: 'top-end',
+                                            showConfirmButton: false,
+                                            timer: 1500,
+                                            icon: 'success',
+                                            title: 'Đã thêm vào giỏ hàng!'
+                                        });
+                                        if (typeof updateCartCount === 'function') updateCartCount();
+                                        btn.html('<strong>✓ Đã thêm</strong>').css('pointer-events', 'none');
+                                        
+                                        let checkedItems = [];
+                                        $('.pay-check:checked').each(function() {
+                                            checkedItems.push({
+                                                id: $(this).val(),
+                                                vid: $(this).data('vid')
+                                            });
+                                        });
+                                        // Tự động chọn sản phẩm vừa thêm
+                                        checkedItems.push({
+                                            id: pid.toString(),
+                                            vid: 0
+                                        });
+
+                                        // Lưu lại các rec-item để không bị mất khi load lại HTML
+                                        let recItems = {};
+                                        $('.cart-item[id^="rec-item-"]').each(function() {
+                                            recItems[$(this).attr('id')] = $(this).detach();
+                                        });
+
+                                        $.get(window.location.href, function(htmlDoc) {
+                                            let $newCartWrapper = $(htmlDoc).find('.cart-wrapper');
+                                            if ($('.empty-cart-state').length > 0 && $newCartWrapper.length > 0) {
+                                                $('.empty-cart-state').replaceWith($newCartWrapper);
+                                                if (typeof calcTotal === 'function') calcTotal();
+                                            } else {
+                                                let newCartList = $newCartWrapper.find('.cart-list').html();
+                                                if (newCartList) {
+                                                    $('.cart-list').html(newCartList);
+                                                }
+                                                let newSummary = $newCartWrapper.find('.order-summary').html();
+                                                if (newSummary) {
+                                                    $('.order-summary').html(newSummary);
+                                                }
+
+                                                // Phục hồi rec-item
+                                                for (let rid in recItems) {
+                                                    let rpid = rid.replace('rec-item-', '');
+                                                    let $parentItem = $(`.pay-check[value="${rpid}"]`).closest('.cart-item');
+                                                    if ($parentItem.length > 0) {
+                                                        $parentItem.after(recItems[rid]);
+                                                    }
+                                                }
+
+                                                checkedItems.forEach(function(item) {
+                                                    let $chk = $(`.pay-check[value="${item.id}"][data-vid="${item.vid}"]`);
+                                                    if ($chk.length > 0 && !$chk.prop('checked')) {
+                                                        $chk.prop('checked', true).trigger('change');
+                                                    }
+                                                });
+
+                                                if (typeof calcTotal === 'function') calcTotal();
+                                            }
+                                        });
+                                    } else {
+                                        Swal.fire('Lỗi', data.message || 'Thêm thất bại', 'error');
+                                        btn.data('loading', false).html(oldHtml);
+                                    }
+                                } catch(err) {
+                                    btn.data('loading', false).html(oldHtml);
+                                }
+                            });
+                        });
+                    }
+                } catch(e) {
+                    console.error("Lỗi parse JSON Gợi ý:", e);
+                }
+            });
+        }
+
+        loadCartRecommendations();
     });
     </script>
 

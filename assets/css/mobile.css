@@ -1,7 +1,10 @@
-/* ============================================================
-   MOBILE.CSS — Good_Phone Mobile UI
+/* =========================================
+   MOBILE.CSS 
 ========================================= */
 @media (max-width: 768px) {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
   body {
     padding-top: 60px;
     font-size: 14px;
@@ -16,11 +19,11 @@
     display: none !important;
   }
   /* =========================================
-     2. NAVBAR MOBILE
+      NAVBAR MOBILE
   ========================================= */
   nav {
     height: auto;
-    padding: 10px 0;
+    padding: 11px 0;
   }
   nav .nav-content {
     padding: 0 10px;
@@ -33,7 +36,6 @@
     display: block;
     text-align: center;
     font-size: 24px;
-    margin-bottom: 5px;
   }
   nav .search-box,
   nav .search-form-wrap {
@@ -42,15 +44,47 @@
     max-width: 100%;
   }
 
-  /* Ẩn hoàn toàn trường desktop trên mobile */
   nav .menu,
   .menu,
   .hide-on-mobile {
     display: none !important;
   }
 
+  /* TOAST NOTIFICATION MOBILE */
+  #toast-container {
+    top: 15px;
+    right: 10px;
+    left: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  .toast {
+    min-width: unset;
+    width: 280px;
+    max-width: unset;
+    padding: 10px 16px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  .toast__icon {
+    font-size: 20px;
+    margin-right: 12px;
+  }
+  .toast__title {
+    font-size: 14px;
+    margin-bottom: 0;
+  }
+  .toast__msg {
+    font-size: 12px;
+    margin-top: 2px;
+  }
+  .toast__close {
+    display: none;
+  }
   /* =========================================
-     2.1. APP-LIKE BOTTOM NAV
+     APP-LIKE BOTTOM NAV
   ========================================= */
   .mobile-bottom-nav {
     display: flex !important;
@@ -112,7 +146,7 @@
   }
 
   /* =========================================
-     2.2. MOBILE BACKDROP & BOTTOM SHEETS
+     MOBILE BACKDROP & BOTTOM SHEETS
   ========================================= */
   .m-backdrop {
     display: block !important;
@@ -208,7 +242,7 @@
   }
 
   /* =========================================
-     2.3. CATEGORIES DRAWER (SLIDE FROM LEFT)
+     CATEGORIES DRAWER (SLIDE FROM LEFT)
   ========================================= */
   .sidebar-menu {
     position: fixed;
@@ -224,14 +258,13 @@
     transition: transform 0.3s ease-in-out;
     display: block !important;
     overflow-y: auto;
-    padding: 15px 0 60px 0; /* space for bottom nav */
+    padding: 15px 0 60px 0;
   }
 
   .sidebar-menu.open {
     transform: translateY(44px);
   }
 
-  /* Đảm bảo sidebar item hiển thị đẹp trên mobile */
   .sidebar-menu li {
     border-bottom: 1px solid #f2f2f2;
     padding: 0;
@@ -241,11 +274,11 @@
     font-size: 15px;
   }
   .sidebar-menu .sub-menu {
-    display: none !important; /* Tạm ẩn submenu trên mobile nếu muốn đơn giản */
+    display: none !important;
   }
 
   /* =========================================
-     3. HERO SECTION — HOMEPAGE
+     HERO SECTION — HOMEPAGE
   ========================================= */
   .hero-section {
     grid-template-columns: 1fr;
@@ -254,13 +287,11 @@
     margin-top: 10px;
   }
 
-  /* Ẩn sidebar menu & right banners trên mobile */
   .sidebar-menu,
   .right-banners {
     display: none;
   }
 
-  /* Main banner full width */
   .main-banner {
     border-radius: 0;
     height: 200px;
@@ -273,8 +304,7 @@
   }
 
   /* =========================================
-     4. FLASH SALE / HOT SALE SECTION
-        → Horizontal scrollable slider
+      FLASH SALE / HOT SALE SECTION
   ========================================= */
   .hot-sale-container {
     padding: 12px;
@@ -312,7 +342,6 @@
     font-size: 8px;
   }
 
-  /* Flash Sale product grid → horizontal scroll trên mobile */
   .hot-sale-container .product-grid,
   #hot-product-list {
     display: flex !important;
@@ -353,8 +382,7 @@
   }
 
   /* =========================================
-     5. PRODUCT GRID — "GỢI Ý CHO BẠN"
-        → 2-column grid
+      PRODUCT GRID 
   ========================================= */
   .product-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -387,12 +415,15 @@
     font-size: 11px;
   }
 
-  /* Nút "Thêm vào giỏ" trên product card */
   .product-card button,
   .btn-add {
     font-size: 11px;
     padding: 8px 6px;
     margin-top: 6px;
+  }
+  .product-card button:active,
+  .btn-add:active {
+    transform: scale(0.96) !important;
   }
 
   .section-title {
@@ -401,14 +432,13 @@
   }
 
   /* =========================================
-     6. PRODUCT DETAIL PAGE
+     6PRODUCT DETAIL PAGE
   ========================================= */
   .pd-wrapper {
-    padding: 12px 10px 90px 10px; /* bottom padding cho sticky bar */
+    padding: 12px 10px 90px 10px;
     border-radius: 0;
   }
 
-  /* Grid header → 1 cột */
   .pd-header {
     grid-template-columns: 1fr;
     gap: 0;
@@ -457,19 +487,14 @@
     font-size: 14px;
   }
 
-  /* ── Product Variants (Storage / Color) ──
-     2-column grid, min touch target 44px
-  */
   .pd-variations {
     margin-top: 12px;
   }
 
-  /* Convert attr-select thành button grid */
   .pd-variations .attr-select {
-    display: none; /* ẩn select mặc định nếu dùng button grid */
+    display: block;
   }
 
-  /* Variant button grid */
   .variant-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -496,7 +521,9 @@
     gap: 2px;
     position: relative;
   }
-
+  .variant-dropdown-menu {
+    left: -30px;
+  }
   .variant-btn .variant-name {
     font-weight: 600;
     font-size: 13px;
@@ -514,7 +541,6 @@
     color: var(--accent, #eb3e51);
   }
 
-  /* Checkmark khi active */
   .variant-btn.active::after {
     content: "✓";
     position: absolute;
@@ -525,7 +551,6 @@
     font-weight: 900;
   }
 
-  /* Color variant với thumbnail */
   .variant-btn.has-img {
     flex-direction: row;
     justify-content: flex-start;
@@ -547,7 +572,6 @@
     align-items: flex-start;
   }
 
-  /* attr-select fallback (nếu vẫn dùng) */
   .attr-select {
     width: 100%;
     max-width: 100%;
@@ -611,7 +635,6 @@
     margin-top: 1px;
   }
 
-  /* ── Content + Specs section ── */
   div[style*="grid-template-columns: 65%"] {
     display: block !important;
   }
@@ -622,7 +645,6 @@
     margin-bottom: 20px;
   }
 
-  /* ── Sticky Bottom Action Bar ── */
   .pd-actions {
     position: fixed;
     bottom: 60px;
@@ -637,7 +659,6 @@
     align-items: stretch;
   }
 
-  /* Nút MUA NGAY */
   .btn-buy-now {
     flex: 2;
     background: var(--accent, #eb3e51);
@@ -673,7 +694,6 @@
     transform: scale(0.97);
   }
 
-  /* Nút THÊM VÀO GIỎ */
   .btn-add-cart-large,
   .btn-add-cart-pd {
     flex: 1;
@@ -706,7 +726,6 @@
     background: #f0f7ff;
   }
 
-  /* Nút Wishlist — thu nhỏ icon */
   #btn-wishlist {
     width: auto;
     padding: 10px 12px;
@@ -719,9 +738,6 @@
     justify-content: center;
   }
 
-  /* ── Content Description / Specs ──
-     Hiển thị hết dưới sticky bar
-  */
   .content-desc,
   .content-body {
     font-size: 14px;
@@ -760,7 +776,7 @@
     flex-direction: column;
   }
   /* =========================================
-     7. REVIEW SECTION
+      REVIEW SECTION
   ========================================= */
   .container.review-section {
     padding: 12px 0;
@@ -768,7 +784,6 @@
     border-radius: 8px;
   }
 
-  /* Review header: score + progress bars */
   .review-header-box {
     flex-direction: row;
     gap: 1px;
@@ -803,7 +818,6 @@
     color: #666;
   }
 
-  /* Progress bars: 5★ / 4★ ... */
   .review-progress-box {
     width: 100%;
     gap: 10px;
@@ -829,10 +843,10 @@
     border-radius: 10px;
   }
 
-  /* "Viết đánh giá" button */
   .review-action-box {
     width: 100%;
     text-align: center;
+    margin-right: 0;
   }
 
   .btn-write-review {
@@ -858,9 +872,6 @@
   .review-filter {
     gap: 8px;
     margin: 16px 0;
-    /* 
-    flex-wrap: wrap;
-    justify-content: flex-start; */
   }
 
   .review-filter button {
@@ -924,11 +935,10 @@
     border-radius: 6px;
   }
 
-  /* ── Admin reply: indented block ── */
   .review-reply {
     margin-top: 10px;
-    margin-left: 50px; /* indent tương đương với avatar */
-    background: #f0f7ff; /* primary light tint */
+    margin-left: 50px;
+    background: #f0f7ff;
     border-left: 3px solid var(--primary, #00487a);
     border-radius: 0 8px 8px 0;
     padding: 10px 12px;
@@ -968,7 +978,7 @@
   }
 
   /* =========================================
-     8. CART PAGE
+      CART PAGE
   ========================================= */
   .cart-wrapper {
     flex-direction: column;
@@ -986,7 +996,6 @@
   .cart-header {
     display: flex;
     flex-direction: column;
-    gap: 10px;
     padding-bottom: 10px;
     margin-bottom: 10px;
     min-height: auto;
@@ -1007,27 +1016,31 @@
 
   .cart-item {
     display: grid !important;
-    grid-template-columns: 24px 80px 1fr 30px;
-    grid-column-gap: 12px;
+    grid-template-columns: 24px 80px 1fr 78px 28px;
+    grid-column-gap: 0;
     grid-row-gap: 6px;
     align-items: start;
-    padding: 15px 0 !important;
+    padding: 10px 0 !important;
     border-bottom: 1px solid #f0f0f0;
+    overflow: visible;
+    box-sizing: border-box;
+    min-width: 0;
   }
 
   .cart-item > input[type="checkbox"].pay-check {
     grid-column: 1;
-    grid-row: 1 / 5;
+    grid-row: 1 / 4;
     align-self: center;
     justify-self: center;
     margin: 0 !important;
-    width: 22px !important;
-    height: 22px !important;
+    width: 18px !important;
+    height: 18px !important;
   }
 
   .cart-item-img-link {
     grid-column: 2;
     grid-row: 1 / 5;
+    position: relative;
   }
   .cart-item-img-link img {
     width: 80px;
@@ -1035,21 +1048,32 @@
     object-fit: contain;
     border-radius: 4px;
     border: 1px solid #eee;
+    display: block;
+  }
+  .cart-item-img-link .flash-badge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    border-radius: 2px 0 2px 0;
+    font-size: 8px;
+    padding: 2px 4px;
   }
 
   .select-all {
     transform: translateY(-1px);
   }
 
-  /* Kích hoạt CSS Grid Xuyên thấu cho các Wrapper */
   .cart-item-info,
   .item-name-group {
     display: contents !important;
   }
 
   .cart-item-title-link {
-    grid-column: 3 / 5;
+    grid-column: 3 / 6;
     grid-row: 1;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .cart-item-title {
@@ -1062,20 +1086,33 @@
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    word-break: break-word;
   }
 
   .cart-variant-box {
-    grid-column: 3 / 5;
+    grid-column: 3;
     grid-row: 2;
-    background: #f5f5f5;
-    padding: 4px 8px;
+    background: #e3e3e3;
+    padding: 5px 7px;
     border-radius: 4px;
     font-size: 11px;
-    color: #555;
+    color: #000000;
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    width: max-content;
+    max-width: 80px;
+    min-width: 0;
+    overflow: visible;
+    align-self: center;
+    margin-top: -1px;
+    box-sizing: border-box;
+    position: relative;
+  }
+  .cart-variant-box .variant-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
   }
 
   #btn-delete-all {
@@ -1086,8 +1123,8 @@
   }
 
   .qty-control {
-    grid-column: 3 / 5;
-    grid-row: 3;
+    grid-column: 4;
+    grid-row: 2;
     background: #f9f9f9;
     border-radius: 4px;
     display: inline-flex;
@@ -1095,16 +1132,23 @@
     height: 26px;
     padding: 0;
     border: 1px solid #eee;
-    width: max-content;
+    width: 76px;
+    max-width: 76px;
+    align-self: center;
+    justify-self: start;
+    box-sizing: border-box;
+    overflow: hidden;
   }
   .qty-control button {
     background: none;
     border: none;
     width: 24px;
+    min-width: 24px;
     height: 26px;
     font-size: 16px;
     color: #555;
     padding: 0;
+    flex-shrink: 0;
   }
   .qty-control span {
     font-size: 12px;
@@ -1112,19 +1156,31 @@
     text-align: center;
     border: none;
     font-weight: bold;
+    flex: 1;
   }
 
   .cart-item-price {
-    grid-column: 3;
-    grid-row: 4;
+    grid-column: 3 / 6;
+    grid-row: 3;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
+    gap: 1px;
     text-align: left !important;
     justify-content: flex-start;
+    min-width: 0;
+    overflow: hidden;
   }
-
+  .cart-item-price .current-price {
+    margin-left: 4px;
+    margin-bottom: 4px;
+  }
+  .cart-item-img-link .flash-badge {
+    display: inline-block;
+  }
+  .flash-badge--price {
+    display: none !important;
+  }
   .flash-badge {
     display: inline-block;
     background: #ff6b35;
@@ -1146,8 +1202,12 @@
   .old-price {
     color: #999;
     font-size: 11px;
+    margin-top: -2px !important;
+    margin-left: 6px;
   }
-
+  .cart-item-price .flash-badge {
+    display: none !important;
+  }
   #total_price > span {
     font-size: 18px;
   }
@@ -1156,8 +1216,8 @@
   }
 
   .btn-remove-item {
-    grid-column: 4;
-    grid-row: 1 / 5;
+    grid-column: 5;
+    grid-row: 1 / 4;
     background: none;
     border: none;
     color: #aaa;
@@ -1171,6 +1231,7 @@
     display: flex !important;
     align-items: center;
     gap: 12px;
+    overflow: visible !important;
   }
 
   /* Checkout bar */
@@ -1214,7 +1275,7 @@
   }
 
   /* =========================================
-     9. FOOTER
+      FOOTER
   ========================================= */
   .footer-top {
     grid-template-columns: 1fr 1fr;
@@ -1238,8 +1299,7 @@
   }
 
   /* =========================================
-     10. MOBILE BOTTOM NAVIGATION BAR
-         (Tab bar kiểu app)
+      MOBILE BOTTOM NAVIGATION BAR
   ========================================= */
   .mobile-bottom-nav {
     display: flex;
@@ -1291,7 +1351,6 @@
     border: 2px solid #fff;
   }
 
-  /* Khi có bottom nav, thêm padding cho body */
   body.has-mobile-nav {
     padding-bottom: 56px;
   }
@@ -1360,7 +1419,6 @@
     font-size: 18px;
   }
 
-  /* Table → scroll ngang */
   .table-wrapper {
     overflow-x: auto;
   }
@@ -1378,7 +1436,8 @@
   .timeline {
     overflow-x: auto;
     gap: 0;
-    margin: 16px 0 30px;
+    padding: 10px 0;
+    margin: -10px 0 10px;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -1420,7 +1479,6 @@
      15. MISC UTILITIES
   ========================================= */
 
-  /* Chat widget toggle: đẩy lên trên mobile nav bar */
   #chat-widget {
     bottom: 84px;
     right: 12px;
@@ -1433,7 +1491,6 @@
     margin-top: -90px;
   }
 
-  /* Chat box: fixed bottom drawer thay vì popup nhỏ */
   #chat-box {
     position: fixed;
     bottom: 0;
@@ -1445,14 +1502,13 @@
     border-radius: 20px 20px 0 0;
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.18);
     transform-origin: bottom center;
-    /* Override desktop transform */
     transform: translateY(100%) scale(1);
     opacity: 0;
     visibility: hidden;
     transition:
       transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
       opacity 0.35s ease;
-    z-index: 10000; /* cao hơn mobile-bottom-nav (9999) */
+    z-index: 10000;
   }
 
   #chat-box.open {
@@ -1461,7 +1517,6 @@
     visibility: visible;
   }
 
-  /* Closing animation: trượt xuống khi đóng */
   #chat-box.is-closing {
     transform: translateY(100%) scale(1);
     opacity: 0;
@@ -1625,10 +1680,9 @@
   }
 
   /* =============================================
-     ORDER DETAIL PAGE - Mobile (768px)
+     ORDER DETAIL PAGE - Mobile 
   ============================================= */
 
-  /* Header: back link + order code + cancel button stacked */
   .detail-wrapper > div:first-child {
     flex-direction: column;
     align-items: flex-start !important;
@@ -1643,7 +1697,6 @@
     width: 100%;
   }
 
-  /* Cancel button full width */
   .btn-cancel-order {
     width: 100%;
     justify-content: center;
@@ -1659,13 +1712,11 @@
     font-size: 14px;
   }
 
-  /* Timeline: horizontal scroll on mobile */
   .timeline {
     display: flex;
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 12px;
     justify-content: space-between;
     gap: 0;
     scrollbar-width: none;
@@ -1687,7 +1738,6 @@
     margin-top: 6px;
   }
 
-  /* Info grid 1 column */
   .info-grid {
     grid-template-columns: 1fr !important;
     gap: 12px;
@@ -1714,7 +1764,6 @@
     min-width: 16px;
   }
 
-  /* Product list section */
   .detail-wrapper > div[style*="border:1px solid #eee"] {
     margin-bottom: 14px;
     border-radius: 8px !important;
@@ -1728,7 +1777,6 @@
     padding: 0 14px !important;
   }
 
-  /* Item row: image left, info stacked right */
   .item-row {
     display: flex;
     flex-wrap: nowrap;
@@ -1771,7 +1819,6 @@
     flex-shrink: 0;
   }
 
-  /* Summary box */
   .summary-box {
     padding: 14px;
     border-radius: 8px;
@@ -1800,7 +1847,7 @@
   }
 
   /* =========================================
- POLICY, STATIC PAGES, PROFILE & TRACKING - 768px
+ POLICY, STATIC PAGES, PROFILE & TRACKING 
 ========================================= */
   /* Common Pages */
   .page-wrapper {
@@ -1928,7 +1975,7 @@
   }
   .profile-joined {
     font-size: 14px;
-    color: #666;
+    color: rgba(255, 255, 255, 0.7);
   }
   .profile-body {
     padding-top: 15px;
@@ -2019,7 +2066,7 @@
   }
 
   /* =========================================
-   9. PROFILE, LOGIN, REGISTER - Mobile 768px
+   9. PROFILE, LOGIN, REGISTER 
 ========================================= */
   /* ---- PROFILE PAGE ---- */
   .profile-wrapper {
@@ -2049,7 +2096,7 @@
   }
   .profile-joined {
     font-size: 13px;
-    color: #888;
+    color: rgba(255, 255, 255, 0.7);
   }
   .profile-body .form-group {
     margin-bottom: 14px;
@@ -2102,7 +2149,6 @@
 
   /* ---- AUTH PAGES: login & register ---- */
 
-  /* Center wrapper: full height, lightly padded */
   .auth-wrapper {
     min-height: 100svh;
     display: flex;
@@ -2211,7 +2257,7 @@
   }
 
   /* =========================================
-   10. CHANGE PASSWORD - Mobile 768px
+   10. CHANGE PASSWORD 
 ========================================= */
   /* Full-screen centered layout */
   body:has(.password-container) {
@@ -2289,7 +2335,6 @@
     opacity: 0.88;
   }
 
-  /* Back link */
   .password-container .back-link {
     display: block;
     text-align: center;
@@ -2303,16 +2348,14 @@
   }
 
   /* =========================================
-   11. SEARCH PAGE - Mobile 768px
+   11. SEARCH PAGE 
 ========================================= */
-  /* Container margin + clearance for bottom nav */
   .container[style*="margin-top: 30px"] {
     margin-top: 16px !important;
     margin-bottom: 80px !important;
     padding: 0 10px;
   }
 
-  /* Header row: title + sort stacked */
   .container > div[style*="display:flex"] {
     flex-direction: column;
     align-items: flex-start !important;
@@ -2327,7 +2370,6 @@
     word-break: break-word;
   }
 
-  /* Sort dropdown full-width */
   .sort-wrap {
     width: 100%;
   }
@@ -2342,7 +2384,6 @@
     box-sizing: border-box;
   }
 
-  /* Filter bar: hãng — horizontal scroll */
   .filter-bar {
     display: flex;
     flex-wrap: nowrap;
@@ -2382,14 +2423,11 @@
     border-color: var(--primary);
   }
 
-  /* Product grid: 2 cột đều nhau */
   .product-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
   }
-
-  /* Empty state */
   .container > div[style*="text-align:center;"] {
     padding: 40px 20px !important;
   }
@@ -2400,17 +2438,15 @@
     font-size: 14px;
   }
   /* =========================================
-   12. COMPARE PAGE - Mobile 768px
+   12. COMPARE PAGE 
 ========================================= */
-  /* Wrapper */
   .compare-wrapper {
     padding: 12px 8px;
     margin-top: 10px;
-    margin-bottom: 80px; /* clear bottom nav */
+    margin-bottom: 80px;
     border-radius: 8px;
   }
 
-  /* Breadcrumb wrap */
   .compare-breadcrumb {
     font-size: 12px;
     flex-wrap: wrap;
@@ -2457,7 +2493,6 @@
     margin: 4px 0 !important;
   }
 
-  /* Product cell */
   .compare-product-cell {
     min-width: 160px;
   }
@@ -2466,13 +2501,11 @@
     margin-bottom: 10px;
   }
 
-  /* Cell inner flex stays, but tighter */
   .compare-product-cell > .cell-inner {
     min-height: 180px;
     gap: 6px;
   }
 
-  /* Product name: 2 lines max */
   .pd-name {
     font-size: 13px;
     height: auto;
@@ -2527,7 +2560,6 @@
     height: 36px;
   }
 
-  /* Spec rows */
   .spec-section-header td {
     font-size: 13px;
     padding: 8px 8px !important;
@@ -2702,5 +2734,46 @@
   .compare-title-cell {
     min-width: 80px;
     max-width: 90px;
+  }
+}
+
+/* =========================================
+   WISHLIST MOBILE LAYOUT
+========================================= */
+@media (max-width: 768px) {
+  .wishlist-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+  .wishlist-card img {
+    height: 130px !important;
+    padding: 8px !important;
+  }
+  .wishlist-card-body {
+    padding: 8px 10px 10px !important;
+  }
+  .wishlist-card-body a {
+    font-size: 12px !important;
+    height: 34px !important;
+    margin-bottom: 6px !important;
+  }
+  .wishlist-price {
+    font-size: 14px !important;
+  }
+  .wishlist-old-price {
+    font-size: 11px !important;
+  }
+  .btn-add-wish-cart {
+    font-size: 11px !important;
+    padding: 6px 8px !important;
+  }
+  .btn-remove-wish {
+    padding: 6px 8px !important;
+    width: auto !important;
+    min-width: 30px !important;
+  }
+  .m-empty-price {
+    display: inline-block !important;
+    visibility: hidden;
   }
 }

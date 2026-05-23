@@ -1,6 +1,3 @@
-// =========================================
-
-// =========================================
 $(document).ajaxSend(function (event, jqXHR, settings) {
   if (settings.type === "POST" || settings.type === "post") {
     const token = $('meta[name="csrf-token"]').attr("content");
@@ -13,7 +10,6 @@ $(document).ajaxSend(function (event, jqXHR, settings) {
   }
 });
 
-// Tự động chèn BASE_URL cho tất cả các ajax call dẫn tới api/
 $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
   if (options.url && options.url.startsWith("api/")) {
     if (typeof BASE_URL !== "undefined") {
@@ -35,7 +31,7 @@ var reviewState = {
 };
 
 /* =================================================================
-   1. UTILITY FUNCTIONS (TOAST, CONFIRM)
+   UTILITY FUNCTIONS (TOAST, CONFIRM)
 ================================================================= */
 
 function showToast({
@@ -96,7 +92,7 @@ function closeConfirm() {
 }
 
 /* =================================================================
-   2. MAIN DOCUMENT READY (EVENT LISTENERS)
+    MAIN DOCUMENT READY (EVENT LISTENERS)
 ================================================================= */
 $(document).ready(function () {
   currentUserId = parseInt($("body").attr("data-user-id")) || 0;
@@ -130,7 +126,6 @@ $(document).ready(function () {
   }
 
   updateCartCount();
-  // checkUserNotifications được định nghĩa ở dưới, gọi qua window
   if (typeof checkUserNotifications === "function") {
     checkUserNotifications();
     setInterval(checkUserNotifications, 30000);
@@ -150,9 +145,17 @@ $(document).ready(function () {
       if ($recBlock.length > 0) {
         $recBlock.find(".pay-check").prop("checked", false);
         calcTotal();
-        $recBlock.slideUp(300, function () {
-          $(this).remove();
-        });
+
+        if (window.innerWidth <= 768) {
+          $recBlock.wrap('<div style="overflow:hidden;"></div>');
+          $recBlock.parent().slideUp(300, function () {
+            $(this).remove();
+          });
+        } else {
+          $recBlock.slideUp(300, function () {
+            $(this).remove();
+          });
+        }
       }
     } else {
       if ($(".pay-check:checked").length === $(".pay-check").length)
@@ -173,7 +176,7 @@ $(document).ready(function () {
               let fmt = new Intl.NumberFormat("vi-VN");
               let starsHtml = renderStars(parseFloat(p.avg_rating) || 0);
               let html = `
-            <div class="cart-item" id="rec-item-${pid}" style="background-color:#fef9f9; border:1px dashed #d70018; margin-top:5px; margin-bottom:15px; margin-left:35px; padding:10px; display:none; border-radius:8px; position:relative;">
+            <div class="cart-item" id="rec-item-${pid}" style="background-color:#fef9f9; border:1px dashed #d70018; margin-top:5px; margin-bottom:15px; margin-left:35px; padding:10px; display:none; border-radius:8px; position:relative; overflow:visible !important;">
               <div style="position:absolute; top:-10px; left:15px; background:#d70018; color:#fff; font-size:10px; padding:2px 8px; border-radius:10px; font-weight:bold;">Gợi ý cho bạn</div>
               <a href="${p.product_url}" style="display:block; text-decoration:none;">
                 <img src="${p.image_url}" alt="${p.name}" style="width:80px; height:80px; object-fit:contain;" onerror="this.style.display='none'">
@@ -192,7 +195,18 @@ $(document).ready(function () {
               </button>
             </div>`;
               $cartItem.after(html);
-              $("#rec-item-" + pid).slideDown(300);
+
+              let $newRec = $("#rec-item-" + pid);
+              if (window.innerWidth <= 768) {
+                $newRec.wrap(
+                  '<div style="display:none; overflow:hidden;"></div>',
+                );
+                $newRec.parent().slideDown(300, function () {
+                  $newRec.unwrap();
+                });
+              } else {
+                $newRec.slideDown(300);
+              }
             }
           },
         );
@@ -218,11 +232,6 @@ $(document).ready(function () {
       function () {
         btn.data("loading", false);
         updateCartCount();
-        // ============================================
-        // FIX CHECKOUT: Phải tạo checkbox ẩn để logic checkout
-        // ở main.js có thể nhặt được sản phẩm này vào mảng `items`.
-        // Đồng thời gọi `calcTotal()` để re-sync tổng tiền.
-        // ============================================
         let checkHtml = `<input type="checkbox" class="pay-check" value="${pid}" data-qty="1" data-price="${price}" checked style="display:none;">`;
         btn.closest(".cart-item").append(checkHtml);
 
@@ -230,7 +239,6 @@ $(document).ready(function () {
           calcTotal();
         }
 
-        // Đổi thành nút Xóa
         btn.removeClass("js-add-rec-item").addClass("btn-remove-item");
         btn.html('<i class="fa fa-trash-can"></i> Xóa');
         btn.css({
@@ -254,6 +262,7 @@ $(document).ready(function () {
   $(document).on("click", ".qty-btn", function () {
     let btn = $(this);
     let pid = btn.data("id");
+    let vid = btn.data("vid") || 0;
     let delta = parseInt(btn.data("delta"));
     let qtySpan = btn.siblings("span");
     let checkbox = btn.closest(".cart-item").find(".pay-check");
@@ -261,7 +270,12 @@ $(document).ready(function () {
     btn.prop("disabled", true);
     $.post(
       "api/cart_api.php",
-      { action: "update_qty", product_id: pid, delta: delta },
+      {
+        action: "update_qty",
+        product_id: pid,
+        variation_id: vid,
+        delta: delta,
+      },
       function (data) {
         btn.prop("disabled", false);
         try {
@@ -287,23 +301,37 @@ $(document).ready(function () {
       });
     customConfirm("Xóa sạch giỏ hàng?", function () {
       $.post("api/cart_api.php", { action: "delete_all" }, function () {
-        location.reload();
+        $(".cart-item").fadeOut(250, function () {
+          $(this).remove();
+          _cartCheckEmpty();
+          calcTotal();
+          updateCartCount();
+        });
       });
     });
   });
 
   $(document).on("click", "#btn-delete-selected", function () {
-    let ids = [];
+    let items = [];
     $(".pay-check:checked").each(function () {
-      ids.push($(this).val());
+      items.push({ id: $(this).val(), vid: $(this).data("vid") || 0 });
     });
-    if (ids.length === 0) return;
-    customConfirm(`Xóa ${ids.length} sản phẩm đã chọn?`, function () {
+    if (items.length === 0) return;
+    customConfirm(`Xóa ${items.length} sản phẩm đã chọn?`, function () {
       $.post(
         "api/cart_api.php",
-        { action: "delete_list", ids: JSON.stringify(ids) },
+        { action: "delete_list", items: JSON.stringify(items) },
         function () {
-          location.reload();
+          $(".pay-check:checked").each(function () {
+            $(this)
+              .closest(".cart-item")
+              .fadeOut(250, function () {
+                $(this).remove();
+                _cartCheckEmpty();
+                calcTotal();
+                updateCartCount();
+              });
+          });
         },
       );
     });
@@ -311,11 +339,150 @@ $(document).ready(function () {
 
   $(document).on("click", ".btn-remove-item", function () {
     let pid = $(this).data("id");
+    let vid = $(this).data("vid") || 0;
+    let $item = $(this).closest(".cart-item");
     customConfirm("Xóa sản phẩm này?", function () {
-      $.post("api/cart_api.php", { action: "delete", id: pid }, function () {
-        location.reload();
-      });
+      $.post(
+        "api/cart_api.php",
+        { action: "delete", id: pid, vid: vid },
+        function () {
+          $item.fadeOut(250, function () {
+            $item.remove();
+            _cartCheckEmpty();
+            calcTotal();
+            updateCartCount();
+          });
+        },
+      );
     });
+  });
+
+  /* --- ĐỔI BIẾN THỂ TRONG GIỎ HÀNG --- */
+  $(document).on("click", ".cart-variant-box", function (e) {
+    if ($(e.target).closest(".variant-dropdown-menu").length) return;
+    e.stopPropagation();
+
+    $(".cart-item").css("z-index", "1");
+
+    $(".variant-dropdown-menu")
+      .not($(this).find(".variant-dropdown-menu"))
+      .removeClass("show");
+
+    $(".cart-variant-box").not($(this)).removeClass("open");
+
+    let $dropdown = $(this).find(".variant-dropdown-menu");
+    $dropdown.toggleClass("show");
+    $(this).toggleClass("open", $dropdown.hasClass("show"));
+
+    if ($dropdown.hasClass("show")) {
+      $(this).closest(".cart-item").css({
+        position: "relative",
+        "z-index": "999",
+      });
+      $(this).css("z-index", "999");
+    } else {
+      $(this).closest(".cart-item").css("z-index", "1");
+      $(this).css("z-index", "auto");
+    }
+  });
+
+  $(document).on("click", ".variant-option", function (e) {
+    e.stopPropagation();
+    let $variantBox = $(this).closest(".cart-variant-box");
+    if ($(this).hasClass("active")) {
+      $(this).closest(".variant-dropdown-menu").removeClass("show");
+      $variantBox.removeClass("open");
+      return;
+    }
+    let $opt = $(this);
+    let pid = $opt.data("pid");
+    let oldVid = $opt.data("old-vid") || 0;
+    let newVid = $opt.data("new-vid");
+    let newLabel = $opt.find(".v-name").text();
+    let $cartItem = $variantBox.closest(".cart-item");
+
+    $opt.addClass("loading").css("opacity", 0.6);
+    $.post(
+      "api/cart_api.php",
+      {
+        action: "update_variant",
+        product_id: pid,
+        old_vid: oldVid,
+        new_vid: newVid,
+      },
+      function (res) {
+        try {
+          res = typeof res === "object" ? res : JSON.parse(res);
+        } catch (e) {}
+        if (res && res.status === "success") {
+          $variantBox.find(".variant-text").text(newLabel);
+          $opt.siblings().each(function () {
+            $(this).removeClass("active").attr("data-old-vid", newVid);
+          });
+          $opt.addClass("active").attr("data-old-vid", newVid);
+          $cartItem
+            .find(".pay-check, .qty-btn, .btn-remove-item")
+            .attr("data-vid", newVid)
+            .data("vid", newVid);
+          $variantBox.find(".variant-option").attr("data-old-vid", newVid);
+
+          let calcPrice = parseFloat($opt.attr("data-calc-price"));
+          let origPrice = parseFloat($opt.attr("data-orig-price"));
+          let isSale = parseInt($opt.attr("data-is-sale")) === 1;
+          let isFlash = parseInt($opt.attr("data-is-flash")) === 1;
+
+          if (!isNaN(calcPrice)) {
+            let fmt = new Intl.NumberFormat("vi-VN");
+            $cartItem
+              .find(".pay-check")
+              .attr("data-price", calcPrice)
+              .data("price", calcPrice);
+
+            let newHtml = "";
+            if (isSale) {
+              if (isFlash) {
+                newHtml +=
+                  '<span class="flash-badge flash-badge--price">FLASH SALE</span>';
+              } else {
+                newHtml +=
+                  '<span class="flash-badge flash-badge--price" style="background:#ddd; color:#333;">KHUYẾN MÃI</span>';
+              }
+              newHtml += '<br class="br-mobile">';
+              newHtml +=
+                '<span class="current-price">' +
+                fmt.format(calcPrice) +
+                " ₫</span>";
+              newHtml +=
+                '<del class="old-price">' + fmt.format(origPrice) + " ₫</del>";
+            } else {
+              newHtml +=
+                '<span class="current-price">' +
+                fmt.format(calcPrice) +
+                " ₫</span>";
+            }
+            $cartItem.find(".cart-item-price").html(newHtml);
+
+            if (typeof calcTotal === "function") {
+              calcTotal();
+            }
+          }
+
+          $variantBox.removeClass("open");
+          $variantBox.find(".variant-dropdown-menu").removeClass("show");
+          showToast({
+            title: "Đã đổi",
+            message: "Phân loại: " + newLabel,
+            type: "success",
+          });
+        }
+        $opt.removeClass("loading").css("opacity", 1);
+      },
+    );
+  });
+
+  $(document).click(function () {
+    $(".variant-dropdown-menu").removeClass("show");
+    $(".cart-variant-box").removeClass("open");
   });
 
   /* --- SỰ KIỆN THANH TOÁN (CHECKOUT) --- */
@@ -326,6 +493,40 @@ $(document).ready(function () {
         message: "Vui lòng chọn sản phẩm!",
         type: "warning",
       });
+
+    let hasUnselectedVariant = false;
+    let $unselectedItems = [];
+
+    $(".pay-check:checked").each(function () {
+      let $item = $(this).closest(".cart-item");
+      let hasVariations = $item.find(".variant-option").length > 0;
+      let vid = $(this).data("vid") || 0;
+      if (hasVariations && vid == 0) {
+        hasUnselectedVariant = true;
+        $unselectedItems.push($item);
+      }
+    });
+
+    if (hasUnselectedVariant) {
+      $unselectedItems.forEach(($item) => {
+        $item.addClass("shake-warning");
+        setTimeout(() => $item.removeClass("shake-warning"), 600);
+      });
+
+      $("html, body").animate(
+        {
+          scrollTop: $unselectedItems[0].offset().top - 100,
+        },
+        300,
+      );
+
+      return showToast({
+        title: "Cảnh báo",
+        message: "Vui lòng chọn phân loại cho sản phẩm trước khi thanh toán!",
+        type: "warning",
+      });
+    }
+
     if (currentUserId === 0)
       return customConfirm("Bạn cần ĐĂNG NHẬP để mua hàng.", function () {
         window.location.href = "login.php";
@@ -370,26 +571,18 @@ $(document).ready(function () {
   $("#chat-toggle, #chat-now, .close-chat").click(function () {
     toggleChat();
   });
-  // Backdrop (mobile drawer): click ngoài vùng chat để đóng
   $(document).on("click", "#chat-backdrop", function () {
     toggleChat();
   });
 
-  // === Listeners cho custom events từ toggleChat() ===
   $("#chat-toggle")
     .on("chat:open", function () {
-      // 1. Khóa scroll body trên mobile (drawer toàn màn hình)
       if (window.innerWidth <= 768) {
         $("body").css({ overflow: "hidden", touchAction: "none" });
       }
-      // 2. Đổi icon sang dấu X
-      $(this).find("i").removeClass("fa-comments").addClass("fa-xmark");
     })
     .on("chat:close", function () {
-      // 1. Mở khóa scroll body
       $("body").css({ overflow: "", touchAction: "" });
-      // 2. Restore icon
-      $(this).find("i").removeClass("fa-xmark").addClass("fa-comments");
     });
   $("#chat-input").keypress(function (e) {
     if (e.which == 13) sendMessage();
@@ -467,10 +660,9 @@ $(document).ready(function () {
   });
 
   /* =================================================================
-       REVIEW SYSTEM EVENTS (ĐÁNH GIÁ SẢN PHẨM)
+       REVIEW SYSTEM EVENTS 
     ================================================================= */
 
-  // Mở Modal Viết Đánh Giá
   $(document).on(
     "click",
     ".js-btn-write-review, .btn-write-review",
@@ -490,7 +682,6 @@ $(document).ready(function () {
     },
   );
 
-  // Đóng Modal
   $(document).on("click", ".close-modal", function () {
     $("#review-modal").fadeOut();
   });
@@ -498,7 +689,6 @@ $(document).ready(function () {
     if ($(e.target).is("#review-modal")) $("#review-modal").fadeOut();
   });
 
-  // Preview Ảnh Upload
   $(document).on("change", "#review-images-input", function () {
     let preview = $("#preview-images");
     preview.html("");
@@ -578,12 +768,10 @@ $(document).ready(function () {
     loadReviews(false);
   });
 
-  // Xử lý nút Like Đánh giá (Toggle)
   $(document).on("click", ".btn-like-review", function () {
     let btn = $(this);
     let reviewId = btn.data("id");
 
-    // Ràng buộc: Phải Login mới được Like
     if (currentUserId === 0) {
       showToast({
         title: "Yêu cầu đăng nhập",
@@ -593,7 +781,6 @@ $(document).ready(function () {
       return;
     }
 
-    // Chống spam click
     if (btn.data("loading")) return;
     btn.data("loading", true);
 
@@ -640,6 +827,9 @@ $(document).ready(function () {
     const track = $("#related-track");
     const items = $(".related-card");
     const totalItems = items.length;
+    let startX = 0;
+    let endX = 0;
+
     function moveRelatedSlide(direction) {
       const itemsVisible = window.innerWidth > 768 ? 4 : 2;
       const maxIndex = Math.max(0, totalItems - itemsVisible);
@@ -655,11 +845,28 @@ $(document).ready(function () {
     $(document).on("click", "#btn-next-rel", function () {
       moveRelatedSlide(1);
     });
+
+    track.on("touchstart", function (e) {
+      startX = e.originalEvent.touches[0].clientX;
+      endX = startX;
+    });
+
+    track.on("touchmove", function (e) {
+      endX = e.originalEvent.touches[0].clientX;
+    });
+
+    track.on("touchend", function (e) {
+      if (startX - endX > 50) {
+        moveRelatedSlide(1);
+      } else if (endX - startX > 50) {
+        moveRelatedSlide(-1);
+      }
+    });
   }
 });
 
 /* =================================================================
-   3. CORE FUNCTIONS DEFINITIONS
+    CORE FUNCTIONS DEFINITIONS
 ================================================================= */
 
 function loadReviews(isReset) {
@@ -775,15 +982,11 @@ function loadReviews(isReset) {
 let currentSubtotal = 0;
 let selectedVoucher = null;
 
-// ==========================================
-// 1. HÀM TÍNH TỔNG TIỀN (Đã cập nhật)
-// ==========================================
-// 1. HÀM TÍNH TỔNG TIỀN (Đã cập nhật)
-// ==========================================
-
-// Bấm vào khoảng trống của cart-item để chọn/bỏ chọn checkbox
 $(document).on("click", ".cart-item", function (e) {
-  if ($(e.target).closest("a, button, input, .qty-control, .cart-variant-box").length) {
+  if (
+    $(e.target).closest("a, button, input, .qty-control, .cart-variant-box")
+      .length
+  ) {
     return;
   }
   let chk = $(this).find(".pay-check");
@@ -809,24 +1012,35 @@ function calcTotal() {
   $("#selected-count").text($(".pay-check:checked").length);
   $("#modal-subtotal").text(fmt);
 
-  // Lưu lại tổng tiền gốc
   currentSubtotal = total;
 
-  // Gọi hàm tính toán lại Voucher (nếu có mã đang chọn)
   applyVoucherLogic();
 }
 
+function _cartCheckEmpty() {
+  let remaining = $(".cart-item").length;
+  $(".select-all").text("Chọn tất cả (" + remaining + " sản phẩm)");
+  if (remaining === 0) {
+    $(".cart-wrapper").replaceWith(
+      '<div class="empty-cart-state" style="text-align:center;padding:60px 20px;">' +
+        '<i class="fa-solid fa-cart-shopping" style="font-size:80px;color:#787878;margin-bottom:20px;"></i>' +
+        '<h3 style="color:#555;">Giỏ hàng của bạn đang trống</h3>' +
+        '<p style="color:#888;margin-bottom:20px;">Hãy chọn thêm sản phẩm để mua sắm nhé</p>' +
+        '<a href="index.php" style="color:#00487a;font-weight:bold;">← Quay lại trang chủ</a>' +
+        "</div>",
+    );
+  }
+}
+
 // ==========================================
-// 2. CÁC HÀM XỬ LÝ VOUCHER TẠI MODAL ĐẶT HÀNG
+//  CÁC HÀM XỬ LÝ VOUCHER TẠI MODAL ĐẶT HÀNG
 // ==========================================
-// Hàm đóng danh sách Voucher và hiện lại bảng Thanh toán
 function closeVoucherList() {
   $("#voucher-list-modal").fadeOut(200, function () {
     $("#checkout-modal").fadeIn(200);
   });
 }
 
-// Mở danh sách Voucher (Khi ấn nút "Chọn Mã")
 function openVoucherList() {
   if (currentSubtotal === 0) {
     Swal.fire("Lưu ý", "Bạn chưa chọn sản phẩm nào để thanh toán!", "warning");
@@ -910,23 +1124,17 @@ function openVoucherList() {
   });
 }
 
-// Xử lý khi User bấm "Chọn mã"
 function selectVoucher(v) {
   selectedVoucher = v;
 
-  // Đóng Modal Voucher và HIỆN LẠI Modal Thanh toán
   $("#voucher-list-modal").fadeOut(200, function () {
     $("#checkout-modal").fadeIn(200);
   });
 
-  // Hiển thị mã lên ô Input
   $("#c-coupon").val(v.code);
   $("#c-voucher-id").val(v.id);
-
-  // Hiện nút "Bỏ chọn"
   $("#btn-clear-voucher").show();
 
-  // Tính toán lại giá
   applyVoucherLogic();
 
   Swal.fire({
@@ -990,14 +1198,12 @@ $(document).on("keyup", "#c-coupon", function () {
   }, 500);
 });
 
-// Xử lý khi User bấm "Bỏ chọn" (Nút đỏ)
 function clearVoucher() {
   selectedVoucher = null;
   $("#c-coupon").val("");
   $("#c-voucher-id").val("");
   $("#btn-clear-voucher").hide();
 
-  // Tính toán lại giá (Trở về giá gốc)
   applyVoucherLogic();
 }
 
@@ -1010,13 +1216,11 @@ function applyVoucherLogic() {
     currency: "VND",
   });
 
-  // 1. KHÔNG CÓ VOUCHER HOẶC TIỀN = 0
   if (!selectedVoucher || currentSubtotal === 0) {
     $("#voucher-discount-info").hide();
     $("#modal-old-total").hide();
     $("#modal-total-money").text(fmtTotal.format(currentSubtotal));
 
-    // Reset nếu user bỏ chọn sản phẩm làm tổng tiền lùi về dưới mốc tối thiểu
     if (
       selectedVoucher &&
       currentSubtotal > 0 &&
@@ -1032,7 +1236,6 @@ function applyVoucherLogic() {
     return;
   }
 
-  // 2. CÓ VOUCHER HỢP LỆ
   let discountValue = 0;
 
   if (selectedVoucher.type === "percent") {
@@ -1046,14 +1249,12 @@ function applyVoucherLogic() {
     discountValue = parseFloat(selectedVoucher.discount_amount);
   }
 
-  // Đảm bảo không giảm lố thành số âm
   if (discountValue > currentSubtotal) {
     discountValue = currentSubtotal;
   }
 
   let finalTotal = currentSubtotal - discountValue;
 
-  // 3. CẬP NHẬT GIAO DIỆN MODAL
   $("#discount-label").text(selectedVoucher.code);
   $("#modal-discount-amount").text("-" + fmtTotal.format(discountValue));
   $("#voucher-discount-info").css("display", "flex");
@@ -1070,22 +1271,17 @@ function applyVoucherLogic() {
     currency: "VND",
   });
 
-  // 1. TRƯỜNG HỢP: KHÔNG CÓ VOUCHER HOẶC TIỀN = 0
   if (!selectedVoucher || currentSubtotal === 0) {
-    // Ẩn các dòng liên quan đến giảm giá
     $("#voucher-discount-info").hide();
     $("#modal-old-total").hide();
-
-    // Hiện tổng tiền gốc
     $("#modal-total-money").text(fmtTotal.format(currentSubtotal));
 
-    // Kiểm tra xem user có lỡ uncheck sản phẩm làm tổng tiền tụt xuống dưới điều kiện của voucher không
     if (
       selectedVoucher &&
       currentSubtotal > 0 &&
       currentSubtotal < parseFloat(selectedVoucher.min_order_value)
     ) {
-      clearVoucher(); // Hủy voucher ngay lập tức
+      clearVoucher();
       Swal.fire(
         "Hủy áp dụng",
         "Tổng tiền không còn đủ điều kiện để dùng mã này.",
@@ -1095,43 +1291,29 @@ function applyVoucherLogic() {
     return;
   }
 
-  // 2. TRƯỜNG HỢP: CÓ VOUCHER HỢP LỆ
   let discountValue = 0;
 
-  // Nếu là mã phần trăm
   if (selectedVoucher.type === "percent") {
     discountValue =
       currentSubtotal * (parseFloat(selectedVoucher.discount_amount) / 100);
-    // Kiểm tra mức giảm tối đa
     let maxDiscount = parseFloat(selectedVoucher.max_discount);
     if (maxDiscount > 0 && discountValue > maxDiscount) {
       discountValue = maxDiscount;
     }
-  }
-  // Nếu là mã trừ tiền thẳng
-  else {
+  } else {
     discountValue = parseFloat(selectedVoucher.discount_amount);
   }
 
-  // Đảm bảo không giảm lố thành số âm (nếu voucher lớn hơn tổng tiền)
   if (discountValue > currentSubtotal) {
     discountValue = currentSubtotal;
   }
 
-  // Tính số tiền cuối cùng cần thanh toán
   let finalTotal = currentSubtotal - discountValue;
 
-  // 3. CẬP NHẬT GIAO DIỆN MODAL
   $("#discount-label").text(selectedVoucher.code);
-
-  // Hiện số tiền trừ đi
   $("#modal-discount-amount").text("-" + fmtTotal.format(discountValue));
   $("#voucher-discount-info").css("display", "flex"); // Hiện dòng giảm giá
-
-  // Gạch ngang giá cũ
   $("#modal-old-total").text(fmtTotal.format(currentSubtotal)).show();
-
-  // In đậm giá mới
   $("#modal-total-money").text(fmtTotal.format(finalTotal));
 }
 
@@ -1145,8 +1327,6 @@ function updateCartCount() {
     try {
       let res = typeof data === "object" ? data : JSON.parse(data);
       const count = parseInt(res.count) || 0;
-
-      // --- Navbar badge (.menu-cart-box) ---
       const $cartBadge = $(".menu-cart-box .menu-cart-badge");
       if (count > 0) {
         if ($cartBadge.length) {
@@ -1160,13 +1340,11 @@ function updateCartCount() {
         $cartBadge.addClass("hidden").css("display", "none");
       }
 
-      // --- Mobile bottom-nav badge (#m-btn-cart) ---
       const $mBadge = $("#m-btn-cart .m-badge");
       if (count > 0) {
         if ($mBadge.length) {
           $mBadge.text(count).css("display", "");
         } else {
-          // Badge chưa có trong DOM (cart_qty=0 khi load) → tạo mới
           $("#m-btn-cart .fa-cart-shopping").after(
             $('<span class="m-badge">').text(count),
           );
@@ -1196,7 +1374,15 @@ function handleCheckout(btn) {
 
   let items = [];
   $(".pay-check:checked").each(function () {
-    items.push({ product_id: $(this).val(), quantity: $(this).data("qty") });
+    let $cartItem = $(this).closest(".cart-item");
+    let variantText = $cartItem.find(".variant-text").text().trim();
+    if (variantText === "Chọn phân loại" || variantText === "")
+      variantText = "";
+    items.push({
+      product_id: $(this).val(),
+      quantity: $(this).data("qty"),
+      variant_text: variantText,
+    });
   });
 
   if (items.length === 0)
@@ -1328,20 +1514,17 @@ function loadProducts(brandInput) {
           badgeHtml = "";
 
         if (p.is_flash_sale && p.flash_price !== null) {
-          // ƯU TIÊN 1: Flash Sale đang active
           let flashPrice = fmt.format(p.flash_price);
           let origPrice = fmt.format(p.price);
           priceDisplay = `<div class="price-wrap"><span class="price-new">${flashPrice}</span><span class="price-old">${origPrice}</span></div>`;
           badgeHtml = `<span class="sale-badge discount-badge">${p.flash_discount_label}</span>`;
         } else if (parseFloat(p.sale_price) > 0) {
-          // ƯU TIÊN 2: sale_price thường
           let oldPrice = fmt.format(p.price);
           let newPrice = fmt.format(p.sale_price);
           let percent = Math.round(((p.price - p.sale_price) / p.price) * 100);
           priceDisplay = `<div class="price-wrap"><span class="price-new">${newPrice}</span><span class="price-old">${oldPrice}</span></div>`;
           badgeHtml = `<span class="sale-badge">-${percent}%</span>`;
         } else {
-          // Giá gốc
           priceDisplay = `<p class="price">${fmt.format(p.price)}</p>`;
         }
 
@@ -1390,8 +1573,9 @@ function handleAddToCart(e, btn, isBuyNow) {
   let pid = btn.data("id");
   let oldHtml = btn.html();
   let oldWidth = btn.outerWidth();
+  let oldHeight = btn.outerHeight();
   btn
-    .css("width", oldWidth + "px")
+    .css({ "min-width": oldWidth + "px", "min-height": oldHeight + "px" })
     .html('<i class="fa fa-spinner fa-spin"></i>');
   btn.prop("disabled", true);
 
@@ -1413,7 +1597,7 @@ function handleAddToCart(e, btn, isBuyNow) {
           btn
             .html(oldHtml)
             .prop("disabled", false)
-            .css("width", "")
+            .css({ "min-width": "", "min-height": "", width: "" })
             .data("loading", false);
         }, 500);
       }
@@ -1423,26 +1607,20 @@ function handleAddToCart(e, btn, isBuyNow) {
     btn
       .html(oldHtml)
       .prop("disabled", false)
-      .css("width", "")
+      .css({ "min-width": "", "min-height": "", width: "" })
       .data("loading", false);
   });
 }
 
 // --- NOTIFICATION FUNCTIONS ---
-
-/**
- * checkUserNotifications: Fetch từ DB và render 3 loại thông báo vào
- * dropdown navbar. Đồng bộ badge count.
- */
 function checkUserNotifications() {
   const notifList = document.getElementById("notif-list");
   const notifBadge = document.getElementById("nav-notif-badge");
-  if (!notifList || !notifBadge) return; // Chưa đăng nhập / không có DOM
+  if (!notifList || !notifBadge) return;
 
   fetch("/api/notification_api.php?action=get_notifications&limit=15")
     .then((r) => r.json())
     .then(function (res) {
-      // Cập nhật badge
       const unread = parseInt(res.unread) || 0;
       if (unread > 0) {
         notifBadge.textContent = unread > 99 ? "99+" : unread;
@@ -1452,12 +1630,10 @@ function checkUserNotifications() {
         notifBadge.textContent = "0";
       }
 
-      // Đồng bộ với navbar.php refreshBadges nếu dropdown chưa open
       if (
         window._navRefreshBadges &&
         !document.getElementById("notif-dropdown").classList.contains("open")
       ) {
-        // Không render lại list khi đang mở, chỉ cập nhật badge
         return;
       }
     })
@@ -1478,7 +1654,6 @@ function toggleChat() {
   $("#chat-welcome-bubble").fadeOut();
 
   if (!box.hasClass("open")) {
-    // === Mở chat ===
     box.addClass("open");
     $(".chat-badge-notify").remove();
     $("#main-chat-badge").addClass("hidden");
@@ -1487,8 +1662,6 @@ function toggleChat() {
     if (!chatInterval)
       chatInterval = setInterval(() => loadMessages(false), 3000);
     setTimeout(scrollToBottom, 200);
-
-    // Backdrop cho mobile drawer (chỉ inject nếu chưa tồn tại)
     if (!$("#chat-backdrop").length) {
       $("body").append(
         '<div id="chat-backdrop" style="' +
@@ -1497,16 +1670,14 @@ function toggleChat() {
           '"></div>',
       );
     }
-    $("#chat-backdrop").fadeIn(200);
+    if (window.innerWidth <= 768) {
+      $("#chat-backdrop").fadeIn(200);
+      $("#chat-widget").fadeOut(150);
+    }
 
-    // Ẩn chat widget button khi drawer đang mở
-    $("#chat-widget").fadeOut(150);
-
-    // Trigger hidden #chat-toggle để các listener bên ngoài vẫn nhận được sự kiện
     $("#chat-toggle").trigger("chat:open");
   } else {
-    // === Đóng chat — closing animation trước, cleanup sau ===
-    const ANIM_MS = 350; // khớp với transition duration trong mobile.css
+    const ANIM_MS = 350;
 
     box.addClass("is-closing");
     $("#chat-backdrop").fadeOut(ANIM_MS);
@@ -1514,7 +1685,6 @@ function toggleChat() {
     setTimeout(function () {
       box.removeClass("open is-closing");
 
-      // Hiện lại chat widget button
       $("#chat-widget").fadeIn(200);
 
       if (chatInterval) {
@@ -1628,7 +1798,6 @@ function sendMessage() {
   );
   scrollToBottom();
 
-  // 2. Bật hoạt ảnh: Ngay khi user vừa gửi tin và AJAX bắt đầu
   if (currentChatTab === "bot") {
     showBotTyping();
   }
@@ -1745,7 +1914,6 @@ function confirmCancel(orderId) {
                 timer: 1500,
               });
 
-              // Cập nhật DOM trực tiếp không cần tải lại trang
               $(".btn-cancel-order").fadeOut(300, function () {
                 $(this).remove();
               });
@@ -1800,8 +1968,6 @@ function confirmCancel(orderId) {
 
 /* =================================================================
    FLASH SALE LOADER (index.php)
-   Loads products from API, renders cards with discount badges,
-   and drives the countdown timer.
 ================================================================= */
 var flashSaleEndTime = null;
 var flashTimerInterval = null;
@@ -1821,15 +1987,12 @@ function loadFlashSale() {
         return;
       }
 
-      // Show section
       $("#flash-sale-section").show();
 
-      // Title
       if (data.config && data.config.title) {
         $("#fs-display-title").text(data.config.title);
       }
 
-      // Start countdown
       flashSaleEndTime = new Date(
         data.config.end_time.replace(" ", "T"),
       ).getTime();
@@ -1837,7 +2000,6 @@ function loadFlashSale() {
       flashTimerInterval = setInterval(updateFlashTimer, 1000);
       updateFlashTimer();
 
-      // Render products
       var fmt = new Intl.NumberFormat("vi-VN", {
         style: "currency",
         currency: "VND",
@@ -1894,7 +2056,7 @@ function updateFlashTimer() {
 }
 
 /* =================================================================
-   HERO SLIDESHOW (index.php — main-banner)
+   HERO SLIDESHOW 
 ================================================================= */
 $(document).ready(function () {
   // Flash Sale
@@ -1902,13 +2064,12 @@ $(document).ready(function () {
     loadFlashSale();
   }
 
-  // Hero Slider
   var heroIdx = 0;
   var $heroSlides = $(".hero-slide");
   var heroTotal = $heroSlides.length;
   var heroInterval = null;
 
-  if (heroTotal <= 1) return; // Nothing to slide
+  if (heroTotal <= 1) return;
 
   function heroGoTo(n) {
     heroIdx = ((n % heroTotal) + heroTotal) % heroTotal;
@@ -1945,6 +2106,29 @@ $(document).ready(function () {
   });
   $(document).on("click", ".hero-dot", function () {
     heroGoTo($(this).data("idx"));
+    resetHeroAuto();
+  });
+
+  let heroStartX = 0;
+  let heroEndX = 0;
+  const $heroSlider = $("#hero-slider");
+
+  $heroSlider.on("touchstart", function (e) {
+    heroStartX = e.originalEvent.touches[0].clientX;
+    heroEndX = heroStartX;
+    clearInterval(heroInterval);
+  });
+
+  $heroSlider.on("touchmove", function (e) {
+    heroEndX = e.originalEvent.touches[0].clientX;
+  });
+
+  $heroSlider.on("touchend", function (e) {
+    if (heroStartX - heroEndX > 50) {
+      heroNext();
+    } else if (heroEndX - heroStartX > 50) {
+      heroGoTo(heroIdx - 1);
+    }
     resetHeroAuto();
   });
 });
@@ -1984,7 +2168,35 @@ $(document).ready(function () {
     if ($(".sidebar-menu").length) {
       toggleMobilePanel(".sidebar-menu", this);
     } else {
-      window.location.href = BASE_URL + "/index.php";
+      let btn = this;
+      let $icon = $(btn).find("i");
+      let oldClass = $icon.attr("class");
+      $icon.attr("class", "fa-solid fa-spinner fa-spin");
+
+      $.get(BASE_URL + "/index.php", function (data) {
+        $icon.attr("class", oldClass);
+        let $menuHtml = $(data).find(".sidebar-menu");
+        if ($menuHtml.length) {
+          if ($("#m-dynamic-sidebar-style").length === 0) {
+            $("head").append(
+              "<style id='m-dynamic-sidebar-style'>@media (min-width: 769px) { .m-dynamic-sidebar-wrapper { display: none !important; } }</style>",
+            );
+          }
+          let $wrap = $('<div class="m-dynamic-sidebar-wrapper"></div>').append(
+            $menuHtml,
+          );
+          $("body").append($wrap);
+
+          setTimeout(function () {
+            toggleMobilePanel(".sidebar-menu", btn);
+          }, 10);
+        } else {
+          window.location.href = BASE_URL + "/index.php";
+        }
+      }).fail(function () {
+        $icon.attr("class", oldClass);
+        window.location.href = BASE_URL + "/index.php";
+      });
     }
   });
 
@@ -2005,19 +2217,10 @@ $(document).ready(function () {
     toggleMobilePanel("#m-notif-sheet", this);
   });
 
-  // Close buttons and Backdrop
   $(".m-close-sheet").on("click", closeAllMobilePanels);
   $backdrop.on("click", closeAllMobilePanels);
 });
 
-/* =================================================================
-   SCROLL TO TOP BUTTON
-   Enabled only on pages where <body> carries the .has-scroll-top class.
-   HTML required inside #chat-widget (before #chat-toggle):
-     <button id="scroll-top-btn" aria-label="Lên đầu trang">
-       <i class="fa-solid fa-chevron-up"></i>
-     </button>
-================================================================= */
 (function () {
   if (!document.body.classList.contains("has-scroll-top")) return;
 
@@ -2025,7 +2228,7 @@ $(document).ready(function () {
   if (!$btn.length) return;
 
   var ticking = false;
-  var THRESHOLD = 200; // px scrolled before button appears
+  var THRESHOLD = 200;
 
   function onScroll() {
     if (!ticking) {
@@ -2045,5 +2248,243 @@ $(document).ready(function () {
 
   $btn.on("click", function () {
     window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+})();
+
+/* =================================================================
+   PRODUCT IMAGE LIGHTBOX
+================================================================= */
+(function () {
+  var ZOOM_MIN = 1;
+  var ZOOM_MAX = 5;
+  var ZOOM_STEP = 0.4;
+  var zoomLevel = 1;
+  var panX = 0;
+  var panY = 0;
+  var isDragging = false;
+  var dragStartX = 0;
+  var dragStartY = 0;
+  var panStartX = 0;
+  var panStartY = 0;
+
+  var lastPinchDist = 0;
+
+  function buildLightbox() {
+    if ($("#img-lightbox-overlay").length) return;
+    var html = [
+      '<div id="img-lightbox-overlay" role="dialog" aria-modal="true" aria-label="Xem ảnh">',
+      '<a id="img-lightbox-close" title="Đóng (Esc)"><i class="fa fa-xmark"></i></a>',
+      '<div id="img-lightbox-wrap">',
+      '<img id="img-lightbox-img" src="" alt="Product Image">',
+      "</div>",
+      '<div id="img-lightbox-zoom-bar">',
+      '<button id="lb-btn-zoom-out" title="Thu nhỏ"><i class="fa fa-minus"></i></button>',
+      '<span id="img-lightbox-zoom-label">100%</span>',
+      '<button id="lb-btn-zoom-in"  title="Phóng to"><i class="fa fa-plus"></i></button>',
+      "</div>",
+      "</div>",
+    ].join("");
+    $("body").append(html);
+    bindLightboxEvents();
+  }
+
+  function applyTransform(animated) {
+    var $img = $("#img-lightbox-img");
+    if (animated) {
+      $img.css("transition", "transform 0.2s ease");
+    } else {
+      $img.css("transition", "none");
+    }
+    $img.css(
+      "transform",
+      "scale(" +
+        zoomLevel +
+        ") translate(" +
+        panX / zoomLevel +
+        "px, " +
+        panY / zoomLevel +
+        "px)",
+    );
+    $("#img-lightbox-zoom-label").text(Math.round(zoomLevel * 100) + "%");
+  }
+
+  function resetZoom(animated) {
+    zoomLevel = 1;
+    panX = 0;
+    panY = 0;
+    applyTransform(animated !== false);
+  }
+
+  function clampPan() {
+    if (zoomLevel <= 1) {
+      panX = 0;
+      panY = 0;
+      return;
+    }
+    var $img = $("#img-lightbox-img");
+    var imgW = $img.width() * zoomLevel;
+    var imgH = $img.height() * zoomLevel;
+    var winW = window.innerWidth;
+    var winH = window.innerHeight;
+    var maxPanX = Math.max(0, (imgW - winW) / 2);
+    var maxPanY = Math.max(0, (imgH - winH) / 2);
+    panX = Math.max(-maxPanX, Math.min(maxPanX, panX));
+    panY = Math.max(-maxPanY, Math.min(maxPanY, panY));
+  }
+
+  function openLightbox(src) {
+    buildLightbox();
+    $("#img-lightbox-img").attr("src", src);
+    resetZoom(false);
+    $("#img-lightbox-overlay").addClass("active");
+    $("body").css({ overflow: "hidden" });
+  }
+
+  function closeLightbox() {
+    $("#img-lightbox-overlay").removeClass("active");
+    $("body").css({ overflow: "" });
+    resetZoom(false);
+  }
+
+  function bindLightboxEvents() {
+    // Close
+    $("#img-lightbox-close").on("click", closeLightbox);
+    $("#img-lightbox-overlay").on("click", function (e) {
+      if (e.target === this) closeLightbox();
+    });
+
+    $(document).on("keydown.lightbox", function (e) {
+      if (!$("#img-lightbox-overlay").hasClass("active")) return;
+      if (e.key === "Escape") closeLightbox();
+      if (e.key === "+" || e.key === "=") {
+        zoomLevel = Math.min(ZOOM_MAX, zoomLevel + ZOOM_STEP);
+        clampPan();
+        applyTransform(true);
+      }
+      if (e.key === "-") {
+        zoomLevel = Math.max(ZOOM_MIN, zoomLevel - ZOOM_STEP);
+        clampPan();
+        applyTransform(true);
+      }
+      if (e.key === "0") resetZoom(true);
+    });
+
+    $("#lb-btn-zoom-in").on("click", function () {
+      zoomLevel = Math.min(ZOOM_MAX, zoomLevel + ZOOM_STEP);
+      clampPan();
+      applyTransform(true);
+    });
+    $("#lb-btn-zoom-out").on("click", function () {
+      zoomLevel = Math.max(ZOOM_MIN, zoomLevel - ZOOM_STEP);
+      clampPan();
+      applyTransform(true);
+    });
+
+    document.getElementById("img-lightbox-overlay").addEventListener(
+      "wheel",
+      function (e) {
+        if (!$("#img-lightbox-overlay").hasClass("active")) return;
+        e.preventDefault();
+        var delta = e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
+        zoomLevel = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoomLevel + delta));
+        clampPan();
+        applyTransform(false);
+      },
+      { passive: false },
+    );
+
+    var $wrap = $("#img-lightbox-wrap");
+    $wrap.on("mousedown", function (e) {
+      if (zoomLevel <= 1) return;
+      e.preventDefault();
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      panStartX = panX;
+      panStartY = panY;
+      $wrap.addClass("dragging");
+    });
+    $(document).on("mousemove.lightbox", function (e) {
+      if (!isDragging) return;
+      panX = panStartX + (e.clientX - dragStartX);
+      panY = panStartY + (e.clientY - dragStartY);
+      clampPan();
+      applyTransform(false);
+    });
+    $(document).on("mouseup.lightbox mouseleave.lightbox", function () {
+      if (isDragging) {
+        isDragging = false;
+        $("#img-lightbox-wrap").removeClass("dragging");
+      }
+    });
+
+    var touchStartX = 0,
+      touchStartY = 0;
+    var touchPanStartX = 0,
+      touchPanStartY = 0;
+    var isTouchDragging = false;
+
+    document.getElementById("img-lightbox-overlay").addEventListener(
+      "touchstart",
+      function (e) {
+        if (e.touches.length === 2) {
+          lastPinchDist = Math.hypot(
+            e.touches[1].clientX - e.touches[0].clientX,
+            e.touches[1].clientY - e.touches[0].clientY,
+          );
+          isTouchDragging = false;
+        } else if (e.touches.length === 1 && zoomLevel > 1) {
+          isTouchDragging = true;
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+          touchPanStartX = panX;
+          touchPanStartY = panY;
+        }
+      },
+      { passive: true },
+    );
+
+    document.getElementById("img-lightbox-overlay").addEventListener(
+      "touchmove",
+      function (e) {
+        if (e.touches.length === 2) {
+          var dist = Math.hypot(
+            e.touches[1].clientX - e.touches[0].clientX,
+            e.touches[1].clientY - e.touches[0].clientY,
+          );
+          if (lastPinchDist > 0) {
+            var ratio = dist / lastPinchDist;
+            zoomLevel = Math.min(
+              ZOOM_MAX,
+              Math.max(ZOOM_MIN, zoomLevel * ratio),
+            );
+            clampPan();
+            applyTransform(false);
+          }
+          lastPinchDist = dist;
+          e.preventDefault();
+        } else if (e.touches.length === 1 && isTouchDragging && zoomLevel > 1) {
+          panX = touchPanStartX + (e.touches[0].clientX - touchStartX);
+          panY = touchPanStartY + (e.touches[0].clientY - touchStartY);
+          clampPan();
+          applyTransform(false);
+          e.preventDefault();
+        }
+      },
+      { passive: false },
+    );
+
+    document.getElementById("img-lightbox-overlay").addEventListener(
+      "touchend",
+      function () {
+        lastPinchDist = 0;
+        isTouchDragging = false;
+      },
+      { passive: true },
+    );
+  }
+
+  $(document).on("click", ".pd-main-img-wrap img", function () {
+    openLightbox($(this).attr("src"));
   });
 })();

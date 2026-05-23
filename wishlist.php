@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 include 'config/db.php';
 if (!isset($_SESSION['user_id'])) {
@@ -12,6 +12,9 @@ if (!isset($_SESSION['user_id'])) {
     <title>Danh sách Yêu thích - TechMate</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
+    <link rel="shortcut icon" type="image/svg+xml" href="/assets/img/favicon.svg">
     <link rel="stylesheet" href="assets/css/style.css?v=<?= time() ?>">
     <link rel="stylesheet" href="assets/css/mobile.css?v=<?= time() ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -63,19 +66,23 @@ if (!isset($_SESSION['user_id'])) {
                 let oldPriceHtml = '';
 
                 if (item.is_flash_sale) {
-                    alertBadge  = `<span class="alert-badge" style="background:#ff6b35;">&#x26A1; FLASH SALE</span>`;
+                    alertBadge  = `<span class="alert-badge" style="position:static; background:#ff6b35;font-weight:600;">&#x26A1; FLASH SALE</span>`;
                     discountInfo = item.discount_label
-                        ? `<span style="background:#ff6b35;color:#fff;font-size:11px;padding:2px 7px;border-radius:4px;margin-left:5px;">${item.discount_label}</span>` : '';
+                        ? `<span style="background:#ff6b35;color:#fff;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:600">${item.discount_label}</span>` : '';
                     oldPriceHtml = `<span class="wishlist-old-price">${fmt.format(item.price)}đ</span>`;
                 } else if (item.price_drop) {
-                    alertBadge  = `<span class="alert-badge">🔥 Giảm giá!</span>`;
-                    discountInfo = `<span class="wishlist-drop-badge">-${fmt.format(item.drop_amount)}đ</span>`;
+                    alertBadge  = `<span class="alert-badge" style="position:static;">🔥 Giảm giá!</span>`;
+                    discountInfo = `<span class="wishlist-drop-badge" style="margin-left:0;">-${fmt.format(item.drop_amount)}đ</span>`;
                     oldPriceHtml = `<span class="wishlist-old-price">${fmt.format(item.price_at_add)}đ</span>`;
                 }
 
+
                 html += `
                 <div class="wishlist-card">
-                    ${alertBadge}
+                    <div style="position:absolute; top:10px; right:10px; display:flex; flex-direction:column; gap:5px; align-items:flex-end; z-index:2;">
+                        ${alertBadge}
+                        ${discountInfo}
+                    </div>
                     <a href="product_detail.php?id=${item.product_id}">
                         <img src="${imgSrc}" alt="${item.name}" onerror="this.src='assets/img/placeholder.jpg'">
                     </a>
@@ -83,7 +90,7 @@ if (!isset($_SESSION['user_id'])) {
                         <a href="product_detail.php?id=${item.product_id}">${item.name}</a>
                         <div>
                             <span class="wishlist-price">${fmt.format(item.current_price)}đ</span>
-                            ${oldPriceHtml} ${discountInfo}
+                            ${oldPriceHtml}
                         </div>
                         <div class="wishlist-actions">
                         <button class="btn-add-wish-cart js-add-to-cart" data-id="${item.product_id}" data-type="simple">

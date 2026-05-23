@@ -1,20 +1,61 @@
 # ============================================================
-# .htaccess — Good_Phone Root Security Config
+# .htaccess — Techmate Root Security Config
 # ============================================================
 
 Options -Indexes
 
 <IfModule mod_headers.c>
+    # ── Bảo vệ cơ bản ─────────────────────────────────────
     # Chống XSS trên browser cũ
-    Header set X-XSS-Protection "1; mode=block"
+    Header always set X-XSS-Protection "1; mode=block"
     # Chống MIME sniffing
-    Header set X-Content-Type-Options "nosniff"
-    # Chặn site bị nhúng trong iframe của domain khác (Chống Clickjacking)
-    Header set X-Frame-Options "SAMEORIGIN"
-    # Không gửi Referer ra external domain
-    Header set Referrer-Policy "strict-origin-when-cross-origin"
-    # Chỉ kết nối HTTPS (bật khi deploy production)
-    # Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    Header always set X-Content-Type-Options "nosniff"
+    # Chặn clickjacking (không cho site bị nhúng vào iframe domain khác)
+    Header always set X-Frame-Options "SAMEORIGIN"
+    # Kiểm soát thông tin Referer gửi ra ngoài
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    # Hạn chế browser features không cần thiết
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(self 'https://sandbox.vnpayment.vn')"
+    # Force HTTPS — HSTS (1 năm, bao gồm subdomain)
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+    # ── Content Security Policy ────────────────────────────
+    # Whitelist đã được audit toàn bộ source code (30/04/2026)
+    Header always set Content-Security-Policy "default-src 'self'; \
+script-src 'self' 'unsafe-inline' 'unsafe-eval' \
+    https://code.jquery.com \
+    https://cdn.jsdelivr.net \
+    https://cdnjs.cloudflare.com \
+    https://accounts.google.com \
+    https://apis.google.com; \
+style-src 'self' 'unsafe-inline' \
+    https://cdnjs.cloudflare.com; \
+font-src 'self' \
+    https://cdnjs.cloudflare.com; \
+img-src 'self' data: blob: \
+    https://cdn.tgdd.vn \
+    https://cdnv2.tgdd.vn \
+    https://cdn2.cellphones.com.vn \
+    https://dashboard.cellphones.com.vn \
+    https://genk.mediacdn.vn \
+    https://cdn-icons-png.flaticon.com \
+    https://images.dmca.com \
+    https://lh3.googleusercontent.com \
+    https://img.vietqr.io \
+    https://product.hstatic.net \
+    https://img-cache.coccoc.com \
+    https://cdn.kiotvietweb.vn \
+    https://img.vistek.net \
+    https://cdn.vjshop.vn \
+    https://shinhanfinance.com.vn; \
+connect-src 'self' \
+    https://accounts.google.com; \
+frame-src \
+    https://accounts.google.com \
+    https://sandbox.vnpayment.vn; \
+form-action 'self' \
+    https://sandbox.vnpayment.vn; \
+frame-ancestors 'self';"
 </IfModule>
 
 # ============================================================

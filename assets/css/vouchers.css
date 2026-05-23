@@ -17,7 +17,6 @@ body {
   box-sizing: border-box;
 }
 
-/* BỐ CỤC TRANG VOUCHER */
 .voucher-container {
   display: flex;
   gap: 20px;
@@ -126,7 +125,6 @@ tr:hover {
   background-color: #fcfcfc;
 }
 
-/* MODAL GÁN VOUCHER */
 .modal {
   display: none;
   position: fixed;

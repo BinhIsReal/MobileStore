@@ -89,11 +89,11 @@ body.sidebar-collapsed .sidebar-header {
 }
 body.sidebar-collapsed .sb-link > span,
 body.sidebar-collapsed .sb-group-title > span {
-  font-size: 0; /* Ẩn toàn bộ văn bản */
+  font-size: 0;
 }
 body.sidebar-collapsed .sb-link > span > i,
 body.sidebar-collapsed .sb-group-title > span > i {
-  font-size: 16px; /* Giữ nguyên kích thước icon */
+  font-size: 16px;
   margin: 0;
   text-align: center;
 }
@@ -104,7 +104,7 @@ body.sidebar-collapsed .sb-group-title {
   border-left: none !important;
 }
 body.sidebar-collapsed .toggle-icon {
-  display: none; /* Ẩn mũi tên trỏ xuống */
+  display: none;
 }
 body.sidebar-collapsed .nav-badge,
 body.sidebar-collapsed .badge-parent {
@@ -389,14 +389,14 @@ body.sidebar-collapsed .sb-group-content .sb-link span i {
            ADMIN CHAT LAYOUT 
 ========================================= */
 .chat-layout {
+  margin-top: 10px;
   display: flex;
-  flex-direction: row !important;
-  height: 75vh;
-  background: white;
-  border-radius: 12px;
+  height: 86vh;
   border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
 }
 .user-list {
   border-right: 1px solid #eee;
@@ -436,7 +436,6 @@ body.sidebar-collapsed .sb-group-content .sb-link span i {
   overflow: hidden;
 }
 
-/* Vùng hiển thị tin nhắn */
 .chat-messages {
   flex: 1;
   padding: 20px;
@@ -454,7 +453,6 @@ body.sidebar-collapsed .sb-group-content .sb-link span i {
   font-style: italic;
 }
 
-/* Vùng nhập liệu của Admin */
 .chat-input {
   padding: 15px;
   border-top: 1px solid #eee;
@@ -544,7 +542,7 @@ body.sidebar-collapsed .sb-group-content .sb-link span i {
 .sb-link > span > i {
   margin-right: 6px;
 }
-/* --- PRODUCT MANAGEMENT STYLES (Moved from PHP) --- */
+/* --- PRODUCT MANAGEMENT STYLES --- */
 .product-thumb {
   width: 50px;
   height: 50px;
@@ -697,7 +695,6 @@ body.sidebar-collapsed .sb-group-content .sb-link span i {
   align-items: center;
   gap: 10px;
 }
-/* Màu sắc cho các trạng thái đơn hàng */
 .status-badge {
   padding: 5px 10px;
   border-radius: 20px;
@@ -708,7 +705,6 @@ body.sidebar-collapsed .sb-group-content .sb-link span i {
   text-align: center;
   min-width: 100px;
 }
-/* Unique Admin Order Filter */
 .adm-order-filter-wrapper {
   background: #fff;
   padding: 20px;
@@ -772,6 +768,7 @@ body.sidebar-collapsed .sb-group-content .sb-link span i {
 
 .btn-del-gal {
   padding: 0 15px;
+  height: 40px;
   background: #dc3545;
   color: white;
   border: none;
@@ -781,13 +778,14 @@ body.sidebar-collapsed .sb-group-content .sb-link span i {
 
 /* Chat Layout */
 .chat-layout {
+  margin-top: 10px;
   display: flex;
-  height: 75vh;
+  height: 86vh;
   border: 1px solid #ddd;
   background: #fff;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
 }
 .chat-sidebar {
   width: 320px;
@@ -1022,7 +1020,7 @@ body.sidebar-collapsed .sb-group-content .sb-link span i {
 }
 
 /* =========================================
-   UTILITY CLASSES (Extracted from inline PHP)
+   UTILITY CLASSES 
 ========================================= */
 
 /* products.php */
@@ -1331,7 +1329,7 @@ body.sidebar-collapsed .sb-group-content .sb-link span i {
 }
 
 /* =========================================
-   TOAST NOTIFICATION (THÔNG BÁO TỪ TRÊN XUỐNG)
+   TOAST NOTIFICATION 
 ========================================= */
 #toast-container {
   position: fixed;
@@ -1357,7 +1355,7 @@ body.sidebar-collapsed .sb-group-content .sb-link span i {
   border-left: 5px solid;
 }
 
-/* Override animation slideInLeft từ main.js thành trượt từ trên xuống */
+/* Override animation slideInLeft */
 @keyframes slideInLeft {
   from {
     opacity: 0;
@@ -1462,7 +1460,6 @@ body.sidebar-collapsed .sb-group-content .sb-link span i {
 }
 
 /* adm-btn */
-/* adm-btn */
 .adm-btn {
   background: linear-gradient(135deg, #00487a, #0073c4);
   color: #fff;
@@ -1531,7 +1528,7 @@ body.sidebar-collapsed .sb-group-content .sb-link span i {
 }
 
 /* =========================================
-   TOAST NOTIFICATION (THÔNG BÁO TỪ TRÊN XUỐNG)
+   TOAST NOTIFICATION 
 ========================================= */
 #toast-container {
   position: fixed;
@@ -1557,7 +1554,7 @@ body.sidebar-collapsed .sb-group-content .sb-link span i {
   border-left: 5px solid;
 }
 
-/* Override animation slideInLeft từ main.js thành trượt từ trên xuống */
+/* Override animation slideInLeft  */
 @keyframes slideInLeft {
   from {
     opacity: 0;

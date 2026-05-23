@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 include 'config/db.php';
 include_once 'includes/security.php';
@@ -52,6 +52,9 @@ $allow_cancel = ($current_status == 'pending');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
+    <link rel="shortcut icon" type="image/svg+xml" href="/assets/img/favicon.svg">
     <title>Chi tiết đơn hàng <?= $order['order_code'] ?? $order_id ?> - TechMate</title>
     <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
     <link rel="stylesheet" href="assets/css/style.css?v=<?= time() ?>">
@@ -66,7 +69,7 @@ $allow_cancel = ($current_status == 'pending');
         <div class="detail-wrapper">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <div>
-                    <a href="order_history.php" style="color:#666; font-size:13px;"><i class="fa fa-arrow-left"></i>
+                    <a href="order_history.php" style="color:#666; font-size:13px;font-weight:600;"><i class="fa fa-arrow-left"></i>
                         Quay lại</a>
                     <h2 style="margin:5px 0 0; color:var(--primary);">Đơn hàng <?= $order['order_code'] ?? $order_id ?></h2>
                     <span style="font-size:13px; color:#888;">Ngày đặt:
@@ -159,6 +162,9 @@ $allow_cancel = ($current_status == 'pending');
                         <div class="item-info">
                             <a href="product_detail.php?id=<?= $item['product_id'] ?>"
                                 class="item-name"><?= $item['name'] ?></a>
+                            <?php if (!empty($item['variant_text'])): ?>
+                            <span class="item-variant-text"><?= htmlspecialchars($item['variant_text']) ?></span>
+                            <?php endif; ?>
                             <div class="item-meta">
                                 Số lượng: x<?= $item['quantity'] ?>
                             </div>

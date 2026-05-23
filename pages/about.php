@@ -1,4 +1,4 @@
-<?php session_start();
+﻿<?php session_start();
 include '../config/db.php';
  ?>
 <!DOCTYPE html>
@@ -6,6 +6,9 @@ include '../config/db.php';
 
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
+    <link rel="shortcut icon" type="image/svg+xml" href="/assets/img/favicon.svg">
     <title>Giới thiệu - TechMate</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/pages.css">

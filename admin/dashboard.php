@@ -7,7 +7,6 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../login.php"); exit(); 
 }
 
-// --- TRUY VẤN DỮ LIỆU THỰC TẾ ---
 $pending_count = $conn->query("SELECT COUNT(*) as t FROM orders WHERE status = 'pending'")->fetch_assoc()['t'];
 $revenue_month_res = $conn->query("SELECT SUM(total_price - discount_amount) as t FROM orders WHERE status = 'completed' AND MONTH(created_at) = MONTH(NOW())");
 $revenue_month = $revenue_month_res ? ($revenue_month_res->fetch_assoc()['t'] ?? 0) : 0;
@@ -32,12 +31,15 @@ if ($rev_detail_res && $rev_detail_res->num_rows > 0) {
     }
 }
 
-// Dữ liệu 7 ngày gần nhất
+// Dữ liệu doanh thu từng ngày trong tháng hiện tại
 $days = []; $revenues = [];
-for ($i = 6; $i >= 0; $i--) {
-    $d = date('Y-m-d', strtotime("-$i days"));
-    $days[] = date('d/m', strtotime($d));
-    $daily = $conn->query("SELECT SUM(total_price) as t FROM orders WHERE status = 'completed' AND DATE(created_at) = '$d'")->fetch_assoc();
+$days_in_month = (int)date('t'); // Tổng số ngày trong tháng
+$current_year  = date('Y');
+$current_month = date('m');
+for ($i = 1; $i <= $days_in_month; $i++) {
+    $d = sprintf('%s-%s-%02d', $current_year, $current_month, $i);
+    $days[] = sprintf('%02d/%s', $i, $current_month);
+    $daily = $conn->query("SELECT SUM(total_price - discount_amount) as t FROM orders WHERE status = 'completed' AND DATE(created_at) = '$d'")->fetch_assoc();
     $revenues[] = $daily['t'] ?? 0;
 }
 
@@ -117,7 +119,12 @@ $worst_products = $conn->query("
 
             <div class="chart-row">
                 <div class="chart-container">
-                    <div class="chart-title"><i class="fa fa-line-chart"></i> Doanh thu 7 ngày</div>
+                    <div class="chart-title">
+                        <span><i class="fa fa-line-chart"></i> Doanh thu tháng <?= date('m/Y') ?></span>
+                        <button class="btn-chart-detail" id="btnOpenRevenueModal" onclick="openRevenueModal()">
+                            <i class="fa fa-search-plus"></i> Chi tiết
+                        </button>
+                    </div>
                     <canvas id="revenueChart"></canvas>
                 </div>
                 <div class="chart-container">
@@ -275,6 +282,79 @@ $worst_products = $conn->query("
                     </div>
                 </div>
 
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CHI TIẾT DOANH THU  -->
+    <div id="revenueFilterModal" class="rev-modal-overlay" style="display:none;">
+        <div class="rev-modal-box">
+            <div class="rev-modal-header">
+                <h3><i class="fa fa-chart-line"></i> Chi tiết Doanh thu</h3>
+                <span class="rev-modal-close" onclick="closeRevenueModal()"><i class="fa fa-times"></i></span>
+            </div>
+
+            <!-- Bộ lọc -->
+            <div class="rev-filter-bar">
+                <div class="rev-filter-tabs">
+                    <button class="rev-tab-btn active" data-filter="day"   onclick="setRevFilter('day')">   <i class="fa fa-calendar-day"></i>   Ngày</button>
+                    <button class="rev-tab-btn"        data-filter="week"  onclick="setRevFilter('week')">  <i class="fa fa-calendar-week"></i>  Tuần</button>
+                    <button class="rev-tab-btn"        data-filter="month" onclick="setRevFilter('month')"><i class="fa fa-calendar-alt"></i>  Tháng</button>
+                    <button class="rev-tab-btn"        data-filter="year"  onclick="setRevFilter('year')"> <i class="fa fa-calendar"></i>       Năm</button>
+                </div>
+                <div class="rev-filter-input-wrap">
+                    <input type="date"           id="rev-pick-day"   class="rev-date-input" style="display:none;" value="<?= date('Y-m-d') ?>">
+                    <input type="week"           id="rev-pick-week"  class="rev-date-input" style="display:none;" value="<?= date('Y') . '-W' . date('W') ?>">
+                    <input type="month"          id="rev-pick-month" class="rev-date-input" value="<?= date('Y-m') ?>">
+                    <input type="number" min="2000" max="2099" id="rev-pick-year" class="rev-date-input rev-year-input" placeholder="Năm" style="display:none;" value="<?= date('Y') ?>">
+                    <button class="rev-btn-load" onclick="loadRevenueDetail()"><i class="fa fa-sync-alt"></i> Xem</button>
+                </div>
+            </div>
+
+            <!-- Tổng quan -->
+            <div class="rev-summary-row">
+                <div class="rev-summary-card">
+                    <div class="rev-summary-icon"><i class="fa fa-coins"></i></div>
+                    <div>
+                        <div class="rev-summary-label">Tổng doanh thu</div>
+                        <div class="rev-summary-value" id="revTotalRevenue">--</div>
+                    </div>
+                </div>
+                <div class="rev-summary-card">
+                    <div class="rev-summary-icon rev-icon-order"><i class="fa fa-shopping-bag"></i></div>
+                    <div>
+                        <div class="rev-summary-label">Đơn hoàn thành</div>
+                        <div class="rev-summary-value" id="revTotalOrders">--</div>
+                    </div>
+                </div>
+                <div class="rev-summary-card">
+                    <div class="rev-summary-icon rev-icon-avg"><i class="fa fa-chart-bar"></i></div>
+                    <div>
+                        <div class="rev-summary-label">Trung bình / đơn</div>
+                        <div class="rev-summary-value" id="revAvgOrder">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rev-chart-wrap">
+                <canvas id="revDetailChart"></canvas>
+            </div>
+
+            <!-- Bảng đơn hàng -->
+            <div class="rev-table-wrap">
+                <div id="revTableLoading" style="text-align:center; padding:20px; display:none;"><i class="fa fa-spinner fa-spin"></i> Đang tải...</div>
+                <table class="admin-table" id="revDetailTable">
+                    <thead>
+                        <tr>
+                            <th>#Đơn</th>
+                            <th>Thời gian</th>
+                            <th>Khách hàng</th>
+                            <th>Thanh toán</th>
+                            <th>Số tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody id="revDetailTbody"></tbody>
+                </table>
             </div>
         </div>
     </div>

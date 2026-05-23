@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 include 'config/db.php';
 include_once __DIR__ . '/includes/security.php';
@@ -35,6 +35,9 @@ $join_date = !empty($user['created_at']) ? date('d/m/Y', strtotime($user['create
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/assets/img/favicon.svg">
+    <link rel="shortcut icon" type="image/svg+xml" href="/assets/img/favicon.svg">
     <title>Hồ sơ của tôi - TechMate</title>
     <!-- CSRF Meta Tag -->
     <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">

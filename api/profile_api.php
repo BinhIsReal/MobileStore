@@ -16,7 +16,7 @@ $user_id = (int)$_SESSION['user_id'];
 $action  = $_POST['action'] ?? '';
 
 // -----------------------------------------------
-// 1. CẬP NHẬT THÔNG TIN CÁ NHÂN
+// 1.  THÔNG TIN CÁ NHÂN
 // -----------------------------------------------
 if ($action === 'update_info') {
     // SECURITY: Verify CSRF token

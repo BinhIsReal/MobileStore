@@ -183,11 +183,13 @@ $result = $stmt->get_result();
                             <td><?= $row['cat_name'] ?></td>
                             <td><?= $row['brand_name'] ?></td>
                             <td>
-                                <div class="price-tag"><?= number_format($row['price'], 0, ',', '.') ?>đ</div>
                                 <?php if($row['sale_price'] > 0): ?>
+                                <div class="price-tag"><?= number_format($row['sale_price'], 0, ',', '.') ?>đ</div>
                                 <small class="product-sale-old">
-                                    <?= number_format($row['sale_price'], 0, ',', '.') ?>đ
+                                    <?= number_format($row['price'], 0, ',', '.') ?>đ
                                 </small>
+                                <?php else: ?>
+                                <div class="price-tag"><?= number_format($row['price'], 0, ',', '.') ?>đ</div>
                                 <?php endif; ?>
                             </td>
                             <td class="action-btns">

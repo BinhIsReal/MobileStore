@@ -48,7 +48,7 @@ function loadUserList() {
     {
       action: "get_chat_users",
       search: keyword,
-      active_user: currentChatUser, // Gửi ID đang chat để API ép user này nổi lên
+      active_user: currentChatUser,
     },
     function (data) {
       try {
@@ -91,11 +91,10 @@ function selectUser(uid, uname) {
   currentChatUserName = uname;
   isScrolledToBottom = false;
 
-  // UI Update
+  // UI
   $("#chat-header-name").text(uname + " (ID: #" + uid + ")");
   $("#input-area").css("display", "flex");
 
-  // Refresh danh sách ngay lập tức để đổi màu dòng vừa chọn
   loadUserList();
 
   // Đánh dấu đã đọc
@@ -106,7 +105,8 @@ function selectUser(uid, uname) {
       target_id: uid,
     },
     function () {
-      if (typeof window.fetchAdminStats === "function") window.fetchAdminStats();
+      if (typeof window.fetchAdminStats === "function")
+        window.fetchAdminStats();
     },
   );
 
@@ -170,7 +170,6 @@ function loadConversation(uid) {
 
         $("#chat-window").html(html);
 
-        // Cuộn xuống dòng tin nhắn mới nhất
         if (!isScrolledToBottom) {
           let d = document.getElementById("chat-window");
           if (d) d.scrollTop = d.scrollHeight;
@@ -187,7 +186,7 @@ function sendReply() {
   let msg = $("#admin-msg").val().trim();
   if (!msg || currentChatUser == 0) return;
 
-  $("#admin-msg").val(""); // Clear input
+  $("#admin-msg").val("");
 
   $.post(
     "../api/chat_api.php",
@@ -197,9 +196,9 @@ function sendReply() {
       receiver_id: currentChatUser,
     },
     function (data) {
-      isScrolledToBottom = false; // Bắt buộc cuộn
+      isScrolledToBottom = false;
       loadConversation(currentChatUser);
-      loadUserList(); // Đôn user lên đầu
+      loadUserList();
     },
   );
 }

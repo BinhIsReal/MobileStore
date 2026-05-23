@@ -148,7 +148,7 @@
             <?php if (isset($_SESSION['role']) && $_SESSION['role'] == 'admin'): ?>
             <a href="<?= BASE_URL ?>/admin/dashboard.php" class="m-sheet-item"><i class="fa-solid fa-gauge"></i> Quản trị</a>
             <?php endif; ?>
-            <a href="<?= BASE_URL ?>/api/auth_api.php?logout=1" class="m-sheet-item" style="color:red;"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</a>
+            <a href="<?= BASE_URL ?>/api/auth_api.php?logout=1" class="m-sheet-item" style="color:red; font-weight: 600;"><i class="fa-solid fa-right-from-bracket" style="color:red; font-weight: 600;"></i> Đăng xuất</a>
         <?php else: ?>
             <a href="<?= BASE_URL ?>/login.php" class="m-sheet-item"><i class="fa-solid fa-right-to-bracket"></i> Đăng nhập</a>
             <a href="<?= BASE_URL ?>/register.php" class="m-sheet-item"><i class="fa-solid fa-user-plus"></i> Đăng ký ngay</a>
@@ -173,13 +173,11 @@
         <?php endif; ?>
     </div>
 </div>
-<!-- SweetAlert2 (defer) -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
 <script>
 const BASE_URL = "<?= BASE_URL ?>";
 </script>
 
-<!-- Main JS (defer) -->
 <script src="<?= BASE_URL ?>/assets/js/main.js?v=<?php echo filemtime(dirname(__DIR__).'/assets/js/main.js'); ?>" defer></script>
 <?php 
 // =========================================================
@@ -200,7 +198,6 @@ $(document).ready(function() {
 });
 </script>
 <?php 
-    // Xóa biến session để thông báo không hiện lại khi f5 trang
     unset($_SESSION['login_success_msg']); 
 endif; 
 
@@ -237,17 +234,14 @@ if (isset($_SESSION['user_id'])):
     $new_vouchers = $check_new->fetch_assoc()['new_count'] ?? 0;
     
     if ($new_vouchers > 0):
-        // ✔ Reset is_new = 0 NGAY khi render — tránh hiện lại khi F5 hoặc chuyển trang
         $conn->query("UPDATE user_vouchers SET is_new = 0 WHERE user_id = $uid AND is_new = 1");
 ?>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 $(document).ready(function() {
-    // Guard: tránh hiện 2 lần trong cùng 1 session nho trình duyệt
     var guardKey = 'voucher_popup_shown_<?= $uid ?>_<?= date('YmdH') ?>';
     if (localStorage.getItem(guardKey)) return;
     localStorage.setItem(guardKey, '1');
-    // Xóa key sau 1 giờ
     setTimeout(function() { localStorage.removeItem(guardKey); }, 3600000);
 
     Swal.fire({
@@ -265,7 +259,6 @@ $(document).ready(function() {
         if (result.isConfirmed) {
             window.location.href = 'my_vouchers.php';
         }
-        // isConfirmed=false / isDismissed: không làm gì, popup đã được reset phía server
     });
 });
 </script>

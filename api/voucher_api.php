@@ -88,7 +88,7 @@ if ($action === 'create_voucher') {
 }
 
 // -----------------------------------------------
-// 1.5 CẬP NHẬT VOUCHER
+// 1.5 VOUCHER
 // -----------------------------------------------
 if ($action === 'update_voucher') {
     $voucher_id      = (int)($_POST['voucher_id'] ?? 0);
@@ -109,7 +109,6 @@ if ($action === 'update_voucher') {
         exit;
     }
 
-    // FIXED: Dùng Prepared Statement lấy old_data
     $stmt_old = $conn->prepare("SELECT * FROM vouchers WHERE id = ?");
     $stmt_old->bind_param("i", $voucher_id);
     $stmt_old->execute();

@@ -176,13 +176,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $stmt_del_var->execute();
             $stmt_del_var->close();
 
-            $stmt_var = $conn->prepare("INSERT INTO product_variations (product_id, attributes, price, stock) VALUES (?, ?, ?, ?)");
+            // Tính tỷ lệ giảm giá từ sản phẩm cha để đồng bộ xuống biến thể
+            $parent_discount_ratio = 0;
+            if ($price > 0 && $sale_price > 0 && $sale_price < $price) {
+                $parent_discount_ratio = ($price - $sale_price) / $price; // VD: 0.10 = giảm 10%
+            }
+
+            $stmt_var = $conn->prepare("INSERT INTO product_variations (product_id, attributes, price, sale_price, stock) VALUES (?, ?, ?, ?, ?)");
             foreach ($_POST['variations'] as $v) {
-                // Sử dụng "attrs" từ input name="variations[...][attrs]"
-                $v_attr = json_encode($v['attrs'] ?? [], JSON_UNESCAPED_UNICODE);
+                $v_attr  = json_encode($v['attrs'] ?? [], JSON_UNESCAPED_UNICODE);
                 $v_price = floatval(str_replace(['.', ','], '', $v['price'] ?? 0));
                 $v_stock = intval($v['stock'] ?? 0);
-                $stmt_var->bind_param("isdi", $current_pid, $v_attr, $v_price, $v_stock);
+
+                // Áp dụng tỷ lệ % giảm giá của sản phẩm cha xuống biến thể
+                $v_sale_price = ($parent_discount_ratio > 0)
+                    ? round($v_price * (1 - $parent_discount_ratio))
+                    : 0;
+
+                $stmt_var->bind_param("isddi", $current_pid, $v_attr, $v_price, $v_sale_price, $v_stock);
                 $stmt_var->execute();
             }
             $stmt_var->close();
@@ -346,7 +357,7 @@ render_form:
                                         class="form-control attr-values" value="<?= $attrVals ?>"
                                         placeholder="VD: S | M | L">
                                     <button type="button" class="btn-cancel btn-remove-attr"
-                                        style="padding: 0 15px; margin: 0; background: #d70018; color: white; border:none; border-radius:4px;"><i
+                                        style="padding: 0 15px; margin: 0; background: #dc3545;height: 40px; color: white; border:none; border-radius:4px;"><i
                                             class="fa fa-trash"></i></button>
                                 </div>
                             </div>
@@ -361,9 +372,9 @@ render_form:
                         <h5 style="margin-bottom: 10px; font-size: 16px; color: #00487a;">Phần 2 - Các biến thể chi tiết
                             (Variations)</h5>
                         <button type="button" id="btn-generate-variations"
-                            style="margin-bottom: 15px; width: 100%; background: #00487a; color: white; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s;"
+                            style="margin-bottom: 15px; width: 100%;background: linear-gradient(135deg, #00487a, #0073c4); color: white; padding: 14px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s;"
                             onmouseover="this.style.background='#003355'"
-                            onmouseout="this.style.background='#00487a'">🚀 TẠO CÁC BIẾN THỂ TỪ THUỘC TÍNH (Nhấn để tạo
+                            onmouseout="this.style.background='#00487a'">+ TẠO CÁC BIẾN THỂ TỪ THUỘC TÍNH (Nhấn để tạo
                             dòng)</button>
                         <div id="variations-list" style="display: grid; gap: 15px;">
                             <!-- LOAD CÁC BIẾN THỂ CŨ NẾU CÓ -->
@@ -375,15 +386,19 @@ render_form:
                                 while ($v_row = $res_v->fetch_assoc()) {
                                     $v_attrs = json_decode($v_row['attributes'] ?? '[]', true);
                                     if(empty($v_attrs)) continue;
-                                    
+
                                     $comboLabel = implode(' - ', array_values($v_attrs));
                                     $attrInputs = '';
                                     foreach ($v_attrs as $k => $v) {
                                         $attrInputs .= '<input type="hidden" name="variations['.$v_idx.'][attrs]['.htmlspecialchars($k).']" value="'.htmlspecialchars($v).'">';
                                     }
-                                    
+
+                                    $v_sale_display = ((float)$v_row['sale_price'] > 0)
+                                        ? ' <span style="font-size:12px;color:#00487a;margin-left:6px;">→ KM: <b>'.number_format((float)$v_row['sale_price'], 0, ',', '.').'đ</b> (đồng bộ từ SP cha)</span>'
+                                        : '';
+
                                     echo '<div style="border: 1px solid #ddd; padding: 15px; border-radius: 5px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
-                                        <strong style="color: #d70018; display:block; margin-bottom: 10px; font-size: 15px;"><i class="fa fa-cube"></i> '.$comboLabel.'</strong>
+                                        <strong style="color: #d70018; display:block; margin-bottom: 10px; font-size: 15px;"><i class="fa fa-cube"></i> '.$comboLabel.$v_sale_display.'</strong>
                                         '.$attrInputs.'
                                         <div class="grid-2">
                                             <div><label class="form-label">Giá tiền (đ)</label><input type="text" name="variations['.$v_idx.'][price]" class="form-control price-format" value="'.number_format((float)$v_row['price'], 0, ',', '.').'" required></div>
@@ -485,7 +500,7 @@ render_form:
                     <label class="form-label" style="font-weight:600; margin-bottom: 5px; display:block;">Các giá trị (Cách nhau bởi |)</label>
                     <div style="display:flex; gap:10px;">
                         <input type="text" name="attributes[${attrIndex}][values]" class="form-control attr-values" placeholder="VD: S | M | L">
-                        <button type="button" class="btn-cancel btn-remove-attr" style="padding: 0 15px; margin: 0; background: #d70018; color: white; border:none; border-radius:4px;"><i class="fa fa-trash"></i></button>
+                        <button type="button" class="btn-cancel btn-remove-attr" style="padding: 0 15px; margin: 0; background: #dc3545;height: 40px; color: white; border:none; border-radius:4px;"><i class="fa fa-trash"></i></button>
                     </div>
                 </div>
             </div>

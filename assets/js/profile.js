@@ -53,7 +53,7 @@ $(document).ready(function () {
     // Gửi AJAX
     $.post("api/profile_api.php", data, function (res) {
       try {
-        let response = typeof res === 'string' ? JSON.parse(res) : res;
+        let response = typeof res === "string" ? JSON.parse(res) : res;
 
         let isSuccess = response.status === "success";
         let title = isSuccess ? "Thành công!" : "Cảnh báo!";
@@ -70,16 +70,13 @@ $(document).ready(function () {
           </div>
         `;
 
-        // 3. Hiển thị (CSS animation sẽ tự động chạy hiệu ứng)
         let $toast = $(toastHtml);
         $("#toast-container").append($toast);
 
-        // Tự động xóa element khỏi DOM sau khi animation hoàn tất (3 giây)
         setTimeout(() => {
           $toast.remove();
         }, 3000);
 
-        // 4. Cập nhật giao diện nếu thành công
         if (isSuccess) {
           originalData = {
             email: data.email,

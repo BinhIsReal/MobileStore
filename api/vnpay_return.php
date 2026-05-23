@@ -1,12 +1,6 @@
 <?php
 /**
  * VNPay Payment Return Handler
- * Xử lý callback từ VNPay sau khi user thanh toán xong.
- * 
- * Flow: VNPay redirect về URL này với params chứa kết quả giao dịch.
- * 1. Verify chữ ký (checksum)
- * 2. Cập nhật payment_status trong DB
- * 3. Redirect user về trang kết quả
  */
 session_start();
 include '../config/db.php';
@@ -16,7 +10,6 @@ $vnp_ResponseCode = $_GET['vnp_ResponseCode'] ?? '';
 $vnp_TxnRef       = $_GET['vnp_TxnRef'] ?? '';
 $vnp_SecureHash   = $_GET['vnp_SecureHash'] ?? '';
 
-// Lấy tất cả params trừ vnp_SecureHash và vnp_SecureHashType
 $inputData = [];
 foreach ($_GET as $key => $value) {
     if (substr($key, 0, 4) === 'vnp_' && $key !== 'vnp_SecureHash' && $key !== 'vnp_SecureHashType') {
@@ -109,7 +102,6 @@ if ($vnp_ResponseCode === '00') {
                 $conn->query("INSERT INTO notifications (user_id, type, title, message, link) VALUES ($uid, 'reward_voucher', 'Nhận Voucher Thưởng!', '$noti_msg', '/my_vouchers.php')");
             }
 
-            // Cập nhật Association Rules (Gợi ý sản phẩm mua cùng nhau)
             $pairs_stmt = $conn->prepare("SELECT od1.product_id AS a, od2.product_id AS b FROM order_details od1 JOIN order_details od2 ON od1.order_id = od2.order_id AND od1.product_id < od2.product_id WHERE od1.order_id = ?");
             $pairs_stmt->bind_param("i", $oid);
             $pairs_stmt->execute();

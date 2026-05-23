@@ -4,28 +4,34 @@
  */
 
 function viewOrderDetail(orderId) {
-    $('#modal-order-id').html('<i class="fa fa-spinner fa-spin"></i>');
-    $('#orderDetailModal').fadeIn();
-    $('#order-detail-content').html('<div style="text-align:center;"><i class="fa fa-spinner fa-spin fa-2x"></i> Đang tải dữ liệu...</div>');
+  $("#modal-order-id").html('<i class="fa fa-spinner fa-spin"></i>');
+  $("#orderDetailModal").fadeIn();
+  $("#order-detail-content").html(
+    '<div style="text-align:center;"><i class="fa fa-spinner fa-spin fa-2x"></i> Đang tải dữ liệu...</div>',
+  );
 
-    $.post('../api/admin_api.php', { action: 'get_order_detail', order_id: orderId }, function (res) {
-        try {
-            let data = typeof res === 'string' ? JSON.parse(res) : res;
-            if (data.status === 'success') {
-                let o = data.order;
-                
-                // Cập nhật lại ID hiển thị trên Title (Sử dụng order_code nếu có)
-                $('#modal-order-id').text(o.order_code ? o.order_code : o.id);
+  $.post(
+    "../api/admin_api.php",
+    { action: "get_order_detail", order_id: orderId },
+    function (res) {
+      try {
+        let data = typeof res === "string" ? JSON.parse(res) : res;
+        if (data.status === "success") {
+          let o = data.order;
 
-                let items = data.items;
-                let html = '';
+          $("#modal-order-id").text(o.order_code ? o.order_code : o.id);
 
-                let payMethod = o.payment_method === 'banking' ? 'Chuyển khoản' : 'COD (Tiền mặt)';
-                let payStatus = o.payment_status === 'paid'
-                    ? '<span style="color:green;font-weight:bold;">Đã thanh toán</span>'
-                    : '<span style="color:#e67e22;font-weight:bold;">Chưa thanh toán</span>';
+          let items = data.items;
+          let html = "";
 
-                html += `
+          let payMethod =
+            o.payment_method === "banking" ? "Chuyển khoản" : "COD (Tiền mặt)";
+          let payStatus =
+            o.payment_status === "paid"
+              ? '<span style="color:green;font-weight:bold;">Đã thanh toán</span>'
+              : '<span style="color:#e67e22;font-weight:bold;">Chưa thanh toán</span>';
+
+          html += `
                 <div class="order-detail-info-grid">
                     <div class="order-detail-info-box">
                         <h4 class="order-detail-info-title"><i class="fa fa-user"></i> NGƯỜI NHẬN</h4>
@@ -42,7 +48,7 @@ function viewOrderDetail(orderId) {
                 </div>
                 `;
 
-                html += `
+          html += `
                 <h4 class="order-detail-products-title"><i class="fa fa-box"></i> SẢN PHẨM</h4>
                 <div class="order-detail-table-wrap">
                     <table class="order-detail-table">
@@ -57,55 +63,72 @@ function viewOrderDetail(orderId) {
                         <tbody>
                 `;
 
-                let fmt = new Intl.NumberFormat('vi-VN');
-                
-                let total = 0;
-                items.forEach(item => {
-                    let imgUrl = item.image.startsWith('http') ? item.image : '../assets/img/' + item.image;
-                    let lineTotal = parseFloat(item.price) * parseInt(item.quantity);
-                    total += lineTotal;
+          let fmt = new Intl.NumberFormat("vi-VN");
 
-                    html += `
+          let total = 0;
+          items.forEach((item) => {
+            let imgUrl = item.image.startsWith("http")
+              ? item.image
+              : "../assets/img/" + item.image;
+            let lineTotal = parseFloat(item.price) * parseInt(item.quantity);
+            total += lineTotal;
+
+            let variantHtml =
+              item.variant_text && item.variant_text.trim() !== ""
+                ? `<span class="item-variant-text">${item.variant_text}</span>`
+                : "";
+
+            html += `
                         <tr class="order-detail-tbody-row">
                             <td class="order-detail-td order-detail-product-cell">
                                 <img src="${imgUrl}" class="order-detail-product-img" alt="">
-                                <span class="order-detail-product-name">${item.name}</span>
+                                <div class="order-detail-product-info">
+                                    <span class="order-detail-product-name">${item.name}</span>
+                                    ${variantHtml}
+                                </div>
                             </td>
                             <td class="order-detail-td order-detail-td-center">${item.quantity}</td>
                             <td class="order-detail-td order-detail-td-right">${fmt.format(item.price)} ₫</td>
                             <td class="order-detail-td order-detail-td-right order-detail-total-cell">${fmt.format(lineTotal)} ₫</td>
                         </tr>
                     `;
-                });
+          });
 
-                html += `
+          html += `
                         </tbody>
                     </table>
                 </div>
                 `;
 
-                let dis = parseFloat(o.discount_amount);
-                let final = Math.max(0, parseFloat(o.total_price) - dis);
-                html += `
+          let dis = parseFloat(o.discount_amount);
+          let final = Math.max(0, parseFloat(o.total_price) - dis);
+          html += `
                 <div class="order-detail-summary">
                     <p class="order-detail-sum-row">Tạm tính: <b>${fmt.format(total)} ₫</b></p>
                 `;
-                if (dis > 0) {
-                    html += `<p class="order-detail-sum-row order-detail-discount">Giảm giá: <b>- ${fmt.format(dis)} ₫</b></p>`;
-                }
-                html += `
+          if (dis > 0) {
+            html += `<p class="order-detail-sum-row order-detail-discount">Giảm giá: <b>- ${fmt.format(dis)} ₫</b></p>`;
+          }
+          html += `
                     <p class="order-detail-sum-final">Tổng thanh toán: <b class="order-detail-final-price">${fmt.format(final)} ₫</b></p>
                 </div>
                 `;
 
-                $('#order-detail-content').html(html);
-            } else {
-                $('#order-detail-content').html('<div class="order-detail-error">' + data.message + '</div>');
-            }
-        } catch (e) {
-            $('#order-detail-content').html('<div class="order-detail-error">Lỗi phân tích dữ liệu!</div>');
+          $("#order-detail-content").html(html);
+        } else {
+          $("#order-detail-content").html(
+            '<div class="order-detail-error">' + data.message + "</div>",
+          );
         }
-    }).fail(function () {
-        $('#order-detail-content').html('<div class="order-detail-error">Lỗi kết nối Server!</div>');
-    });
+      } catch (e) {
+        $("#order-detail-content").html(
+          '<div class="order-detail-error">Lỗi phân tích dữ liệu!</div>',
+        );
+      }
+    },
+  ).fail(function () {
+    $("#order-detail-content").html(
+      '<div class="order-detail-error">Lỗi kết nối Server!</div>',
+    );
+  });
 }

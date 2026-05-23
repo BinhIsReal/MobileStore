@@ -216,7 +216,6 @@ if ($action === 'cron_price_check') {
                     $notified++;
                 }
 
-                // Cập nhật price_at_add để lần sau không bị alert lại
                 $conn->query("UPDATE wishlists SET price_at_add = {$prod['current_price']} WHERE product_id = {$prod['id']} AND alert_enabled = 1");
             }
         } elseif ($last_price === null) {

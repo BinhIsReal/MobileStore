@@ -4,7 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobile Store</title>
+    <title>TechMate - Hệ thống bán đồ công nghệ</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="<?= defined('BASE_URL') ? BASE_URL : '' ?>/assets/img/favicon.svg">
+    <link rel="shortcut icon" type="image/svg+xml" href="<?= defined('BASE_URL') ? BASE_URL : '' ?>/assets/img/favicon.svg">
 
     <?php
     if (!session_id()) session_start();
@@ -15,7 +19,6 @@
     <!-- CSRF Meta Tag cho frontend AJAX -->
     <meta name="csrf-token" content="<?= htmlspecialchars(csrf_token(), ENT_QUOTES) ?>">
 
-    <!-- Preconnect CDNs để giảm latency kết nối -->
     <link rel="preconnect" href="https://cdn.tgdd.vn">
     <link rel="preconnect" href="https://cdnv2.tgdd.vn">
     <link rel="preconnect" href="https://cdn2.cellphones.com.vn">

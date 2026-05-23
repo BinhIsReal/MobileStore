@@ -6,7 +6,6 @@
   margin-bottom: 25px;
 }
 
-/* Stat card màu thứ 2 */
 .stat-card-revenue {
   border-left-color: #27ae60;
 }
@@ -15,7 +14,6 @@
   color: #27ae60;
 }
 
-/* Stat card màu thứ 3 */
 .stat-card-customers {
   border-left-color: #f39c12;
 }
@@ -24,7 +22,6 @@
   color: #f39c12;
 }
 
-/* Chart row cho top/worst products */
 .chart-row-products {
   margin-top: 25px;
 }
@@ -97,11 +94,309 @@
   color: #999;
 }
 
-/* Icon màu cho chart title */
 .icon-fire {
   color: #e74c3c;
 }
 
 .icon-snow {
   color: #3498db;
+}
+
+/* =====================================================
+   Chart title with action button
+   ===================================================== */
+.chart-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.btn-chart-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border: none;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #00487a, #0077b6);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+  box-shadow: 0 2px 8px rgba(0, 72, 122, 0.3);
+  white-space: nowrap;
+}
+
+.btn-chart-detail:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 72, 122, 0.45);
+}
+
+/* =====================================================
+   Revenue Detail Modal
+   ===================================================== */
+.rev-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 20, 40, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 30px 16px 16px;
+  overflow-y: auto;
+}
+
+.rev-modal-box {
+  background: #fff;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 960px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  animation: revSlideIn 0.25s ease;
+}
+
+@keyframes revSlideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Header */
+.rev-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  background: linear-gradient(135deg, #00487a 0%, #0077b6 100%);
+  color: #fff;
+}
+
+.rev-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rev-modal-close {
+  font-size: 20px;
+  cursor: pointer;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.15);
+  transition: background 0.2s;
+}
+
+.rev-modal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Filter bar */
+.rev-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 24px;
+  background: #f4f7fb;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.rev-filter-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rev-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 20px;
+  border: 1.5px solid #d1d9e6;
+  background: #fff;
+  color: #555;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.rev-date-input:hover,
+.rev-tab-btn:hover {
+  border-color: #00487a;
+  color: #00487a;
+}
+
+.rev-tab-btn.active {
+  background: #00487a;
+  color: #fff;
+  border-color: #00487a;
+  box-shadow: 0 2px 8px rgba(0, 72, 122, 0.3);
+}
+
+.rev-filter-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rev-date-input {
+  padding: 7px 12px;
+  border: 1.5px solid #d1d9e6;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #333;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.rev-date-input:focus {
+  border-color: #00487a;
+}
+
+.rev-year-input {
+  width: 100px;
+}
+
+.rev-btn-load {
+  padding: 7px 18px;
+  background: linear-gradient(135deg, #27ae60, #2ecc71);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition:
+    opacity 0.2s,
+    transform 0.15s;
+}
+
+.rev-btn-load:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* Summary cards */
+.rev-summary-row {
+  display: flex;
+  gap: 16px;
+  padding: 20px 24px 0;
+  flex-wrap: wrap;
+}
+
+.rev-summary-card {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #f9fbff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+
+.rev-summary-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00487a, #0077b6);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.rev-icon-order {
+  background: linear-gradient(135deg, #27ae60, #2ecc71);
+}
+.rev-icon-avg {
+  background: linear-gradient(135deg, #e67e22, #f39c12);
+}
+
+.rev-summary-label {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 4px;
+}
+
+.rev-summary-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+/* Mini chart */
+.rev-chart-wrap {
+  padding: 20px 24px 10px;
+  height: 200px;
+}
+
+.rev-chart-wrap canvas {
+  max-height: 170px;
+}
+
+/* Table */
+.rev-table-wrap {
+  padding: 0 24px 24px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.rev-table-wrap .admin-table thead {
+  position: sticky;
+  top: 0;
+  background: #f4f7fb;
+  z-index: 1;
+}
+
+/* Payment badges */
+.badge-cod {
+  background: #27ae60;
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge-bank {
+  background: #2980b9;
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge-vnpay {
+  background: #8e44ad;
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
 }
