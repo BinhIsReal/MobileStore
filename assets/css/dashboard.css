@@ -400,3 +400,65 @@
   font-size: 12px;
   font-weight: 600;
 }
+
+.revenue-select {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 12px;
+  cursor: pointer;
+  color: inherit;
+  font-weight: 600;
+  outline: none;
+  margin-left: 5px;
+  transition: border-color 0.2s;
+}
+
+.revenue-select:hover {
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+.revenue-select option {
+  color: #333;
+}
+
+.revenue-period-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  flex-wrap: wrap;
+}
+
+.revenue-label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.rev-modal-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 20px;
+  border: 1.5px solid #d1d9e6;
+  background: #fff;
+  color: #555;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.rev-modal-tab-btn:hover {
+  border-color: #00487a;
+  color: #00487a;
+}
+
+.rev-modal-tab-btn.active {
+  background: #00487a;
+  color: #fff;
+  border-color: #00487a;
+  box-shadow: 0 2px 8px rgba(0, 72, 122, 0.3);
+}

@@ -8,8 +8,27 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
 }
 
 $pending_count = $conn->query("SELECT COUNT(*) as t FROM orders WHERE status = 'pending'")->fetch_assoc()['t'];
-$revenue_month_res = $conn->query("SELECT SUM(total_price - discount_amount) as t FROM orders WHERE status = 'completed' AND MONTH(created_at) = MONTH(NOW())");
-$revenue_month = $revenue_month_res ? ($revenue_month_res->fetch_assoc()['t'] ?? 0) : 0;
+// Doanh thu hôm nay
+$rev_today = $conn->query("SELECT SUM(total_price - discount_amount) as t FROM orders WHERE status = 'completed' AND DATE(created_at) = CURDATE()")->fetch_assoc()['t'] ?? 0;
+
+// Doanh thu hôm qua
+$rev_yesterday = $conn->query("SELECT SUM(total_price - discount_amount) as t FROM orders WHERE status = 'completed' AND DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)")->fetch_assoc()['t'] ?? 0;
+
+// Doanh thu 7 ngày qua
+$rev_7_days = $conn->query("SELECT SUM(total_price - discount_amount) as t FROM orders WHERE status = 'completed' AND DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)")->fetch_assoc()['t'] ?? 0;
+
+// Doanh thu 30 ngày qua
+$rev_30_days = $conn->query("SELECT SUM(total_price - discount_amount) as t FROM orders WHERE status = 'completed' AND DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)")->fetch_assoc()['t'] ?? 0;
+
+// Doanh thu tháng này
+$rev_this_month = $conn->query("SELECT SUM(total_price - discount_amount) as t FROM orders WHERE status = 'completed' AND MONTH(created_at) = MONTH(CURDATE()) AND YEAR(created_at) = YEAR(CURDATE())")->fetch_assoc()['t'] ?? 0;
+$revenue_month = $rev_this_month; // giữ biến này cho modal hoặc các hiển thị cũ
+
+// Doanh thu tháng trước
+$rev_last_month = $conn->query("SELECT SUM(total_price - discount_amount) as t FROM orders WHERE status = 'completed' AND MONTH(created_at) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) AND YEAR(created_at) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))")->fetch_assoc()['t'] ?? 0;
+
+// Doanh thu năm nay
+$rev_this_year = $conn->query("SELECT SUM(total_price - discount_amount) as t FROM orders WHERE status = 'completed' AND YEAR(created_at) = YEAR(CURDATE())")->fetch_assoc()['t'] ?? 0;
 $user_count = $conn->query("SELECT COUNT(*) as t FROM users WHERE role = 'user'")->fetch_assoc()['t'];
 
 // Dữ liệu Doanh thu chi tiết (Trong tháng) 
@@ -101,11 +120,11 @@ $worst_products = $conn->query("
                         <p>Chờ xử lý (Xem <i class="fa fa-arrow-right" style="font-size:10px;"></i>)</p>
                     </div>
                 </div>
-                <div class="stat-card stat-card-revenue" onclick="$('#revenueDetailModal').fadeIn()" style="cursor: pointer; transition: 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" title="Nhấn để xem chi tiết">
+                <div class="stat-card stat-card-revenue" onclick="openModalRevenueDetail()" style="cursor: pointer; transition: 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" title="Nhấn để xem chi tiết">
                     <div class="stat-icon"><i class="fa fa-coins"></i></div>
                     <div class="stat-info">
-                        <h3><?= number_format($revenue_month / 1000000, 1) ?>M</h3>
-                        <p>Doanh thu tháng (Chi tiết <i class="fa fa-external-link-alt" style="font-size:10px;"></i>)</p>
+                        <h3 id="revenue-card-value"><?= number_format($rev_this_month, 0, ',', '.') ?>đ</h3>
+                        <p id="revenue-card-label">Doanh thu tháng (Chi tiết <i class="fa fa-external-link-alt" style="font-size:10px;"></i>)</p>
                     </div>
                 </div>
                 <div class="stat-card stat-card-customers" onclick="window.location.href='customers.php'" style="cursor: pointer; transition: 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" title="Quản lý khách hàng">
@@ -208,6 +227,23 @@ $worst_products = $conn->query("
             </div>
             
             <div style="padding:20px;">
+                <!-- Bộ lọc chi tiết doanh thu -->
+                <div class="rev-filter-bar" style="margin-bottom: 20px; border-radius: 8px;">
+                    <div class="rev-filter-tabs">
+                        <button class="rev-modal-tab-btn" data-filter="day" onclick="setModalRevFilter('day')"><i class="fa fa-calendar-day"></i> Ngày</button>
+                        <button class="rev-modal-tab-btn" data-filter="week" onclick="setModalRevFilter('week')"><i class="fa fa-calendar-week"></i> Tuần</button>
+                        <button class="rev-modal-tab-btn active" data-filter="month" onclick="setModalRevFilter('month')"><i class="fa fa-calendar-alt"></i> Tháng</button>
+                        <button class="rev-modal-tab-btn" data-filter="year" onclick="setModalRevFilter('year')"><i class="fa fa-calendar"></i> Năm</button>
+                    </div>
+                    <div class="rev-filter-input-wrap">
+                        <input type="date" id="rev-modal-pick-day" class="rev-date-input" style="display:none;" value="<?= date('Y-m-d') ?>">
+                        <input type="week" id="rev-modal-pick-week" class="rev-date-input" style="display:none;" value="<?= date('Y') . '-W' . date('W') ?>">
+                        <input type="month" id="rev-modal-pick-month" class="rev-date-input" value="<?= date('Y-m') ?>">
+                        <input type="number" min="2000" max="2099" id="rev-modal-pick-year" class="rev-date-input rev-year-input" placeholder="Năm" style="display:none;" value="<?= date('Y') ?>">
+                        <button class="rev-btn-load" onclick="loadModalRevenueDetail()"><i class="fa fa-sync-alt"></i> Xem</button>
+                    </div>
+                </div>
+
                 <!-- Tabs Menu -->
                 <div style="display:flex; border-bottom:1px solid #ddd; margin-bottom:20px;">
                     <button id="btn-tab-cod" onclick="switchRevTab('cod')" style="flex:1; padding:10px; background:white; cursor:pointer; font-weight:bold; color:var(--primary); border:none; border-bottom:3px solid var(--primary); font-size:16px;">

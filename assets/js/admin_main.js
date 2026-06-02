@@ -691,3 +691,134 @@ $(document).ready(function () {
     window.history.replaceState(null, null, window.location.pathname);
   }
 });
+
+/* =========================================
+   REVENUE DETAIL MODAL FILTERING
+========================================= */
+(function () {
+  let modalCurrentFilter = "month";
+
+  window.openModalRevenueDetail = function () {
+    modalCurrentFilter = "month";
+    syncModalFilterInputVisibility();
+    $(".rev-modal-tab-btn").removeClass("active");
+    $(".rev-modal-tab-btn[data-filter='month']").addClass("active");
+    $("#revenueDetailModal").fadeIn(200);
+    loadModalRevenueDetail();
+  };
+
+  window.setModalRevFilter = function (filter) {
+    modalCurrentFilter = filter;
+    $(".rev-modal-tab-btn").removeClass("active");
+    $(".rev-modal-tab-btn[data-filter='" + filter + "']").addClass("active");
+    syncModalFilterInputVisibility();
+  };
+
+  function syncModalFilterInputVisibility() {
+    $("#rev-modal-pick-day, #rev-modal-pick-week, #rev-modal-pick-month, #rev-modal-pick-year").hide();
+    const inputMap = {
+      day:   "#rev-modal-pick-day",
+      week:  "#rev-modal-pick-week",
+      month: "#rev-modal-pick-month",
+      year:  "#rev-modal-pick-year",
+    };
+    $(inputMap[modalCurrentFilter]).show();
+  }
+
+  function getModalDateVal() {
+    if (modalCurrentFilter === "year") {
+      const y = $("#rev-modal-pick-year").val() || new Date().getFullYear();
+      return y + "-01-01";
+    }
+    if (modalCurrentFilter === "week") {
+      const raw = $("#rev-modal-pick-week").val();
+      if (!raw) return new Date().toISOString().slice(0, 10);
+      const [year, week] = raw.split("-W").map(Number);
+      const jan4  = new Date(year, 0, 4);
+      const dayOfWeek = (jan4.getDay() || 7);
+      const monday = new Date(jan4);
+      monday.setDate(jan4.getDate() - dayOfWeek + 1 + (week - 1) * 7);
+      return monday.toISOString().slice(0, 10);
+    }
+    if (modalCurrentFilter === "month") {
+      const raw = $("#rev-modal-pick-month").val();
+      return raw ? raw + "-01" : new Date().toISOString().slice(0, 10);
+    }
+    return $("#rev-modal-pick-day").val() || new Date().toISOString().slice(0, 10);
+  }
+
+  window.loadModalRevenueDetail = function () {
+    const dateVal = getModalDateVal();
+    $("#tab-cod tbody").html('<tr><td colspan="5" style="text-align:center; padding:20px;"><i class="fa fa-spinner fa-spin"></i> Đang tải...</td></tr>');
+    $("#tab-bank tbody").html('<tr><td colspan="5" style="text-align:center; padding:20px;"><i class="fa fa-spinner fa-spin"></i> Đang tải...</td></tr>');
+
+    $.ajax({
+      url: "../api/revenue_detail_api.php",
+      method: "GET",
+      data: { filter: modalCurrentFilter, date_val: dateVal },
+      success: function (res) {
+        try {
+          const data = typeof res === "object" ? res : JSON.parse(res);
+          if (data.status !== "success") return;
+
+          let codHtml = "";
+          let bankHtml = "";
+          let codCount = 0;
+          let bankCount = 0;
+
+          const formatVND = function (num) {
+            return Number(num || 0).toLocaleString("vi-VN") + "đ";
+          };
+          const escHtml = function (str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          };
+
+          data.orders.forEach(function (o) {
+            const isBank = (o.payment_method === 'banking' || o.payment_method === 'vnpay');
+            const pmLabel = o.payment_method === 'vnpay' ? 'VNPay' : (o.payment_method === 'banking' ? 'Chuyển khoản' : 'Tiền mặt');
+            const pmBadge = o.payment_method === 'vnpay' ? 'badge-vnpay' : (o.payment_method === 'banking' ? 'badge-bank' : 'badge-cod');
+            const dt = o.created_at ? o.created_at.slice(0, 16).replace("T", " ") : "";
+
+            const rowHtml = `<tr>
+              <td>#${o.order_code || o.id}</td>
+              <td>${dt}</td>
+              <td>${escHtml(o.name || "")}</td>
+              <td><span class="${pmBadge}">${pmLabel}</span></td>
+              <td style="font-weight:700; color:#d70018;">${formatVND(o.final_price)}</td>
+            </tr>`;
+
+            if (isBank) {
+              bankHtml += rowHtml;
+              bankCount++;
+            } else {
+              codHtml += rowHtml;
+              codCount++;
+            }
+          });
+
+          if (codCount === 0) {
+            codHtml = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#999;">Chưa có dữ liệu</td></tr>';
+          }
+          if (bankCount === 0) {
+            bankHtml = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#999;">Chưa có dữ liệu</td></tr>';
+          }
+
+          $("#tab-cod tbody").html(codHtml);
+          $("#tab-bank tbody").html(bankHtml);
+
+          $("#btn-tab-cod").html(`<i class="fa fa-money-bill-wave"></i> Tiền mặt (${codCount})`);
+          $("#btn-tab-bank").html(`<i class="fa fa-university"></i> Chuyển khoản (${bankCount})`);
+          
+          $("#revenueDetailModal h3").html(`<i class="fa fa-list-alt"></i> Chi tiết Doanh thu (${data.period_label})`);
+
+          // Cập nhật giá trị hiển thị ở Stat Card ngoài Dashboard
+          $("#revenue-card-value").text(formatVND(data.total_revenue));
+          $("#revenue-card-label").html(`Doanh thu ${data.period_label.toLowerCase()} (Chi tiết <i class="fa fa-external-link-alt" style="font-size:10px;"></i>)`);
+
+        } catch (e) {
+          console.error("Modal filter parse error:", e);
+        }
+      }
+    });
+  };
+}());
