@@ -65,7 +65,7 @@ $query    .= urlencode($key) . '=' . urlencode($value);
 $vnp_HashSecret = trim(VNP_HASH_SECRET);
 
 $vnpSecureHash = hash_hmac('sha512', $hashdata, $vnp_HashSecret);
-$vnp_Url = VNP_URL . '?' . $query . '&vnp_SecureHashType=HmacSHA512&vnp_SecureHash=' . $vnpSecureHash;
+$vnp_Url = VNP_URL . '?' . $query . '&vnp_SecureHash=' . $vnpSecureHash;
 
 
 header('Location: ' . $vnp_Url);

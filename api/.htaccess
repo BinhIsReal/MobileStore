@@ -1,5 +1,5 @@
 # ============================================================
-# .htaccess — Good_Phone Security Rules
+# .htaccess — TechMate Security Rules
 # Chặn mọi truy cập trực tiếp vào thư mục /api/ từ browser
 # Chỉ cho phép gọi nội bộ từ PHP (XMLHttpRequest/Fetch/AJAX)
 # ============================================================
@@ -16,6 +16,8 @@ RewriteRule .* - [L]
 # Chặn truy cập browser trực tiếp (không có X-Requested-With)
 # Các request từ jQuery AJAX sẽ có header X-Requested-With: XMLHttpRequest
 RewriteCond %{REQUEST_URI} !auth_api\.php [NC]
+RewriteCond %{REQUEST_URI} !vnpay_create\.php [NC]
+RewriteCond %{REQUEST_URI} !vnpay_return\.php [NC]
 RewriteCond %{HTTP:X-Requested-With} !xmlhttprequest [NC]
 RewriteCond %{HTTP_REFERER} !^https?://%{HTTP_HOST}/ [NC]
 RewriteRule ^ - [F,L]
